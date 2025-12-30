@@ -36,7 +36,7 @@ display_df = filtered_strategies.with_columns(
     .then(pl.col("Equity %").round(2).cast(pl.String) + "%")
     .otherwise(pl.lit(""))
     .alias("Equity %"),
-    pl.col("Strategy Subtype").alias("Subtype"),
+    pl.col("Strategy Subtype").alias("Series"),
     pl.when(pl.col("Tax Managed").is_not_null())
     .then(pl.col("Tax Managed").cast(pl.String).replace({"true": "Yes", "false": "No"}))
     .otherwise(pl.lit(""))

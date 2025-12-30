@@ -4,15 +4,20 @@ from typing import Any
 
 import streamlit as st
 
-TAB_NAMES = ["Description", "Performance", "Allocations", "Fact Sheet"]
+TAB_NAMES = [
+    "Description",
+    "Performance",
+    "Allocations",
+    "Blended",
+    "Private Markets",
+    "Minimum",
+    "Fact Sheet",
+]
 
 
 def render_tabs(selected_strategy: str | None = None) -> None:
     """
     Render tabs for strategy details.
-
-    Args:
-        selected_strategy: Name of the selected strategy, or None if no selection
     """
     tabs = st.tabs(TAB_NAMES)
 
@@ -31,11 +36,6 @@ def render_tabs(selected_strategy: str | None = None) -> None:
 def _render_tab_content(tab: Any, tab_name: str, strategy_name: str) -> None:
     """
     Render content for a standard tab.
-
-    Args:
-        tab: Streamlit tab object
-        tab_name: Display name of the tab
-        strategy_name: Name of the selected strategy
     """
     with tab:
         st.write(f"**{tab_name}** - {strategy_name}")
@@ -44,10 +44,6 @@ def _render_tab_content(tab: Any, tab_name: str, strategy_name: str) -> None:
 def _render_fact_sheet_tab(tab: Any, strategy_name: str) -> None:
     """
     Render content for the Fact Sheet tab with SharePoint link.
-
-    Args:
-        tab: Streamlit tab object
-        strategy_name: Name of the selected strategy
     """
     with tab:
         st.write(f"**Fact Sheet** - {strategy_name}")
@@ -59,8 +55,8 @@ def _render_fact_sheet_tab(tab: Any, strategy_name: str) -> None:
         st.markdown(
             f'<a href="{strategy_info_url}" target="_blank" '
             f'style="display: inline-block; padding: 10px 20px; background-color: #C00686; '
-            f'color: white; text-decoration: none; border-radius: 5px; margin-top: 10px; '
-            f'font-family: \'IBM Plex Sans\', sans-serif; font-weight: 500; transition: background-color 0.2s;">'
-            f'Strategy Info</a>',
+            f"color: white; text-decoration: none; border-radius: 5px; margin-top: 10px; "
+            f"font-family: 'IBM Plex Sans', sans-serif; font-weight: 500; transition: background-color 0.2s;\">"
+            f"Strategy Info</a>",
             unsafe_allow_html=True,
         )

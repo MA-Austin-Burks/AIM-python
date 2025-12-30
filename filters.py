@@ -10,33 +10,6 @@ def build_filter_expression(
 ) -> pl.Expr:
     """
     Build a combined filter expression from filter dictionary.
-
-    Args:
-        filters: Dictionary containing filter values with keys:
-            - equity_range: Tuple[int, int] - (min, max) equity allocation
-            - min_strategy: int - Minimum strategy value
-            - tax_managed_filter: str - "All", "Yes", or "No"
-            - show_recommended: bool - Include recommended strategies
-            - show_approved: bool - Include approved strategies
-            - selected_types: list[str] - Selected strategy types
-            - selected_subtypes: list[str] - Selected strategy subtypes
-            - strategy_search: str | None - Search term for strategy name
-            - selected_managers: list[str] - Selected managers
-
-    Returns:
-        Combined Polars filter expression
-
-    Example:
-        >>> filters = {
-        ...     "equity_range": (0, 100),
-        ...     "min_strategy": 20000,
-        ...     "tax_managed_filter": "All",
-        ...     "show_recommended": True,
-        ...     "show_approved": True,
-        ...     "selected_types": [],
-        ...     "selected_subtypes": [],
-        ... }
-        >>> expr = build_filter_expression(df, filters)
     """
     # Get equity_range with safe defaults
     equity_range = filters.get("equity_range", (0, 100))
@@ -79,7 +52,11 @@ def build_filter_expression(
         status_filters.append("Approved")
     if status_filters:
         # Use "IC Status" column which contains the actual status values
-        status_col_name = "IC Status" if strats is not None and "IC Status" in strats.columns else "Status"
+        status_col_name = (
+            "IC Status"
+            if strats is not None and "IC Status" in strats.columns
+            else "Status"
+        )
         filter_expr = filter_expr & pl.col(status_col_name).is_in(status_filters)
 
     # Strategy type filter

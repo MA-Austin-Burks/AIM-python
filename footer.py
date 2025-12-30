@@ -1,7 +1,7 @@
 """Footer component for the Aspen Investing Menu app."""
 
-from streamlit_extras.bottom_container import bottom
 import streamlit as st
+from streamlit_extras.bottom_container import bottom
 
 
 def render_footer() -> None:
