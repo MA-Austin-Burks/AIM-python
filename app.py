@@ -3,12 +3,12 @@ from datetime import datetime
 import polars as pl
 import streamlit as st
 
-from dataframe import render_dataframe
-from expressions import fmt_cur, fmt_dec, fmt_pct
-from filters import build_filter_expression
-from footer import render_footer
-from sidebar import render_sidebar_filters
-from tabs import render_tabs
+from components.dataframe import render_dataframe
+from components.expressions import fmt_cur, fmt_dec, fmt_pct
+from components.filters import build_filter_expression
+from components.footer import render_footer
+from components.sidebar import render_sidebar_filters
+from components.tabs import render_tabs
 from utils import load_strats
 
 # Page configuration

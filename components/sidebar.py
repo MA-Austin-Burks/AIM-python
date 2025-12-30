@@ -123,10 +123,10 @@ def render_sidebar_filters(strats: pl.DataFrame) -> dict[str, Any]:
 
         # Get strategy types list (doesn't depend on user input)
         strategy_types = strats["Strategy Type"].drop_nulls().unique().sort().to_list()
-        default_types = ["Risk-Based"] if "Risk-Based" in strategy_types else []
+        default_type = "Risk-Based" if "Risk-Based" in strategy_types else None
 
         # Initialize for equity range (will be updated after Strategy Type/Subtype selection)
-        selected_types = default_types
+        selected_types = [default_type] if default_type else []
         available_subtypes = _get_available_subtypes(strats, selected_types)
         # Don't default Strategy Series - let it be empty so all subtypes show
         default_subtypes = []
@@ -198,13 +198,14 @@ def render_sidebar_filters(strats: pl.DataFrame) -> dict[str, Any]:
         # Strategy Type and Strategy Series on same row
         col_type, col_series = st.columns(2)
         with col_type:
-            # Strategy Type as Pills
-            selected_types = st.pills(
+            # Strategy Type as Pills (single selection only)
+            selected_type = st.pills(
                 "Strategy Type",
                 options=strategy_types,
-                selection_mode="multi",
-                default=default_types,
+                selection_mode="single",
+                default=default_type,
             )
+            selected_types = [selected_type] if selected_type else []
         with col_series:
             # Strategy Series as Pills (filtered based on Strategy Type selection)
             available_subtypes = _get_available_subtypes(strats, selected_types)
