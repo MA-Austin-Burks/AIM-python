@@ -56,14 +56,14 @@ GEOGRAPHY_OPTIONS = [
 ABBREVIATIONS_CONTENT = """
 **Abbreviations**
 
-- **QUSALMKT** - QP Market US All Cap
-- **QUSLGVMQ** - QP Factor US Large Cap VMQ
-- **MUSLGMKTLM** - MA Market US Large (SMA Low Min)
 - **5YTRYSMA** - MA 5 Year Treasury Ladder (SMA)
 - **B5YCRP** - BlackRock Corporate 1-5 Year
+- **MA** - Managed Account
+- **MUSLGMKTLM** - MA Market US Large (SMA Low Min)
 - **N7YMUN** - Nuveen Municipal 1-7 Year
 - **QP** - Quantitative Portfolio
-- **MA** - Managed Account
+- **QUSALMKT** - QP Market US All Cap
+- **QUSLGVMQ** - QP Factor US Large Cap VMQ
 - **SMA** - Separately Managed Account
 - **VMQ** - Value, Momentum, Quality
 """
@@ -107,7 +107,7 @@ def _should_show_equity_slider(
     return False
 
 
-def render_sidebar_filters(strats: pl.DataFrame) -> dict[str, Any]:
+def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
     """
     Render sidebar filters and return filter values.
     """
@@ -259,7 +259,24 @@ def render_sidebar_filters(strats: pl.DataFrame) -> dict[str, Any]:
 
         # Abbreviations info card at bottom
         st.divider()
-        st.info(ABBREVIATIONS_CONTENT)
+        abbreviations_html = """
+        <div style="background-color: #E8E8F0; color: #50439B; border: 2px solid #50439B; padding: 1rem; border-radius: 0.5rem; margin: 1rem 0;">
+            <strong style="color: #50439B;">Abbreviations</strong>
+            <ul style="margin-top: 0.5rem; margin-bottom: 0; padding-left: 1.5rem; color: #50439B;">
+                <li><strong>5YTRYSMA</strong> - MA 5 Year Treasury Ladder (SMA)</li>
+                <li><strong>B5YCRP</strong> - BlackRock Corporate 1-5 Year</li>
+                <li><strong>MA</strong> - Managed Account</li>
+                <li><strong>MUSLGMKTLM</strong> - MA Market US Large (SMA Low Min)</li>
+                <li><strong>N7YMUN</strong> - Nuveen Municipal 1-7 Year</li>
+                <li><strong>QP</strong> - Quantitative Portfolio</li>
+                <li><strong>QUSALMKT</strong> - QP Market US All Cap</li>
+                <li><strong>QUSLGVMQ</strong> - QP Factor US Large Cap VMQ</li>
+                <li><strong>SMA</strong> - Separately Managed Account</li>
+                <li><strong>VMQ</strong> - Value, Momentum, Quality</li>
+            </ul>
+        </div>
+        """
+        st.markdown(abbreviations_html, unsafe_allow_html=True)
 
     return {
         "strategy_search": selected_strategy_search or None,

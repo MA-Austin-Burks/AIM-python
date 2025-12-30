@@ -1,51 +1,28 @@
-from datetime import datetime
-
 import polars as pl
 import streamlit as st
 
-from components.dataframe import render_dataframe
-from components.expressions import fmt_cur, fmt_dec, fmt_pct
-from components.filters import build_filter_expression
-from components.footer import render_footer
-from components.sidebar import render_sidebar_filters
-from components.tabs import render_tabs
-from utils import load_strats
+from components import (
+    load_strats,
+    render_dataframe_section,
+    render_footer,
+    render_page_header,
+    render_sidebar,
+    render_tabs,
+)
 
 # Page configuration
-st.set_page_config(page_title="Aspen Investing Menu", layout="wide")
-st.title("Aspen Investing Menu")
-st.caption(f"Last updated: {datetime.today().strftime('%Y-%m-%d')}")
-st.divider()
+render_page_header()
 
-# Load and filter data
-strategies_df = load_strats()
-filters = render_sidebar_filters(strategies_df)
-filter_expr = build_filter_expression(filters, strategies_df)
-filtered_strategies = strategies_df.filter(filter_expr).sort(
-    ["Recommended", "Equity %"], descending=[True, True], nulls_last=True
-)
+# Load data
+strategies_df: pl.DataFrame = load_strats()
 
-st.markdown(f"**{len(filtered_strategies)} strategies returned**")
+# Render sidebar and get filters
+filters = render_sidebar(strats=strategies_df)
 
-# Format and display dataframe
-display_df = filtered_strategies.with_columns(
-    fmt_pct("Yield").alias("Yield"),
-    fmt_dec("Expense Ratio").alias("Expense Ratio"),
-    fmt_cur("Minimum").alias("Minimum"),
-    pl.when(pl.col("Equity %").is_not_null())
-    .then(pl.col("Equity %").round(2).cast(pl.String) + "%")
-    .otherwise(pl.lit(""))
-    .alias("Equity %"),
-    pl.col("Strategy Subtype").alias("Series"),
-    pl.when(pl.col("Tax Managed").is_not_null())
-    .then(pl.col("Tax Managed").cast(pl.String).replace({"true": "Yes", "false": "No"}))
-    .otherwise(pl.lit(""))
-    .alias("Tax-Managed"),
-    pl.col("IC Status").alias("Status"),
-)
-selected_strategy = render_dataframe(display_df, filtered_strategies)
+# Render dataframe section (handles filtering, formatting, and display)
+selected_strategy: str | None = render_dataframe_section(strategies_df, filters)
 
 # Display strategy details
 st.divider()
-render_tabs(selected_strategy)
+render_tabs(selected_strategy=selected_strategy)
 render_footer()
