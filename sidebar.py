@@ -99,16 +99,6 @@ def render_sidebar_filters(strats: pl.DataFrame) -> dict[str, Any]:
         - equity_range: Tuple of (min, max) equity allocation range
     """
     with st.sidebar:
-        # Performance monitoring toggle
-        if "enable_performance_monitoring" not in st.session_state:
-            st.session_state.enable_performance_monitoring = False
-
-        st.session_state.enable_performance_monitoring = st.checkbox(
-            "⚡ Enable Performance Monitoring",
-            value=st.session_state.enable_performance_monitoring,
-            key="perf_monitor_toggle",
-        )
-
         st.header("Search")
         st.header("")
 
@@ -228,13 +218,6 @@ def render_sidebar_filters(strats: pl.DataFrame) -> dict[str, Any]:
             label_visibility="collapsed",
             key="manager_pills",
         )
-
-        # Performance monitoring panel (if enabled)
-        if st.session_state.get("enable_performance_monitoring", False):
-            from utils.performance import PerformanceMonitor, render_performance_panel
-
-            monitor = PerformanceMonitor()
-            render_performance_panel(monitor)
 
     return {
         "strategy_search": selected_strategy_search
