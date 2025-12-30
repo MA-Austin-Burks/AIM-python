@@ -1,7 +1,9 @@
 from datetime import datetime
 
+import polars as pl
 import streamlit as st
 
+from dataframe import render_dataframe
 from expressions import fmt_cur, fmt_dec, fmt_pct
 from filters import build_filter_expression
 from footer import render_footer
@@ -15,71 +17,35 @@ st.title("Aspen Investing Menu")
 st.caption(f"Last updated: {datetime.today().strftime('%Y-%m-%d')}")
 st.divider()
 
-# Load pre-processed data
+# Load and filter data
 strategies_df = load_strats()
-
-# Sidebar filters
 filters = render_sidebar_filters(strategies_df)
-
-# Build and apply filter expression
 filter_expr = build_filter_expression(filters, strategies_df)
-filtered_strategies = strategies_df.filter(filter_expr)
-
-# Sort by Recommended descending, then by Equity % descending
-filtered_strategies = filtered_strategies.sort(
+filtered_strategies = strategies_df.filter(filter_expr).sort(
     ["Recommended", "Equity %"], descending=[True, True], nulls_last=True
 )
 
 st.markdown(f"**{len(filtered_strategies)} strategies returned**")
 
+# Format and display dataframe
 display_df = filtered_strategies.with_columns(
-    fmt_pct("yield").alias("Yield"),
+    fmt_pct("Yield").alias("Yield"),
     fmt_dec("Expense Ratio").alias("Expense Ratio"),
-    fmt_cur("minimum").alias("minimum"),
-    fmt_pct("Equity %").alias("Equity %"),
-).select(
-    [
-        "Recommended",
-        "strategy",
-        "Yield",
-        "Expense Ratio",
-        "minimum",
-        "Equity %",
-        "Subtype",
-        "Tax-Managed",
-        "Status",
-    ]
+    fmt_cur("Minimum").alias("Minimum"),
+    pl.when(pl.col("Equity %").is_not_null())
+    .then(pl.col("Equity %").round(2).cast(pl.String) + "%")
+    .otherwise(pl.lit(""))
+    .alias("Equity %"),
+    pl.col("Strategy Subtype").alias("Subtype"),
+    pl.when(pl.col("Tax Managed").is_not_null())
+    .then(pl.col("Tax Managed").cast(pl.String).replace({"true": "Yes", "false": "No"}))
+    .otherwise(pl.lit(""))
+    .alias("Tax-Managed"),
+    pl.col("IC Status").alias("Status"),
 )
+selected_strategy = render_dataframe(display_df, filtered_strategies)
 
-selected_rows = st.dataframe(
-    display_df,
-    width="stretch",
-    hide_index=True,
-    on_select="rerun",
-    selection_mode="single-row",
-    column_config={
-        "Recommended": "⭐",
-        "strategy": "Strategy",
-        "Yield": "Yield",
-        "Expense Ratio": "Expense Ratio",
-        "minimum": "Minimum",
-        "Equity %": "Equity %",
-        "Subtype": "Subtype",
-        "Tax-Managed": "Tax-Managed",
-        "Status": "Status",
-    },
-)
-
-
-# Get selected strategy from current selection
-selected_strategy = (
-    filtered_strategies.select("strategy").row(
-        selected_rows.selection.rows[0], named=True
-    )["strategy"]
-    if selected_rows.selection.rows
-    else None
-)
-
+# Display strategy details
 st.divider()
 render_tabs(selected_strategy)
 render_footer()

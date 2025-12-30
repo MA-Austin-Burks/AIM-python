@@ -44,7 +44,7 @@ def _get_available_subtypes(
     Returns:
         List of available subtype names
     """
-    all_subtypes = strats["strategy_subtype"].drop_nulls().unique().to_list()
+    all_subtypes = strats["Strategy Subtype"].drop_nulls().unique().to_list()
 
     if not selected_types:
         return sorted(all_subtypes)
@@ -149,7 +149,7 @@ def render_sidebar_filters(strats: pl.DataFrame) -> dict[str, Any]:
 
         # Strategy Type as Pills
         st.subheader("Strategy Type")
-        strategy_types = strats["strategy_type"].drop_nulls().unique().sort().to_list()
+        strategy_types = strats["Strategy Type"].drop_nulls().unique().sort().to_list()
         # Default to Risk-Based selected
         default_types = ["Risk-Based"] if "Risk-Based" in strategy_types else []
         selected_types = st.pills(
@@ -197,6 +197,7 @@ def render_sidebar_filters(strats: pl.DataFrame) -> dict[str, Any]:
             selection_mode="multi",
             default=[],
             label_visibility="collapsed",
+            disabled="Manager" not in strats.columns,
         )
 
     return {

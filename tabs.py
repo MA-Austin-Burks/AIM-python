@@ -4,7 +4,7 @@ from typing import Any
 
 import streamlit as st
 
-TAB_NAMES = ["Description", "Performance", "Allocations", "Holdings", "Fact Sheet"]
+TAB_NAMES = ["Description", "Performance", "Allocations", "Fact Sheet"]
 
 
 def render_tabs(selected_strategy: str | None = None) -> None:
