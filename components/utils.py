@@ -15,12 +15,12 @@ def load_strats(path: str = "data/strategies.csv") -> pl.DataFrame:
 
 
 def filter_and_sort_strategies(
-    strategies_df: pl.DataFrame, filters: dict[str, Any]
+    strats: pl.DataFrame, filters: dict[str, Any]
 ) -> pl.DataFrame:
     """Filter and sort strategies based on filter criteria."""
     from components.filters import build_filter_expression
 
-    filter_expr = build_filter_expression(filters, strats=strategies_df)
-    return strategies_df.filter(filter_expr).sort(
-        ["Recommended", "Equity %"], descending=[True, True], nulls_last=True
+    filter_expr: pl.Expr = build_filter_expression(filters=filters, strats=strats)
+    return strats.filter(filter_expr).sort(
+        by=["Recommended", "Equity %"], descending=[True, True], nulls_last=True
     )

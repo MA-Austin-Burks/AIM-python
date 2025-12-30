@@ -1,7 +1,8 @@
 """Page header component."""
 
-import streamlit as st
 from datetime import datetime
+
+import streamlit as st
 
 
 def render_page_header() -> None:

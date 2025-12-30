@@ -4,7 +4,7 @@ from typing import Any
 
 import streamlit as st
 
-TAB_NAMES = [
+TAB_NAMES: list[str] = [
     "Description",
     "Performance",
     "Allocations",
@@ -19,7 +19,7 @@ def render_tabs(selected_strategy: str | None = None) -> None:
     """
     Render tabs for strategy details.
     """
-    tabs = st.tabs(TAB_NAMES)
+    tabs: list[Any] = st.tabs(TAB_NAMES)
 
     if selected_strategy:
         for tab, tab_name in zip(tabs[:-1], TAB_NAMES[:-1]):
