@@ -5,46 +5,6 @@ from typing import Any
 import polars as pl
 
 
-def adjust_filters_for_strategy(
-    strats: pl.DataFrame, strategy_name: str
-) -> dict[str, Any]:
-    """
-    Adjust filter values to match the selected strategy's attributes.
-
-    Args:
-        strats: The strategies dataframe
-        strategy_name: Name of the selected strategy
-
-    Returns:
-        Dictionary with adjusted filter values. Returns empty dict if strategy not found.
-
-    Example:
-        >>> filters = adjust_filters_for_strategy(df, "My Strategy")
-        >>> filters.get("strategy_type")
-        ["Risk-Based"]
-    """
-    if strats.is_empty() or "strategy" not in strats.columns:
-        return {}
-
-    strategy_row = strats.filter(pl.col("strategy") == strategy_name).head(1)
-
-    if len(strategy_row) == 0:
-        return {}
-
-    row = strategy_row.to_dicts()[0]
-
-    return {
-        "strategy_type": [row.get("strategy_type")]
-        if row.get("strategy_type")
-        else None,
-        "strategy_subtype": [row.get("strategy_subtype")]
-        if row.get("strategy_subtype")
-        else None,
-        "tax_managed": "Yes" if row.get("tax_managed") else "No",
-        "status": [row.get("Status")] if row.get("Status") else None,
-    }
-
-
 def build_filter_expression(
     filters: dict[str, Any], strats: pl.DataFrame | None = None
 ) -> pl.Expr:
@@ -81,13 +41,11 @@ def build_filter_expression(
     # Get equity_range with safe defaults
     equity_range = filters.get("equity_range", (0, 100))
     if not isinstance(equity_range, tuple) or len(equity_range) != 2:
-        equity_range = (0, 100)  # Default to no filtering
+        equity_range = (0, 100)
 
-    # Build base filter expression
-    # Equity % is stored as percentage (0-100), divide by 100 for comparison
-    filter_expr = ((pl.col("Equity %") / 100) >= (equity_range[0] / 100)) & (
-        (pl.col("Equity %") / 100) <= (equity_range[1] / 100)
-    )
+    # Build base filter expression - Equity % is stored as percentage (0-100)
+    equity_col = pl.col("Equity %")
+    filter_expr = (equity_col >= equity_range[0]) & (equity_col <= equity_range[1])
 
     # Minimum strategy filter
     min_strategy = filters.get("min_strategy", 0)
@@ -131,14 +89,12 @@ def build_filter_expression(
 
     # Strategy name search filter - case-insensitive contains filter
     strategy_search = filters.get("strategy_search")
-    if strategy_search:
-        search_term = strategy_search.strip()
-        if search_term:
-            filter_expr = filter_expr & (
-                pl.col("strategy")
-                .str.to_lowercase()
-                .str.contains(search_term.lower(), literal=True)
-            )
+    if strategy_search and (search_term := strategy_search.strip()):
+        filter_expr = filter_expr & (
+            pl.col("strategy")
+            .str.to_lowercase()
+            .str.contains(search_term.lower(), literal=True)
+        )
 
     # Manager filter - supports multiple selections (only if column exists)
     selected_managers = filters.get("selected_managers", [])

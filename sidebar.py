@@ -26,6 +26,10 @@ MANAGER_OPTIONS = [
     "Shelton",
 ]
 
+# Common filter options
+YES_NO_ALL_OPTIONS = ["All", "Yes", "No"]
+STATUS_OPTIONS = ["Recommended", "Approved"]
+
 
 def _get_available_subtypes(
     strats: pl.DataFrame, selected_types: list[str]
@@ -100,14 +104,11 @@ def render_sidebar_filters(strats: pl.DataFrame) -> dict[str, Any]:
     """
     with st.sidebar:
         st.header("Search")
-        st.header("")
 
-        # Strategy Name search text input - filters already-filtered results
         selected_strategy_search = st.text_input(
             "Search by Strategy Name",
             value="",
             placeholder="Type to filter strategies...",
-            key="strategy_search_input",
         )
 
         st.divider()
@@ -117,48 +118,31 @@ def render_sidebar_filters(strats: pl.DataFrame) -> dict[str, Any]:
             min_value=0,
             value=20000,
             step=10000,
-            key="strategy_minimum",
         )
 
-        tax_managed_options = ["All", "Yes", "No"]
         tax_managed_filter = st.segmented_control(
             "Tax-Managed (TM)",
-            options=tax_managed_options,
+            options=YES_NO_ALL_OPTIONS,
             selection_mode="single",
             default="All",
-            key="tax_managed_control",
         )
 
         # Has SMA Manager filter (conditional on column existence)
-        has_sma_manager_options = ["All", "Yes", "No"]
-        if "Has SMA Manager" in strats.columns:
-            has_sma_manager_filter = st.segmented_control(
-                "Has SMA Manager",
-                options=has_sma_manager_options,
-                selection_mode="single",
-                default="All",
-                key="has_sma_manager_control",
-            )
-        else:
-            # Dummy filter for when column doesn't exist yet
-            has_sma_manager_filter = st.segmented_control(
-                "Has SMA Manager",
-                options=has_sma_manager_options,
-                selection_mode="single",
-                default="All",
-                key="has_sma_manager_control",
-                disabled=True,
-            )
+        has_sma_manager_filter = st.segmented_control(
+            "Has SMA Manager",
+            options=YES_NO_ALL_OPTIONS,
+            selection_mode="single",
+            default="All",
+            disabled="Has SMA Manager" not in strats.columns,
+        )
 
         st.subheader("Investment Committee Status")
-        status_options = ["Recommended", "Approved"]
         selected_status = st.segmented_control(
             "Select Status",
-            options=status_options,
+            options=STATUS_OPTIONS,
             selection_mode="multi",
-            default=["Recommended", "Approved"],
+            default=STATUS_OPTIONS,
             label_visibility="collapsed",
-            key="status_control",
         )
         show_recommended = "Recommended" in selected_status
         show_approved = "Approved" in selected_status
@@ -174,7 +158,6 @@ def render_sidebar_filters(strats: pl.DataFrame) -> dict[str, Any]:
             selection_mode="multi",
             default=default_types,
             label_visibility="collapsed",
-            key="strategy_type_pills",
         )
 
         # Strategy Subtype as Pills (filtered based on Strategy Type selection)
@@ -190,7 +173,6 @@ def render_sidebar_filters(strats: pl.DataFrame) -> dict[str, Any]:
             selection_mode="multi",
             default=default_subtypes,
             label_visibility="collapsed",
-            key="strategy_subtype_pills",
         )
 
         # Conditional Equity Allocation Range - only show for Risk-Based strategies
@@ -203,7 +185,6 @@ def render_sidebar_filters(strats: pl.DataFrame) -> dict[str, Any]:
                 value=(0, 100),
                 step=10,
                 label_visibility="collapsed",
-                key="equity_slider",
             )
         else:
             equity_range = (0, 100)  # Default, no filtering
@@ -216,13 +197,10 @@ def render_sidebar_filters(strats: pl.DataFrame) -> dict[str, Any]:
             selection_mode="multi",
             default=[],
             label_visibility="collapsed",
-            key="manager_pills",
         )
 
     return {
-        "strategy_search": selected_strategy_search
-        if selected_strategy_search
-        else None,
+        "strategy_search": selected_strategy_search or None,
         "selected_managers": selected_managers,
         "min_strategy": min_strategy,
         "tax_managed_filter": tax_managed_filter,

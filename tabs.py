@@ -4,6 +4,8 @@ from typing import Any
 
 import streamlit as st
 
+TAB_NAMES = ["Description", "Performance", "Allocations", "Holdings", "Fact Sheet"]
+
 
 def render_tabs(selected_strategy: str | None = None) -> None:
     """
@@ -12,18 +14,18 @@ def render_tabs(selected_strategy: str | None = None) -> None:
     Args:
         selected_strategy: Name of the selected strategy, or None if no selection
     """
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(
-        ["Description", "Performance", "Allocations", "Holdings", "Fact Sheet"]
-    )
+    tabs = st.tabs(TAB_NAMES)
 
     if selected_strategy:
-        _render_tab_content(tab1, "Description", selected_strategy)
-        _render_tab_content(tab2, "Performance", selected_strategy)
-        _render_tab_content(tab3, "Allocations", selected_strategy)
-        _render_tab_content(tab4, "Holdings", selected_strategy)
-        _render_fact_sheet_tab(tab5, selected_strategy)
+        for tab, tab_name in zip(tabs[:-1], TAB_NAMES[:-1]):
+            _render_tab_content(tab, tab_name, selected_strategy)
+        _render_fact_sheet_tab(tabs[-1], selected_strategy)
     else:
-        _render_empty_tabs(tab1, tab2, tab3, tab4, tab5)
+        for tab, tab_name in zip(tabs, TAB_NAMES):
+            with tab:
+                st.info(
+                    f"Please select a strategy from the table above to view its {tab_name.lower()}."
+                )
 
 
 def _render_tab_content(tab: Any, tab_name: str, strategy_name: str) -> None:
@@ -50,7 +52,6 @@ def _render_fact_sheet_tab(tab: Any, strategy_name: str) -> None:
     with tab:
         st.write(f"**Fact Sheet** - {strategy_name}")
 
-        # Strategy Info Link (SharePoint)
         strategy_info_url = (
             "https://merceradvisors.sharepoint.com/sites/InvestmentStrategy/"
             "_layouts/15/guestaccess.aspx?share=ERK1A-aV9QZAszzG23zqFIcBxcx27KT80xZhP33zl-1S1A&e=Pm9Nbr"
@@ -63,31 +64,3 @@ def _render_fact_sheet_tab(tab: Any, strategy_name: str) -> None:
             f'Strategy Info</a>',
             unsafe_allow_html=True,
         )
-
-
-def _render_empty_tabs(
-    tab1: Any, tab2: Any, tab3: Any, tab4: Any, tab5: Any
-) -> None:
-    """
-    Render empty state messages for tabs when no strategy is selected.
-
-    Args:
-        tab1: First Streamlit tab object
-        tab2: Second Streamlit tab object
-        tab3: Third Streamlit tab object
-        tab4: Fourth Streamlit tab object
-        tab5: Fifth Streamlit tab object
-    """
-    tab_messages = {
-        tab1: "description",
-        tab2: "performance",
-        tab3: "allocations",
-        tab4: "holdings",
-        tab5: "fact sheet",
-    }
-
-    for tab, tab_name in tab_messages.items():
-        with tab:
-            st.info(
-                f"Please select a strategy from the table above to view its {tab_name}."
-            )
