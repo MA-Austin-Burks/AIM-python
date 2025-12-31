@@ -4,7 +4,6 @@ import polars as pl
 import streamlit as st
 
 from components import (
-    load_strats,
     render_dataframe_section,
     render_footer,
     render_page_header,
@@ -12,12 +11,17 @@ from components import (
     render_tabs,
 )
 
+
+@st.cache_data(ttl=3600)
+def load_strats(path: str = "data/strategies.csv") -> pl.LazyFrame:
+    return pl.scan_csv(path, null_values=["NA"])
+
+
 render_page_header()
 
 strategies_lazy: pl.LazyFrame = load_strats()
-strategies_df: pl.DataFrame = strategies_lazy.collect()
 
-filters: dict[str, Any] = render_sidebar(strats=strategies_df)
+filters: dict[str, Any] = render_sidebar(strats=strategies_lazy)
 selected_strategy: str | None = render_dataframe_section(strategies_lazy, filters)
 
 st.divider()

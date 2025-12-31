@@ -46,12 +46,18 @@ GEOGRAPHY_OPTIONS: list[str] = [
 
 
 def _get_available_subtypes(
-    strats: pl.DataFrame, selected_types: list[str]
+    strats: pl.LazyFrame, selected_types: list[str]
 ) -> list[str]:
     """
     Get available subtypes based on selected strategy types.
     """
-    all_subtypes: list[str] = strats["Strategy Subtype"].drop_nulls().unique().to_list()
+    all_subtypes: list[str] = (
+        strats.select("Strategy Subtype")
+        .drop_nulls()
+        .unique()
+        .collect()["Strategy Subtype"]
+        .to_list()
+    )
 
     if not selected_types:
         return sorted(all_subtypes)
@@ -64,7 +70,7 @@ def _get_available_subtypes(
     return sorted(set[str](s for s in available_subtypes if s in all_subtypes))
 
 
-def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
+def render_sidebar(strats: pl.LazyFrame) -> dict[str, Any]:
     """
     Render sidebar filters and return filter values.
     """
@@ -78,7 +84,11 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
         st.divider()
 
         strategy_types: list[str] = (
-            strats["Strategy Type"].drop_nulls().unique().to_list()
+            strats.select("Strategy Type")
+            .drop_nulls()
+            .unique()
+            .collect()["Strategy Type"]
+            .to_list()
         )
         default_type: str | None = (
             "Risk-Based" if "Risk-Based" in strategy_types else None
@@ -122,7 +132,7 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
                 options=YES_NO_ALL_OPTIONS,
                 selection_mode="single",
                 default="All",
-                disabled="Has SMA Manager" not in strats.columns,
+                disabled="Has SMA Manager" not in strats.schema,
             )
 
         col_private, col_status = st.columns(2)
@@ -172,7 +182,7 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
                 options=MANAGER_OPTIONS,
                 selection_mode="multi",
                 default=[],
-                disabled="Manager" not in strats.columns,
+                disabled="Manager" not in strats.schema,
             )
         with col_geography:
             selected_geography: list[str] = st.pills(
@@ -201,9 +211,9 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
 
         st.divider()
         abbreviations_html: str = """
-        <div style="background-color: #E8E8F0; color: #50439B; border: 2px solid #50439B; padding: 1rem; border-radius: 0.5rem; margin: 1rem 0;">
-            <strong style="color: #50439B;">Abbreviations</strong>
-            <ul style="margin-top: 0.5rem; margin-bottom: 0; padding-left: 1.5rem; color: #50439B;">
+        <div style="background-color: #E8E8F0; color: #820361; border: 2px solid #bfbfbf; padding: 1rem; border-radius: 0.5rem; margin: 1rem 0;">
+            <strong style="color: #820361;">Abbreviations</strong>
+            <ul style="margin-top: 0.5rem; margin-bottom: 0; padding-left: 1.5rem; color: #820361;">
                 <li><strong>5YTRYSMA</strong> - MA 5 Year Treasury Ladder (SMA)</li>
                 <li><strong>B5YCRP</strong> - BlackRock Corporate 1-5 Year</li>
                 <li><strong>MA</strong> - Managed Account</li>

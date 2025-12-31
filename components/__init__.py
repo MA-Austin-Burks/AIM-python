@@ -12,7 +12,6 @@ from components.footer import render_footer
 from components.header import render_page_header
 from components.sidebar import render_sidebar
 from components.tabs import render_tabs
-from components.utils import filter_and_sort_strategies, load_strats
 
 __all__ = [
     "render_dataframe",
@@ -23,6 +22,4 @@ __all__ = [
     "render_page_header",
     "render_sidebar",
     "render_tabs",
-    "filter_and_sort_strategies",
-    "load_strats",
 ]
