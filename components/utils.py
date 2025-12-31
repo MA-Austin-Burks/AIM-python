@@ -30,5 +30,12 @@ def filter_and_sort_strategies(
             descending=[True, True],
             nulls_last=True,
         )
+        .with_columns(
+            # Convert Strategy Subtype to Series list format for MultiselectColumn with colors
+            pl.when(pl.col("Strategy Subtype").is_not_null())
+            .then(pl.concat_list([pl.col("Strategy Subtype")]))
+            .otherwise(pl.lit([]).cast(pl.List(pl.Utf8)))
+            .alias("Series"),
+        )
         .collect()
     )

@@ -1,3 +1,5 @@
+"""Filters component for the Aspen Investing Menu app."""
+
 from typing import Any
 
 import polars as pl
