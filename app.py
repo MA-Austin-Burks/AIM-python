@@ -14,10 +14,11 @@ from components import (
 
 render_page_header()
 
-strategies_df: pl.DataFrame = load_strats()
+strategies_lazy: pl.LazyFrame = load_strats()
+strategies_df: pl.DataFrame = strategies_lazy.collect()
 
 filters: dict[str, Any] = render_sidebar(strats=strategies_df)
-selected_strategy: str | None = render_dataframe_section(strategies_df, filters)
+selected_strategy: str | None = render_dataframe_section(strategies_lazy, filters)
 
 st.divider()
 render_tabs(selected_strategy=selected_strategy)

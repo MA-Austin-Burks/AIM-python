@@ -72,7 +72,7 @@ def render_dataframe(df: pl.DataFrame, filtered_strategies: pl.DataFrame) -> str
 
 
 def render_dataframe_section(
-    strats: pl.DataFrame, filters: dict[str, Any]
+    strats: pl.LazyFrame, filters: dict[str, Any]
 ) -> str | None:
     """
     Render the complete dataframe section including filtering, formatting, and display.

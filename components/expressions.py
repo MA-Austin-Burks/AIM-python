@@ -38,7 +38,7 @@ def fmt_equity_pct(col: str = "Equity %") -> pl.Expr:
     """Format equity percentage column."""
     return (
         pl.when(pl.col(col).is_not_null())
-        .then(pl.col(col).round(2).cast(pl.String) + "%")
+        .then((pl.col(col) * 100).round(2).cast(pl.String) + "%")
         .otherwise(pl.lit(""))
         .alias(col)
     )
