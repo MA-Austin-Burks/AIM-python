@@ -10,7 +10,6 @@ from components.expressions import (
     fmt_dec,
     fmt_equity_pct,
     fmt_pct,
-    fmt_tax_managed,
 )
 
 DISPLAY_COLUMNS: list[str] = [
@@ -34,7 +33,7 @@ def format_display_dataframe(df: pl.DataFrame) -> pl.DataFrame:
         fmt_cur(col="Minimum"),
         fmt_equity_pct(col="Equity %"),
         pl.col(name="Strategy Subtype").alias(name="Series"),
-        fmt_tax_managed(col="Tax Managed"),
+        pl.col(name="Tax-Managed"),
         pl.col(name="IC Status"),
     )
 
@@ -57,7 +56,7 @@ def render_dataframe(df: pl.DataFrame, filtered_strategies: pl.DataFrame) -> str
             "Minimum": st.column_config.TextColumn("Minimum", width=125),
             "Equity %": st.column_config.TextColumn("Equity %", width=125),
             "Series": st.column_config.TextColumn("Series", width=125),
-            "Tax-Managed": st.column_config.TextColumn("Tax-Managed", width=125),
+            "Tax-Managed": st.column_config.CheckboxColumn("Tax-Managed", width=125),
             "IC Status": st.column_config.TextColumn("IC Status", width=150),
         },
     )

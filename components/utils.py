@@ -11,7 +11,9 @@ def load_strats(path: str = "data/strategies.csv") -> pl.LazyFrame:
     """
     Load strategies data from CSV file as a LazyFrame.
     """
-    return pl.scan_csv(path, null_values=["NA"], truncate_ragged_lines=True)
+    return pl.scan_csv(
+        path, null_values=["NA"], truncate_ragged_lines=True
+    ).with_columns(pl.col("Tax-Managed").cast(pl.Boolean, strict=False))
 
 
 def filter_and_sort_strategies(
@@ -23,6 +25,10 @@ def filter_and_sort_strategies(
     filter_expr: pl.Expr = build_filter_expression(filters=filters)
     return (
         strats.filter(filter_expr)
-        .sort(by=["Recommended", "Equity %"], descending=[True, True], nulls_last=True)
+        .sort(
+            by=["Recommended", "Strategy"],
+            descending=[True, True],
+            nulls_last=True,
+        )
         .collect()
     )

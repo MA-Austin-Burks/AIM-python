@@ -19,7 +19,7 @@ def build_filter_expression(filters: dict[str, Any]) -> pl.Expr:
     # Tax managed filter
     tax_managed = filters["tax_managed_filter"]
     if tax_managed != "All":
-        expressions.append(pl.col(name="Tax Managed") == (tax_managed == "Yes"))
+        expressions.append(pl.col(name="Tax-Managed") == (tax_managed == "Yes"))
 
     # SMA manager filter
     sma_manager = filters["has_sma_manager_filter"]
