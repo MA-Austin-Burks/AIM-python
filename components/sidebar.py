@@ -3,35 +3,6 @@
 import polars as pl
 import streamlit as st
 
-MANAGER_OPTIONS: list[str] = [
-    "Mercer Advisors",
-    "Blackrock",
-    "Nuveen",
-    "PIMCO",
-    "AQR",
-    "Quantinno",
-    "SpiderRock",
-    "Shelton",
-]
-
-YES_NO_ALL_OPTIONS: list[str] = ["All", "Yes", "No"]
-TRACKING_ERROR_OPTIONS: list[str] = ["<1%", "<1.5%", "<2%", "<2.5%", "<3%"]
-REFERENCE_BENCHMARK_OPTIONS: list[str] = [
-    "S&P 500",
-    "Russell 2000",
-    "Bloomberg Aggregate",
-    "MSCI World",
-    "Barclays Aggregate",
-    "Custom",
-]
-GEOGRAPHY_OPTIONS: list[str] = [
-    "US",
-    "International",
-    "Global",
-    "Emerging Markets",
-    "Developed Markets",
-]
-
 
 @st.cache_data
 def _get_strategy_types(_strats: pl.LazyFrame) -> list[str]:
@@ -103,14 +74,14 @@ def render_sidebar(strats: pl.LazyFrame) -> dict:
         with col_tax:
             tax_managed_filter: str = st.segmented_control(
                 "Tax-Managed (TM)",
-                options=YES_NO_ALL_OPTIONS,
+                options=["All", "Yes", "No"],
                 selection_mode="single",
                 default="All",
             )
         with col_sma:
             has_sma_manager_filter: str = st.segmented_control(
                 "Has SMA Manager",
-                options=YES_NO_ALL_OPTIONS,
+                options=["All", "Yes", "No"],
                 selection_mode="single",
                 default="All",
                 disabled="Has SMA Manager" not in strats.schema,
@@ -118,7 +89,7 @@ def render_sidebar(strats: pl.LazyFrame) -> dict:
 
         private_markets_filter: str = st.segmented_control(
             "Private Markets",
-            options=YES_NO_ALL_OPTIONS,
+            options=["All", "Yes", "No"],
             selection_mode="single",
             default="All",
         )
@@ -142,7 +113,16 @@ def render_sidebar(strats: pl.LazyFrame) -> dict:
 
         selected_managers: list[str] = st.pills(
             "Manager",
-            options=MANAGER_OPTIONS,
+            options=[
+                "Mercer Advisors",
+                "Blackrock",
+                "Nuveen",
+                "PIMCO",
+                "AQR",
+                "Quantinno",
+                "SpiderRock",
+                "Shelton",
+            ],
             selection_mode="multi",
             default=[],
             disabled="Manager" not in strats.schema,
@@ -150,7 +130,13 @@ def render_sidebar(strats: pl.LazyFrame) -> dict:
 
         selected_geography: list[str] = st.pills(
             "Geography",
-            options=GEOGRAPHY_OPTIONS,
+            options=[
+                "US",
+                "International",
+                "Global",
+                "Emerging Markets",
+                "Developed Markets",
+            ],
             selection_mode="multi",
             default=[],
             disabled=True,
@@ -160,14 +146,21 @@ def render_sidebar(strats: pl.LazyFrame) -> dict:
         with col_tracking:
             tracking_error: str | None = st.selectbox(
                 "Tracking Error",
-                options=TRACKING_ERROR_OPTIONS,
+                options=["<1%", "<1.5%", "<2%", "<2.5%", "<3%"],
                 index=0,
                 disabled=True,
             )
         with col_benchmark:
             reference_benchmark: str | None = st.selectbox(
                 "Reference Benchmark",
-                options=REFERENCE_BENCHMARK_OPTIONS,
+                options=[
+                    "S&P 500",
+                    "Russell 2000",
+                    "Bloomberg Aggregate",
+                    "MSCI World",
+                    "Barclays Aggregate",
+                    "Custom",
+                ],
                 index=0,
                 disabled=True,
             )

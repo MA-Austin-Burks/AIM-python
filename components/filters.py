@@ -41,16 +41,10 @@ def build_filter_expression(filters: dict) -> pl.Expr:
             .str.contains("all weather", literal=False)
         )
 
-    # IC status filter
+    # Recommended filter
     show_recommended = filters.get("show_recommended")
-    show_approved = filters.get("show_approved")
-    status_filters: list = []
     if show_recommended:
-        status_filters.append("Recommended")
-    if show_approved:
-        status_filters.append("Approved")
-    if status_filters:
-        expressions.append(pl.col("IC Status").is_in(status_filters))
+        expressions.append(pl.col("Recommended"))
 
     # Strategy type filter
     selected_types = filters.get("selected_types")
