@@ -5,10 +5,8 @@ from typing import Any
 import polars as pl
 import streamlit as st
 
-RISK_BASED_SUBTYPES: list[str] = ["Market", "Multifactor", "Income"]
-
 SUBTYPE_MAPPING: dict[str, list[str]] = {
-    "Risk-Based": RISK_BASED_SUBTYPES,
+    "Risk-Based": ["Market", "Multifactor", "Income"],
     "Asset Class": ["Equity", "Fixed Income", "Cash", "Alternative"],
     "Other": ["Special Situation", "Blended"],
 }
@@ -96,8 +94,6 @@ def render_sidebar(strats: pl.LazyFrame) -> dict[str, Any]:
 
         selected_types: list[str] = [default_type] if default_type else []
         available_subtypes: list[str] = _get_available_subtypes(strats, selected_types)
-        default_subtypes: list[str] = []
-        selected_subtypes: list[str] = default_subtypes
 
         col_min, col_equity = st.columns(2)
         with col_min:
@@ -195,14 +191,14 @@ def render_sidebar(strats: pl.LazyFrame) -> dict[str, Any]:
 
         col_tracking, col_benchmark = st.columns(2)
         with col_tracking:
-            tracking_error: str | None = st.selectbox(
+            st.selectbox(
                 "Tracking Error",
                 options=TRACKING_ERROR_OPTIONS,
                 index=0,
                 disabled=True,
             )
         with col_benchmark:
-            reference_benchmark: str | None = st.selectbox(
+            st.selectbox(
                 "Reference Benchmark",
                 options=REFERENCE_BENCHMARK_OPTIONS,
                 index=0,
@@ -210,24 +206,22 @@ def render_sidebar(strats: pl.LazyFrame) -> dict[str, Any]:
             )
 
         st.divider()
-        abbreviations_html: str = """
-        <div style="background-color: #E8E8F0; color: #820361; border: 2px solid #bfbfbf; padding: 1rem; border-radius: 0.5rem; margin: 1rem 0;">
-            <strong style="color: #820361;">Abbreviations</strong>
-            <ul style="margin-top: 0.5rem; margin-bottom: 0; padding-left: 1.5rem; color: #820361;">
-                <li><strong>5YTRYSMA</strong> - MA 5 Year Treasury Ladder (SMA)</li>
-                <li><strong>B5YCRP</strong> - BlackRock Corporate 1-5 Year</li>
-                <li><strong>MA</strong> - Managed Account</li>
-                <li><strong>MUSLGMKTLM</strong> - MA Market US Large (SMA Low Min)</li>
-                <li><strong>N7YMUN</strong> - Nuveen Municipal 1-7 Year</li>
-                <li><strong>QP</strong> - Quantitative Portfolio</li>
-                <li><strong>QUSALMKT</strong> - QP Market US All Cap</li>
-                <li><strong>QUSLGVMQ</strong> - QP Factor US Large Cap VMQ</li>
-                <li><strong>SMA</strong> - Separately Managed Account</li>
-                <li><strong>VMQ</strong> - Value, Momentum, Quality</li>
-            </ul>
-        </div>
-        """
-        st.markdown(abbreviations_html, unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown("**Abbreviations**")
+            st.markdown(
+                """
+                - **5YTRYSMA** - MA 5 Year Treasury Ladder (SMA)
+                - **B5YCRP** - BlackRock Corporate 1-5 Year
+                - **MA** - Managed Account
+                - **MUSLGMKTLM** - MA Market US Large (SMA Low Min)
+                - **N7YMUN** - Nuveen Municipal 1-7 Year
+                - **QP** - Quantitative Portfolio
+                - **QUSALMKT** - QP Market US All Cap
+                - **QUSLGVMQ** - QP Factor US Large Cap VMQ
+                - **SMA** - Separately Managed Account
+                - **VMQ** - Value, Momentum, Quality
+                """
+            )
 
     return {
         "strategy_search": selected_strategy_search or None,
@@ -241,7 +235,5 @@ def render_sidebar(strats: pl.LazyFrame) -> dict[str, Any]:
         "selected_types": selected_types,
         "selected_subtypes": selected_subtypes,
         "equity_range": equity_range,
-        "tracking_error": None,
-        "reference_benchmark": None,
         "selected_geography": selected_geography,
     }

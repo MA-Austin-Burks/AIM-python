@@ -31,12 +31,12 @@ def filter_and_sort_strategies(
     )
 
 
-def render_dataframe(df: pl.DataFrame, filtered_strategies: pl.DataFrame) -> str | None:
+def render_dataframe(filtered_strategies: pl.DataFrame) -> str | None:
     """
     Render the strategies dataframe and return selected strategy name.
     """
     selected_rows = st.dataframe(
-        df.select(
+        filtered_strategies.select(
             [
                 "Recommended",
                 "Strategy",
@@ -109,6 +109,4 @@ def render_dataframe_section(
     )
 
     st.markdown(f"**{filtered_strategies.height} strategies returned**")
-    return render_dataframe(
-        df=filtered_strategies, filtered_strategies=filtered_strategies
-    )
+    return render_dataframe(filtered_strategies=filtered_strategies)
