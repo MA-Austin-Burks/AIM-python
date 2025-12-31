@@ -1,7 +1,5 @@
 """Tab components for displaying strategy details."""
 
-from typing import Any
-
 import streamlit as st
 
 TAB_NAMES: list[str] = [
@@ -16,14 +14,13 @@ TAB_NAMES: list[str] = [
 
 
 def render_tabs(selected_strategy: str | None = None) -> None:
-    """
-    Render tabs for strategy details.
-    """
-    tabs: list[Any] = st.tabs(TAB_NAMES)
+    """Render tabs for strategy details."""
+    tabs = st.tabs(TAB_NAMES)
 
     if selected_strategy:
         for tab, tab_name in zip(tabs[:-1], TAB_NAMES[:-1]):
-            _render_tab_content(tab, tab_name, selected_strategy)
+            with tab:
+                st.write(f"**{tab_name}** - {selected_strategy}")
         _render_fact_sheet_tab(tabs[-1], selected_strategy)
     else:
         for tab, tab_name in zip(tabs, TAB_NAMES):
@@ -33,15 +30,7 @@ def render_tabs(selected_strategy: str | None = None) -> None:
                 )
 
 
-def _render_tab_content(tab: Any, tab_name: str, strategy_name: str) -> None:
-    """
-    Render content for a standard tab.
-    """
-    with tab:
-        st.write(f"**{tab_name}** - {strategy_name}")
-
-
-def _render_fact_sheet_tab(tab: Any, strategy_name: str) -> None:
+def _render_fact_sheet_tab(tab, strategy_name: str) -> None:
     """
     Render content for the Fact Sheet tab with SharePoint link.
     """

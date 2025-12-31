@@ -1,11 +1,9 @@
 """Filters component for the Aspen Investing Menu app."""
 
-from typing import Any
-
 import polars as pl
 
 
-def build_filter_expression(filters: dict[str, Any]) -> pl.Expr:
+def build_filter_expression(filters: dict) -> pl.Expr:
     expressions: list[pl.Expr] = []
 
     # Equity range filter
@@ -15,8 +13,8 @@ def build_filter_expression(filters: dict[str, Any]) -> pl.Expr:
         & (pl.col("Equity %") <= equity_range[1])
     )
 
-    # Minimum strategy filter
-    expressions.append(pl.col("Minimum") >= filters["min_strategy"])
+    # Account Value filter - show strategies where account value meets minimum threshold
+    expressions.append(pl.col("Minimum") <= filters["min_strategy"])
 
     # Tax managed filter
     tax_managed = filters["tax_managed_filter"]
@@ -27,6 +25,21 @@ def build_filter_expression(filters: dict[str, Any]) -> pl.Expr:
     sma_manager = filters["has_sma_manager_filter"]
     if sma_manager != "All":
         expressions.append(pl.col("Has SMA Manager") == (sma_manager == "Yes"))
+
+    # Private Markets filter - filter for strategies with "All Weather" in name
+    private_markets = filters.get("private_markets_filter")
+    if private_markets == "Yes":
+        expressions.append(
+            pl.col("Strategy")
+            .str.to_lowercase()
+            .str.contains("all weather", literal=False)
+        )
+    elif private_markets == "No":
+        expressions.append(
+            ~pl.col("Strategy")
+            .str.to_lowercase()
+            .str.contains("all weather", literal=False)
+        )
 
     # IC status filter
     show_recommended = filters.get("show_recommended")
@@ -44,10 +57,10 @@ def build_filter_expression(filters: dict[str, Any]) -> pl.Expr:
     if selected_types:
         expressions.append(pl.col("Strategy Type").is_in(selected_types))
 
-    # Strategy subtype filter
+    # Type filter (Series)
     selected_subtypes = filters.get("selected_subtypes")
     if selected_subtypes:
-        expressions.append(pl.col("Strategy Subtype").is_in(selected_subtypes))
+        expressions.append(pl.col("Type").is_in(selected_subtypes))
 
     # Strategy search filter
     strategy_search = filters.get("strategy_search")

@@ -1,5 +1,3 @@
-from typing import Any
-
 import polars as pl
 import streamlit as st
 
@@ -19,10 +17,9 @@ def load_strats(path: str = "data/strategies.csv") -> pl.LazyFrame:
 
 render_page_header()
 
-strategies_lazy: pl.LazyFrame = load_strats()
-
-filters: dict[str, Any] = render_sidebar(strats=strategies_lazy)
-selected_strategy: str | None = render_dataframe_section(strategies_lazy, filters)
+strategies_lazy = load_strats()
+filters = render_sidebar(strats=strategies_lazy)
+selected_strategy = render_dataframe_section(strategies_lazy, filters)
 
 st.divider()
 render_tabs(selected_strategy=selected_strategy)

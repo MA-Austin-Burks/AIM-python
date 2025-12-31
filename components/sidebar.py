@@ -1,15 +1,7 @@
 """Sidebar filters component for the Aspen Investing Menu app."""
 
-from typing import Any
-
 import polars as pl
 import streamlit as st
-
-SUBTYPE_MAPPING: dict[str, list[str]] = {
-    "Risk-Based": ["Market", "Multifactor", "Income"],
-    "Asset Class": ["Equity", "Fixed Income", "Cash", "Alternative"],
-    "Other": ["Special Situation", "Blended"],
-}
 
 MANAGER_OPTIONS: list[str] = [
     "Mercer Advisors",
@@ -23,7 +15,6 @@ MANAGER_OPTIONS: list[str] = [
 ]
 
 YES_NO_ALL_OPTIONS: list[str] = ["All", "Yes", "No"]
-STATUS_OPTIONS: list[str] = ["Recommended", "Approved"]
 TRACKING_ERROR_OPTIONS: list[str] = ["<1%", "<1.5%", "<2%", "<2.5%", "<3%"]
 REFERENCE_BENCHMARK_OPTIONS: list[str] = [
     "S&P 500",
@@ -33,7 +24,6 @@ REFERENCE_BENCHMARK_OPTIONS: list[str] = [
     "Barclays Aggregate",
     "Custom",
 ]
-
 GEOGRAPHY_OPTIONS: list[str] = [
     "US",
     "International",
@@ -43,35 +33,26 @@ GEOGRAPHY_OPTIONS: list[str] = [
 ]
 
 
-def _get_available_subtypes(
-    strats: pl.LazyFrame, selected_types: list[str]
-) -> list[str]:
-    """
-    Get available subtypes based on selected strategy types.
-    """
-    all_subtypes: list[str] = (
-        strats.select("Strategy Subtype")
+@st.cache_data
+def _get_strategy_types(_strats: pl.LazyFrame) -> list[str]:
+    """Get unique strategy types."""
+    return (
+        _strats.select("Strategy Type")
         .drop_nulls()
         .unique()
-        .collect()["Strategy Subtype"]
+        .collect()["Strategy Type"]
         .to_list()
     )
 
-    if not selected_types:
-        return sorted(all_subtypes)
 
-    available_subtypes: list[str] = []
-    for stype in selected_types:
-        if stype in SUBTYPE_MAPPING:
-            available_subtypes.extend(SUBTYPE_MAPPING[stype])
-
-    return sorted(set[str](s for s in available_subtypes if s in all_subtypes))
+@st.cache_data
+def _get_type_options(_strats: pl.LazyFrame) -> list[str]:
+    """Get unique Type values."""
+    return _strats.select("Type").drop_nulls().unique().collect()["Type"].to_list()
 
 
-def render_sidebar(strats: pl.LazyFrame) -> dict[str, Any]:
-    """
-    Render sidebar filters and return filter values.
-    """
+def render_sidebar(strats: pl.LazyFrame) -> dict:
+    """Render sidebar filters and return filter values."""
     with st.sidebar:
         st.header("Search")
         selected_strategy_search: str = st.text_input(
@@ -81,24 +62,28 @@ def render_sidebar(strats: pl.LazyFrame) -> dict[str, Any]:
         )
         st.divider()
 
-        strategy_types: list[str] = (
-            strats.select("Strategy Type")
-            .drop_nulls()
-            .unique()
-            .collect()["Strategy Type"]
-            .to_list()
+        recommended_only: bool = st.toggle(
+            "Investment Committee Recommended Only",
+            value=True,
+            help="Show only recommended strategies when enabled",
         )
+        show_recommended: bool = recommended_only
+        show_approved: bool = (
+            False  # Always False - toggle controls Recommended filter only
+        )
+
+        strategy_types: list[str] = _get_strategy_types(strats)
         default_type: str | None = (
             "Risk-Based" if "Risk-Based" in strategy_types else None
         )
 
         selected_types: list[str] = [default_type] if default_type else []
-        available_subtypes: list[str] = _get_available_subtypes(strats, selected_types)
+        type_options: list[str] = sorted(_get_type_options(strats))
 
         col_min, col_equity = st.columns(2)
         with col_min:
             min_strategy: int = st.number_input(
-                "Minimum ($)",
+                "Account Value ($)",
                 min_value=0,
                 value=20000,
                 step=10000,
@@ -131,74 +116,56 @@ def render_sidebar(strats: pl.LazyFrame) -> dict[str, Any]:
                 disabled="Has SMA Manager" not in strats.schema,
             )
 
-        col_private, col_status = st.columns(2)
-        with col_private:
-            private_markets_filter: str = st.segmented_control(
-                "Private Markets",
-                options=YES_NO_ALL_OPTIONS,
-                selection_mode="single",
-                default="All",
-                disabled=True,
-            )
-        with col_status:
-            selected_status: list[str] = st.segmented_control(
-                "Investment Committee Status",
-                options=STATUS_OPTIONS,
-                selection_mode="multi",
-                default=STATUS_OPTIONS,
-            )
-        show_recommended: bool = "Recommended" in selected_status
-        show_approved: bool = "Approved" in selected_status
+        private_markets_filter: str = st.segmented_control(
+            "Private Markets",
+            options=YES_NO_ALL_OPTIONS,
+            selection_mode="single",
+            default="All",
+        )
 
-        col_type, col_series = st.columns(2)
-        with col_type:
-            selected_type: str | None = st.pills(
-                "Strategy Type",
-                options=strategy_types,
-                selection_mode="single",
-                default=default_type,
-            )
-            selected_types: list[str] = [selected_type] if selected_type else []
-        with col_series:
-            available_subtypes: list[str] = _get_available_subtypes(
-                strats, selected_types
-            )
-            default_subtypes: list[str] = []
-            selected_subtypes: list[str] = st.pills(
-                "Strategy Series",
-                options=available_subtypes,
-                selection_mode="multi",
-                default=default_subtypes,
-            )
+        selected_type: str | None = st.pills(
+            "Strategy Type",
+            options=strategy_types,
+            selection_mode="single",
+            default=default_type,
+        )
+        selected_types: list[str] = [selected_type] if selected_type else []
 
-        col_manager, col_geography = st.columns(2)
-        with col_manager:
-            selected_managers: list[str] = st.pills(
-                "Manager",
-                options=MANAGER_OPTIONS,
-                selection_mode="multi",
-                default=[],
-                disabled="Manager" not in strats.schema,
-            )
-        with col_geography:
-            selected_geography: list[str] = st.pills(
-                "Geography",
-                options=GEOGRAPHY_OPTIONS,
-                selection_mode="multi",
-                default=[],
-                disabled=True,
-            )
+        selected_subtypes: list[str] = st.pills(
+            "Series",
+            options=type_options,
+            selection_mode="multi",
+            default=["Multifactor Series"]
+            if "Multifactor Series" in type_options
+            else [],
+        )
+
+        selected_managers: list[str] = st.pills(
+            "Manager",
+            options=MANAGER_OPTIONS,
+            selection_mode="multi",
+            default=[],
+            disabled="Manager" not in strats.schema,
+        )
+
+        selected_geography: list[str] = st.pills(
+            "Geography",
+            options=GEOGRAPHY_OPTIONS,
+            selection_mode="multi",
+            default=[],
+            disabled=True,
+        )
 
         col_tracking, col_benchmark = st.columns(2)
         with col_tracking:
-            st.selectbox(
+            tracking_error: str | None = st.selectbox(
                 "Tracking Error",
                 options=TRACKING_ERROR_OPTIONS,
                 index=0,
                 disabled=True,
             )
         with col_benchmark:
-            st.selectbox(
+            reference_benchmark: str | None = st.selectbox(
                 "Reference Benchmark",
                 options=REFERENCE_BENCHMARK_OPTIONS,
                 index=0,
@@ -236,4 +203,6 @@ def render_sidebar(strats: pl.LazyFrame) -> dict[str, Any]:
         "selected_subtypes": selected_subtypes,
         "equity_range": equity_range,
         "selected_geography": selected_geography,
+        "tracking_error": tracking_error,
+        "reference_benchmark": reference_benchmark,
     }
