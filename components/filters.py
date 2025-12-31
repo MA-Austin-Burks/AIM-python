@@ -26,20 +26,12 @@ def build_filter_expression(filters: dict) -> pl.Expr:
     if sma_manager != "All":
         expressions.append(pl.col("Has SMA Manager") == (sma_manager == "Yes"))
 
-    # Private Markets filter - filter for strategies with "All Weather" in name
+    # Private Markets filter - use boolean column for better performance
     private_markets = filters.get("private_markets_filter")
     if private_markets == "Yes":
-        expressions.append(
-            pl.col("Strategy")
-            .str.to_lowercase()
-            .str.contains("all weather", literal=False)
-        )
+        expressions.append(pl.col("Private Markets"))
     elif private_markets == "No":
-        expressions.append(
-            ~pl.col("Strategy")
-            .str.to_lowercase()
-            .str.contains("all weather", literal=False)
-        )
+        expressions.append(~pl.col("Private Markets"))
 
     # Recommended filter
     show_recommended = filters.get("show_recommended")
