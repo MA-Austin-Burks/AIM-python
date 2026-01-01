@@ -19,8 +19,10 @@ render_page_header()
 
 strategies_lazy = load_strats()
 filters = render_sidebar(strats=strategies_lazy)
-selected_strategy = render_dataframe_section(strategies_lazy, filters)
+selected_strategy, strategy_data = render_dataframe_section(strategies_lazy, filters)
 
 st.divider()
-render_tabs(selected_strategy=selected_strategy)
+render_tabs(
+    selected_strategy=selected_strategy, strategy_data=strategy_data, filters=filters
+)
 render_footer()

@@ -1,19 +1,11 @@
 """Dataframe display component."""
 
+from typing import Any
+
 import polars as pl
 import streamlit as st
 
-SERIES_COLORS = {
-    "Multifactor": "pink",
-    "Market": "violet",
-    "Income": "green",
-    "Equity": "blue",
-    "Fixed Income": "blue",
-    "Cash": "gray",
-    "Alternative": "orange",
-    "Special Situation": "yellow",
-    "Blended": "gray",
-}
+from components.branding import SERIES_COLORS
 
 
 def filter_and_sort_strategies(strats: pl.LazyFrame, filters: dict) -> pl.DataFrame:
@@ -39,8 +31,8 @@ def filter_and_sort_strategies(strats: pl.LazyFrame, filters: dict) -> pl.DataFr
     )
 
 
-def render_dataframe(filtered_strategies: pl.DataFrame) -> str | None:
-    """Render the strategies dataframe and return selected strategy name."""
+def render_dataframe(filtered_strategies: pl.DataFrame) -> tuple[str | None, dict[str, Any] | None]:
+    """Render the strategies dataframe and return selected strategy name and row data."""
     selected_rows = st.dataframe(
         filtered_strategies.select(
             [
@@ -86,11 +78,14 @@ def render_dataframe(filtered_strategies: pl.DataFrame) -> str | None:
     )
 
     if selected_rows.selection.rows:
-        return filtered_strategies["Strategy"][selected_rows.selection.rows[0]]
-    return None
+        row_idx = selected_rows.selection.rows[0]
+        strategy_name = filtered_strategies["Strategy"][row_idx]
+        strategy_row = filtered_strategies.row(row_idx, named=True)
+        return strategy_name, strategy_row
+    return None, None
 
 
-def render_dataframe_section(strats: pl.LazyFrame, filters: dict) -> str | None:
+def render_dataframe_section(strats: pl.LazyFrame, filters: dict) -> tuple[str | None, dict[str, Any] | None]:
     """Render the complete dataframe section including filtering, formatting, and display."""
     filtered_strategies = filter_and_sort_strategies(strats=strats, filters=filters)
     st.markdown(f"**{filtered_strategies.height} strategies returned**")
