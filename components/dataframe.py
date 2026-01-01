@@ -65,7 +65,7 @@ def render_dataframe(filtered_strategies: pl.DataFrame) -> str | None:
                 "Yield", format="%.2f%%", width="small"
             ),
             "Expense Ratio": st.column_config.NumberColumn(
-                "Exp. Ratio", format="accounting", width="small"
+                "Expense Ratio", format="accounting", width="content"
             ),
             "Minimum": st.column_config.NumberColumn(
                 "Minimum", format="dollar", width="small"

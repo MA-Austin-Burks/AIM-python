@@ -24,6 +24,8 @@ def _get_type_options(_strats: pl.LazyFrame) -> list[str]:
 
 def render_sidebar(strats: pl.LazyFrame) -> dict:
     """Render sidebar filters and return filter values."""
+    schema = strats.collect_schema()
+
     with st.sidebar:
         st.header("Search")
         selected_strategy_search: str = st.text_input(
@@ -84,7 +86,7 @@ def render_sidebar(strats: pl.LazyFrame) -> dict:
                 options=["All", "Yes", "No"],
                 selection_mode="single",
                 default="All",
-                disabled="Has SMA Manager" not in strats.schema,
+                disabled="Has SMA Manager" not in schema,
             )
 
         private_markets_filter: str = st.segmented_control(
@@ -125,7 +127,7 @@ def render_sidebar(strats: pl.LazyFrame) -> dict:
             ],
             selection_mode="multi",
             default=[],
-            disabled="Manager" not in strats.schema,
+            disabled="Manager" not in schema,
         )
 
         selected_geography: list[str] = st.pills(
