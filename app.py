@@ -3,7 +3,6 @@ import streamlit as st
 
 from components import (
     render_dataframe_section,
-    render_footer,
     render_page_header,
     render_sidebar,
     render_tabs,
@@ -25,4 +24,3 @@ st.divider()
 render_tabs(
     selected_strategy=selected_strategy, strategy_data=strategy_data, filters=filters
 )
-render_footer()

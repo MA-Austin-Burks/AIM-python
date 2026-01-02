@@ -21,10 +21,14 @@ from components.dataframe import (
     render_dataframe_section,
 )
 from components.filters import build_filter_expression
-from components.footer import render_footer
 from components.header import render_page_header
 from components.sidebar import render_sidebar
-from components.tabs import render_tabs
+from components.tabs import (
+    render_allocation_tab,
+    render_description_tab,
+    render_performance_tab,
+    render_tabs,
+)
 
 __all__ = [
     # Branding
@@ -50,4 +54,8 @@ __all__ = [
     "render_page_header",
     "render_sidebar",
     "render_tabs",
+    # Individual tab components
+    "render_description_tab",
+    "render_allocation_tab",
+    "render_performance_tab",
 ]

@@ -7,15 +7,26 @@ import streamlit as st
 
 def render_page_header() -> None:
     """Render the page header with title and last updated caption."""
-    st.set_page_config(page_title="Aspen Investing Menu", layout="wide")
+    st.set_page_config(
+        page_title="Aspen Investing Menu",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
 
-    # Set default sidebar width
+    # Permanently visible sidebar with fixed min-width (no collapse)
     st.markdown(
         """
         <style>
             [data-testid="stSidebar"] {
-                min-width: 550px;
-                max-width: 550px;
+                min-width: 500px;
+                max-width: 500px;
+            }
+            /* Hide the collapse button */
+            [data-testid="stSidebar"] button[kind="headerNoPadding"] {
+                display: none;
+            }
+            [data-testid="collapsedControl"] {
+                display: none;
             }
         </style>
         """,
