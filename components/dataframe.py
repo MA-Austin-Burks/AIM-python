@@ -1,18 +1,12 @@
-"""Dataframe display component."""
-
-from typing import Any
-
 import polars as pl
 import streamlit as st
 
 from components.branding import SERIES_COLORS
+from components.filters import build_filter_expression
 
 
-def filter_and_sort_strategies(strats: pl.LazyFrame, filters: dict) -> pl.DataFrame:
-    """Filter and sort strategies based on filter criteria."""
-    from components.filters import build_filter_expression
-
-    filter_expr = build_filter_expression(filters=filters)
+def filter_and_sort_strategies(strats, filters):
+    filter_expr = build_filter_expression(filters)
     return (
         strats.filter(filter_expr)
         .sort(
@@ -21,7 +15,6 @@ def filter_and_sort_strategies(strats: pl.LazyFrame, filters: dict) -> pl.DataFr
             nulls_last=True,
         )
         .with_columns(
-            # Convert Type to Series list format for MultiselectColumn with colors
             pl.when(pl.col("Type").is_not_null())
             .then(pl.concat_list([pl.col("Type")]))
             .otherwise(pl.lit([]).cast(pl.List(pl.Utf8)))
@@ -31,8 +24,7 @@ def filter_and_sort_strategies(strats: pl.LazyFrame, filters: dict) -> pl.DataFr
     )
 
 
-def render_dataframe(filtered_strategies: pl.DataFrame) -> tuple[str | None, dict[str, Any] | None]:
-    """Render the strategies dataframe and return selected strategy name and row data."""
+def render_dataframe(filtered_strategies):
     selected_rows = st.dataframe(
         filtered_strategies.select(
             [
@@ -85,8 +77,7 @@ def render_dataframe(filtered_strategies: pl.DataFrame) -> tuple[str | None, dic
     return None, None
 
 
-def render_dataframe_section(strats: pl.LazyFrame, filters: dict) -> tuple[str | None, dict[str, Any] | None]:
-    """Render the complete dataframe section including filtering, formatting, and display."""
-    filtered_strategies = filter_and_sort_strategies(strats=strats, filters=filters)
+def render_dataframe_section(strats, filters):
+    filtered_strategies = filter_and_sort_strategies(strats, filters)
     st.markdown(f"**{filtered_strategies.height} strategies returned**")
     return render_dataframe(filtered_strategies)

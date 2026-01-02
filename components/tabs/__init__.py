@@ -1,7 +1,3 @@
-"""Tab components module."""
-
-from typing import Any
-
 import streamlit as st
 
 from components.tabs.allocation import render_allocation_tab
@@ -18,19 +14,14 @@ __all__ = [
 BASE_TAB_NAMES = ["Description", "Performance", "Allocation", "Minimum"]
 
 
-def render_tabs(
-    selected_strategy: str | None,
-    strategy_data: dict[str, Any] | None,
-    filters: dict,
-) -> None:
-    """Render tabs for strategy details."""
+def render_tabs(selected_strategy, strategy_data, filters):
     tab_names = BASE_TAB_NAMES.copy()
     tab_names.insert(tab_names.index("Minimum") + 1, "Private Markets")
 
     tabs = st.tabs(tab_names)
 
     if selected_strategy and strategy_data:
-        has_private_markets = strategy_data.get("Private Markets", False)
+        has_private_markets = strategy_data["Private Markets"]
 
         for tab, tab_name in zip(tabs, tab_names):
             with tab:

@@ -10,7 +10,7 @@ from components import (
 
 
 @st.cache_data(ttl=3600)
-def load_strats(path: str = "data/strategies.csv") -> pl.LazyFrame:
+def load_strats(path="data/strategies.csv"):
     return pl.scan_csv(path, null_values=["NA"])
 
 

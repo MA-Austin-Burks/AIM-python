@@ -1,7 +1,4 @@
-"""Performance tab component with sub-tabs."""
-
 from datetime import datetime, timedelta
-from typing import Any
 
 import numpy as np
 import plotly.graph_objects as go
@@ -9,23 +6,16 @@ import streamlit as st
 
 from components.branding import (
     CHART_COLORS_SEQUENTIAL_RASPBERRY,
+    CHART_CONFIG,
     FONTS,
     PRIMARY,
     SECONDARY,
     TERTIARY,
+    hex_to_rgba,
 )
 
-CHART_CONFIG = {"displayModeBar": False, "scrollZoom": False}
 
-
-def _hex_to_rgba(hex_color: str, alpha: float) -> str:
-    h = hex_color.lstrip("#")
-    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-    return f"rgba({r}, {g}, {b}, {alpha})"
-
-
-def _get_strategy_performance(strategy_name: str) -> dict:
-    """Generate random performance data for a specific strategy."""
+def _get_strategy_performance(strategy_name):
     seed = hash(strategy_name) % (2**32)
     rng = np.random.default_rng(seed)
 
@@ -49,8 +39,7 @@ def _get_strategy_performance(strategy_name: str) -> dict:
     }
 
 
-def _get_strategy_correlations(strategy_name: str) -> tuple[list[str], np.ndarray]:
-    """Generate random correlation matrix for a specific strategy."""
+def _get_strategy_correlations(strategy_name):
     seed = hash(strategy_name) % (2**32)
     rng = np.random.default_rng(seed)
 
@@ -65,7 +54,7 @@ def _get_strategy_correlations(strategy_name: str) -> tuple[list[str], np.ndarra
     return tickers, corr
 
 
-def _base_layout(height: int = 380) -> dict:
+def _base_layout(height=380):
     return {
         "font": {"family": FONTS["body"], "color": PRIMARY["charcoal"], "size": 12},
         "paper_bgcolor": "rgba(0,0,0,0)",
@@ -96,7 +85,7 @@ def _base_layout(height: int = 380) -> dict:
     }
 
 
-def render_performance_tab(strategy_name: str, strategy_data: dict[str, Any]) -> None:
+def render_performance_tab(strategy_name, strategy_data):
     perf_data = _get_strategy_performance(strategy_name)
 
     sub_tabs = st.tabs(["Performance", "Drawdown", "Volatility", "Correlation"])
@@ -111,93 +100,88 @@ def render_performance_tab(strategy_name: str, strategy_data: dict[str, Any]) ->
         _render_correlation_matrix(strategy_name)
 
 
-def _render_growth_chart(dates: np.ndarray, cumulative: np.ndarray) -> None:
+def _render_line_chart(
+    title,
+    caption,
+    dates,
+    values,
+    color,
+    fillcolor,
+    y_title,
+    hovertemplate,
+    y_format=None,
+):
     st.markdown(
-        f'<h3 style="color: {PRIMARY["charcoal"]}; font-family: {FONTS["headline"]}; margin-bottom: 0;">Performance</h3>',
+        f'<h3 style="color: {PRIMARY["charcoal"]}; font-family: {FONTS["headline"]}; margin-bottom: 0;">{title}</h3>',
         unsafe_allow_html=True,
     )
-    st.caption("Growth of $1 invested over the period")
+    st.caption(caption)
 
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
             x=dates,
-            y=cumulative,
+            y=values,
             mode="lines",
-            name="Portfolio",
-            line={"color": PRIMARY["raspberry"], "width": 2},
+            name=title,
+            line={"color": color, "width": 2},
             fill="tozeroy",
-            fillcolor=_hex_to_rgba(PRIMARY["raspberry"], 0.15),
-            hovertemplate="<b>%{x}</b><br>Value: $%{y:.2f}<extra></extra>",
+            fillcolor=fillcolor,
+            hovertemplate=hovertemplate,
         )
     )
 
     layout = _base_layout()
     layout["xaxis"]["title"] = "Date"
-    layout["yaxis"]["title"] = "Cumulative Return ($)"
+    layout["yaxis"]["title"] = y_title
+    if y_format:
+        layout["yaxis"]["tickformat"] = y_format
     fig.update_layout(**layout)
     st.plotly_chart(fig, width="stretch", config=CHART_CONFIG)
 
 
-def _render_drawdown_chart(dates: np.ndarray, drawdown: np.ndarray) -> None:
-    st.markdown(
-        f'<h3 style="color: {PRIMARY["charcoal"]}; font-family: {FONTS["headline"]}; margin-bottom: 0;">Drawdown</h3>',
-        unsafe_allow_html=True,
-    )
-    st.caption("Decline from historical peak value")
-
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=dates,
-            y=drawdown,
-            mode="lines",
-            name="Drawdown",
-            line={"color": TERTIARY["red"], "width": 2},
-            fill="tozeroy",
-            fillcolor=_hex_to_rgba(TERTIARY["red"], 0.2),
-            hovertemplate="<b>%{x}</b><br>Drawdown: %{y:.1%}<extra></extra>",
-        )
+def _render_growth_chart(dates, cumulative):
+    _render_line_chart(
+        "Performance",
+        "Growth of $1 invested over the period",
+        dates,
+        cumulative,
+        PRIMARY["raspberry"],
+        hex_to_rgba(PRIMARY["raspberry"], 0.15),
+        "Cumulative Return ($)",
+        "<b>%{x}</b><br>Value: $%{y:.2f}<extra></extra>",
     )
 
-    layout = _base_layout()
-    layout["xaxis"]["title"] = "Date"
-    layout["yaxis"]["title"] = "Drawdown (%)"
-    layout["yaxis"]["tickformat"] = ".0%"
-    fig.update_layout(**layout)
-    st.plotly_chart(fig, width="stretch", config=CHART_CONFIG)
 
-
-def _render_volatility_chart(dates: np.ndarray, rolling_vol: np.ndarray) -> None:
-    st.markdown(
-        f'<h3 style="color: {PRIMARY["charcoal"]}; font-family: {FONTS["headline"]}; margin-bottom: 0;">Rolling Volatility</h3>',
-        unsafe_allow_html=True,
-    )
-    st.caption("21-day annualized rolling volatility")
-
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=dates,
-            y=rolling_vol,
-            mode="lines",
-            name="Volatility",
-            line={"color": SECONDARY["iris"], "width": 2},
-            fill="tozeroy",
-            fillcolor=_hex_to_rgba(SECONDARY["iris"], 0.15),
-            hovertemplate="<b>%{x}</b><br>Volatility: %{y:.1%}<extra></extra>",
-        )
+def _render_drawdown_chart(dates, drawdown):
+    _render_line_chart(
+        "Drawdown",
+        "Decline from historical peak value",
+        dates,
+        drawdown,
+        TERTIARY["red"],
+        hex_to_rgba(TERTIARY["red"], 0.2),
+        "Drawdown (%)",
+        "<b>%{x}</b><br>Drawdown: %{y:.1%}<extra></extra>",
+        ".0%",
     )
 
-    layout = _base_layout()
-    layout["xaxis"]["title"] = "Date"
-    layout["yaxis"]["title"] = "Annualized Volatility"
-    layout["yaxis"]["tickformat"] = ".0%"
-    fig.update_layout(**layout)
-    st.plotly_chart(fig, width="stretch", config=CHART_CONFIG)
+
+def _render_volatility_chart(dates, rolling_vol):
+    _render_line_chart(
+        "Rolling Volatility",
+        "21-day annualized rolling volatility",
+        dates,
+        rolling_vol,
+        SECONDARY["iris"],
+        hex_to_rgba(SECONDARY["iris"], 0.15),
+        "Annualized Volatility",
+        "<b>%{x}</b><br>Volatility: %{y:.1%}<extra></extra>",
+        ".0%",
+    )
 
 
-def _render_correlation_matrix(strategy_name: str) -> None:
+def _render_correlation_matrix(strategy_name):
     st.markdown(
         f'<h3 style="color: {PRIMARY["charcoal"]}; font-family: {FONTS["headline"]}; margin-bottom: 0;">Correlation Matrix</h3>',
         unsafe_allow_html=True,

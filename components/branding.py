@@ -161,10 +161,24 @@ GOOGLE_FONTS_IMPORT = """
 
 
 # =============================================================================
+# CHART CONFIGURATION
+# =============================================================================
+CHART_CONFIG = {"displayModeBar": False, "scrollZoom": False}
+
+
+# =============================================================================
+# UTILITY FUNCTIONS
+# =============================================================================
+def hex_to_rgba(hex_color, alpha):
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"rgba({r}, {g}, {b}, {alpha})"
+
+
+# =============================================================================
 # PLOTLY CHART LAYOUT DEFAULTS
 # =============================================================================
-def get_chart_layout(title: str = "", height: int = 400) -> dict:
-    """Get default Plotly chart layout with brand styling."""
+def get_chart_layout(title="", height=400):
     return {
         "title": {
             "text": title,

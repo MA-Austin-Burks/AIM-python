@@ -1,12 +1,9 @@
-"""Sidebar filters component for the Aspen Investing Menu app."""
-
 import polars as pl
 import streamlit as st
 
 
 @st.cache_data
-def _get_strategy_types(_strats: pl.LazyFrame) -> list[str]:
-    """Get unique strategy types."""
+def _get_strategy_types(_strats):
     return (
         _strats.select("Strategy Type")
         .drop_nulls()
@@ -17,45 +14,39 @@ def _get_strategy_types(_strats: pl.LazyFrame) -> list[str]:
 
 
 @st.cache_data
-def _get_type_options(_strats: pl.LazyFrame) -> list[str]:
-    """Get unique Type values."""
+def _get_type_options(_strats):
     return _strats.select("Type").drop_nulls().unique().collect()["Type"].to_list()
 
 
-def render_sidebar(strats: pl.LazyFrame) -> dict:
-    """Render sidebar filters and return filter values."""
+def render_sidebar(strats):
     schema = strats.collect_schema()
 
     with st.sidebar:
         st.header("Search")
-        selected_strategy_search: str = st.text_input(
+        selected_strategy_search = st.text_input(
             "Search by Strategy Name",
             value="",
             placeholder="Type to filter by strategy name...",
         )
         st.divider()
 
-        recommended_only: bool = st.toggle(
+        recommended_only = st.toggle(
             "Investment Committee Recommended Only",
             value=True,
             help="Show only recommended strategies when enabled",
         )
-        show_recommended: bool = recommended_only
-        show_approved: bool = (
-            False  # Always False - toggle controls Recommended filter only
-        )
+        show_recommended = recommended_only
+        show_approved = False
 
-        strategy_types: list[str] = _get_strategy_types(strats)
-        default_type: str | None = (
-            "Risk-Based" if "Risk-Based" in strategy_types else None
-        )
+        strategy_types = _get_strategy_types(strats)
+        default_type = "Risk-Based" if "Risk-Based" in strategy_types else None
 
-        selected_types: list[str] = [default_type] if default_type else []
-        type_options: list[str] = sorted(_get_type_options(strats))
+        selected_types = [default_type] if default_type else []
+        type_options = sorted(_get_type_options(strats))
 
         col_min, col_equity = st.columns(2)
         with col_min:
-            min_strategy: int = st.number_input(
+            min_strategy = st.number_input(
                 "Account Value ($)",
                 min_value=0,
                 value=20000,
@@ -63,7 +54,7 @@ def render_sidebar(strats: pl.LazyFrame) -> dict:
                 key="min_strategy",
             )
         with col_equity:
-            equity_range: tuple[int, int] = st.slider(
+            equity_range = st.slider(
                 "Equity Allocation Range",
                 min_value=0,
                 max_value=100,
@@ -74,14 +65,14 @@ def render_sidebar(strats: pl.LazyFrame) -> dict:
 
         col_tax, col_sma = st.columns(2)
         with col_tax:
-            tax_managed_filter: str = st.segmented_control(
+            tax_managed_filter = st.segmented_control(
                 "Tax-Managed (TM)",
                 options=["All", "Yes", "No"],
                 selection_mode="single",
                 default="All",
             )
         with col_sma:
-            has_sma_manager_filter: str = st.segmented_control(
+            has_sma_manager_filter = st.segmented_control(
                 "Has SMA Manager",
                 options=["All", "Yes", "No"],
                 selection_mode="single",
@@ -89,22 +80,22 @@ def render_sidebar(strats: pl.LazyFrame) -> dict:
                 disabled="Has SMA Manager" not in schema,
             )
 
-        private_markets_filter: str = st.segmented_control(
+        private_markets_filter = st.segmented_control(
             "Private Markets",
             options=["All", "Yes", "No"],
             selection_mode="single",
             default="All",
         )
 
-        selected_type: str | None = st.pills(
+        selected_type = st.pills(
             "Strategy Type",
             options=strategy_types,
             selection_mode="single",
             default=default_type,
         )
-        selected_types: list[str] = [selected_type] if selected_type else []
+        selected_types = [selected_type] if selected_type else []
 
-        selected_subtypes: list[str] = st.pills(
+        selected_subtypes = st.pills(
             "Series",
             options=type_options,
             selection_mode="multi",
@@ -113,7 +104,7 @@ def render_sidebar(strats: pl.LazyFrame) -> dict:
             else [],
         )
 
-        selected_managers: list[str] = st.pills(
+        selected_managers = st.pills(
             "Manager",
             options=[
                 "Mercer Advisors",
@@ -130,7 +121,7 @@ def render_sidebar(strats: pl.LazyFrame) -> dict:
             disabled="Manager" not in schema,
         )
 
-        selected_geography: list[str] = st.pills(
+        selected_geography = st.pills(
             "Geography",
             options=[
                 "US",
@@ -146,14 +137,14 @@ def render_sidebar(strats: pl.LazyFrame) -> dict:
 
         col_tracking, col_benchmark = st.columns(2)
         with col_tracking:
-            tracking_error: str | None = st.selectbox(
+            tracking_error = st.selectbox(
                 "Tracking Error",
                 options=["<1%", "<1.5%", "<2%", "<2.5%", "<3%"],
                 index=0,
                 disabled=True,
             )
         with col_benchmark:
-            reference_benchmark: str | None = st.selectbox(
+            reference_benchmark = st.selectbox(
                 "Reference Benchmark",
                 options=[
                     "S&P 500",
