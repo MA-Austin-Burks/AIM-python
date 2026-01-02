@@ -11,16 +11,19 @@ __all__ = [
     "render_performance_tab",
 ]
 
-BASE_TAB_NAMES = ["Description", "Performance", "Allocation", "Minimum"]
-
 
 def render_tabs(selected_strategy, strategy_data, filters):
-    tab_names = BASE_TAB_NAMES.copy()
-    tab_names.insert(tab_names.index("Minimum") + 1, "Private Markets")
+    tab_names = [
+        "Description",
+        "Performance",
+        "Allocation",
+        "Minimum",
+        "Private Markets",
+    ]
 
     tabs = st.tabs(tab_names)
 
-    if selected_strategy and strategy_data:
+    if selected_strategy:
         has_private_markets = strategy_data["Private Markets"]
 
         for tab, tab_name in zip(tabs, tab_names):
@@ -28,7 +31,7 @@ def render_tabs(selected_strategy, strategy_data, filters):
                 if tab_name == "Description":
                     render_description_tab(selected_strategy, strategy_data)
                 elif tab_name == "Allocation":
-                    render_allocation_tab(selected_strategy, strategy_data, filters)
+                    render_allocation_tab(selected_strategy, filters)
                 elif tab_name == "Performance":
                     render_performance_tab(selected_strategy, strategy_data)
                 elif tab_name == "Private Markets":

@@ -15,6 +15,7 @@ from components.branding import (
 )
 
 
+@st.cache_data
 def _get_strategy_performance(strategy_name):
     seed = hash(strategy_name) % (2**32)
     rng = np.random.default_rng(seed)
@@ -39,6 +40,7 @@ def _get_strategy_performance(strategy_name):
     }
 
 
+@st.cache_data
 def _get_strategy_correlations(strategy_name):
     seed = hash(strategy_name) % (2**32)
     rng = np.random.default_rng(seed)
@@ -54,7 +56,7 @@ def _get_strategy_correlations(strategy_name):
     return tickers, corr
 
 
-def _base_layout(height=380):
+def _base_layout(height=500):
     return {
         "font": {"family": FONTS["body"], "color": PRIMARY["charcoal"], "size": 12},
         "paper_bgcolor": "rgba(0,0,0,0)",
@@ -106,15 +108,14 @@ def _render_line_chart(
     dates,
     values,
     color,
-    fillcolor,
+    fill_alpha,
     y_title,
     hovertemplate,
     y_format=None,
+    x_title="Date",
+    line_width=2,
 ):
-    st.markdown(
-        f'<h3 style="color: {PRIMARY["charcoal"]}; font-family: {FONTS["headline"]}; margin-bottom: 0;">{title}</h3>',
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"### {title}")
     st.caption(caption)
 
     fig = go.Figure()
@@ -124,15 +125,15 @@ def _render_line_chart(
             y=values,
             mode="lines",
             name=title,
-            line={"color": color, "width": 2},
+            line={"color": color, "width": line_width},
             fill="tozeroy",
-            fillcolor=fillcolor,
+            fillcolor=hex_to_rgba(color, fill_alpha),
             hovertemplate=hovertemplate,
         )
     )
 
     layout = _base_layout()
-    layout["xaxis"]["title"] = "Date"
+    layout["xaxis"]["title"] = x_title
     layout["yaxis"]["title"] = y_title
     if y_format:
         layout["yaxis"]["tickformat"] = y_format
@@ -147,7 +148,7 @@ def _render_growth_chart(dates, cumulative):
         dates,
         cumulative,
         PRIMARY["raspberry"],
-        hex_to_rgba(PRIMARY["raspberry"], 0.15),
+        0.15,
         "Cumulative Return ($)",
         "<b>%{x}</b><br>Value: $%{y:.2f}<extra></extra>",
     )
@@ -160,7 +161,7 @@ def _render_drawdown_chart(dates, drawdown):
         dates,
         drawdown,
         TERTIARY["red"],
-        hex_to_rgba(TERTIARY["red"], 0.2),
+        0.2,
         "Drawdown (%)",
         "<b>%{x}</b><br>Drawdown: %{y:.1%}<extra></extra>",
         ".0%",
@@ -174,7 +175,7 @@ def _render_volatility_chart(dates, rolling_vol):
         dates,
         rolling_vol,
         SECONDARY["iris"],
-        hex_to_rgba(SECONDARY["iris"], 0.15),
+        0.15,
         "Annualized Volatility",
         "<b>%{x}</b><br>Volatility: %{y:.1%}<extra></extra>",
         ".0%",
@@ -182,10 +183,7 @@ def _render_volatility_chart(dates, rolling_vol):
 
 
 def _render_correlation_matrix(strategy_name):
-    st.markdown(
-        f'<h3 style="color: {PRIMARY["charcoal"]}; font-family: {FONTS["headline"]}; margin-bottom: 0;">Correlation Matrix</h3>',
-        unsafe_allow_html=True,
-    )
+    st.markdown("### Correlation Matrix")
     st.caption("Correlation between asset returns")
 
     tickers, corr = _get_strategy_correlations(strategy_name)

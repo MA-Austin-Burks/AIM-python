@@ -176,23 +176,6 @@ def hex_to_rgba(hex_color, alpha):
 
 
 # =============================================================================
-# PLOTLY CHART LAYOUT DEFAULTS
-# =============================================================================
-def get_chart_layout(title="", height=400):
-    return {
-        "title": {
-            "text": title,
-            "font": {"family": FONTS["headline"], "color": PRIMARY["charcoal"]},
-        },
-        "font": {"family": FONTS["body"], "color": PRIMARY["charcoal"]},
-        "paper_bgcolor": "rgba(0,0,0,0)",
-        "plot_bgcolor": "rgba(0,0,0,0)",
-        "height": height,
-        "margin": {"l": 40, "r": 40, "t": 40 if title else 0, "b": 40},
-    }
-
-
-# =============================================================================
 # STREAMLIT CUSTOM CSS
 # =============================================================================
 STREAMLIT_CUSTOM_CSS = f"""

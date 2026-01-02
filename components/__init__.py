@@ -14,7 +14,6 @@ from components.branding import (
     SPECIAL,
     STREAMLIT_CUSTOM_CSS,
     TERTIARY,
-    get_chart_layout,
 )
 from components.dataframe import (
     render_dataframe,
@@ -44,7 +43,6 @@ __all__ = [
     "CHART_COLORS_SEQUENTIAL_AZURE",
     "SERIES_COLORS",
     "FONTS",
-    "get_chart_layout",
     "STREAMLIT_CUSTOM_CSS",
     # Components
     "render_dataframe",
