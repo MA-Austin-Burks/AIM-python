@@ -1,10 +1,10 @@
 """Performance tab component with sub-tabs."""
 
+from datetime import datetime, timedelta
 from typing import Any
 
 import numpy as np
 import plotly.graph_objects as go
-import polars as pl
 import streamlit as st
 
 from components.branding import (
@@ -24,43 +24,44 @@ def _hex_to_rgba(hex_color: str, alpha: float) -> str:
     return f"rgba({r}, {g}, {b}, {alpha})"
 
 
-@st.cache_resource
-def _load_performance_data() -> pl.DataFrame:
-    """Load and cache full performance time series."""
-    return pl.read_csv("data/performance_timeseries.csv")
-
-
-@st.cache_resource
-def _load_correlation_data() -> pl.DataFrame:
-    """Load and cache full correlation matrices."""
-    return pl.read_csv("data/correlations.csv")
-
-
 def _get_strategy_performance(strategy_name: str) -> dict:
-    """Get performance data for a specific strategy."""
-    df = (
-        _load_performance_data()
-        .filter(pl.col("strategy") == strategy_name)
-        .sort("date")
-    )
+    """Generate random performance data for a specific strategy."""
+    seed = hash(strategy_name) % (2**32)
+    rng = np.random.default_rng(seed)
+
+    days = 1095
+    dates = np.array([datetime.now() - timedelta(days=d) for d in range(days, 0, -1)])
+
+    daily_returns = rng.normal(0.0003, 0.015, days)
+    cumulative = np.cumprod(1 + daily_returns)
+
+    peak = np.maximum.accumulate(cumulative)
+    drawdown = (cumulative - peak) / peak
+
+    rolling_vol = np.abs(rng.normal(0.12, 0.05, days))
+    rolling_vol = np.clip(rolling_vol, 0.05, 0.30)
+
     return {
-        "dates": df["date"].to_numpy(),
-        "cumulative": df["cumulative_return"].to_numpy(),
-        "drawdown": df["drawdown"].to_numpy(),
-        "rolling_vol": df["rolling_volatility"].to_numpy(),
+        "dates": dates,
+        "cumulative": cumulative,
+        "drawdown": drawdown,
+        "rolling_vol": rolling_vol,
     }
 
 
 def _get_strategy_correlations(strategy_name: str) -> tuple[list[str], np.ndarray]:
-    """Get correlation matrix for a specific strategy."""
-    df = _load_correlation_data().filter(pl.col("strategy") == strategy_name)
-    tickers = df["asset_1"].unique().to_list()
-    n = len(tickers)
-    corr = np.zeros((n, n))
-    for row in df.iter_rows(named=True):
-        i = tickers.index(row["asset_1"])
-        j = tickers.index(row["asset_2"])
-        corr[i, j] = row["correlation"]
+    """Generate random correlation matrix for a specific strategy."""
+    seed = hash(strategy_name) % (2**32)
+    rng = np.random.default_rng(seed)
+
+    n = rng.integers(8, 15)
+    tickers = [f"ASSET{i + 1:02d}" for i in range(n)]
+
+    corr = rng.uniform(-0.3, 0.8, (n, n))
+    corr = (corr + corr.T) / 2
+    np.fill_diagonal(corr, 1.0)
+    corr = np.clip(corr, -1, 1)
+
     return tickers, corr
 
 
