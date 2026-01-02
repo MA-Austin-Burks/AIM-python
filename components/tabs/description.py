@@ -29,10 +29,10 @@ def _generate_badges(strategy_data):
     return badges
 
 
-def _metric_with_date(label, value, as_of=None):
+def _metric_with_date(label, value, as_of=None, help=None):
     if as_of is None:
         as_of = datetime.now().strftime("%m-%d-%Y")
-    st.metric(label, value)
+    st.metric(label, value, help=help)
     st.caption(f"as of {as_of}")
 
 
@@ -81,7 +81,12 @@ def render_description_tab(strategy_name, strategy_data):
     with c3:
         _metric_with_date("3 YEAR RETURN", f"{random.uniform(10, 15):.2f}%")
     with c4:
-        _metric_with_date("INCEPTION", f"{random.uniform(15, 19):.2f}%")
+        inception_date = strategy_data.get("Inception Date", "01/01/2010")
+        _metric_with_date(
+            "SINCE INCEPTION",
+            f"{random.uniform(15, 19):.2f}%",
+            help=inception_date,
+        )
     with c5:
         _metric_with_date("3 YR STD DEV", f"{random.uniform(10, 15):.2f}%")
     st.divider()

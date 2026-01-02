@@ -18,14 +18,15 @@ def render_tabs(selected_strategy, strategy_data, filters):
         "Performance",
         "Allocation",
         "Minimum",
-        "Private Markets",
     ]
+
+    # Only add Private Markets tab if a strategy is selected and it has private markets
+    if selected_strategy and strategy_data and strategy_data.get("Private Markets"):
+        tab_names.append("Private Markets")
 
     tabs = st.tabs(tab_names)
 
     if selected_strategy:
-        has_private_markets = strategy_data["Private Markets"]
-
         for tab, tab_name in zip(tabs, tab_names):
             with tab:
                 if tab_name == "Description":
@@ -35,12 +36,7 @@ def render_tabs(selected_strategy, strategy_data, filters):
                 elif tab_name == "Performance":
                     render_performance_tab(selected_strategy, strategy_data)
                 elif tab_name == "Private Markets":
-                    if has_private_markets:
-                        st.write(f"**Private Markets** - {selected_strategy}")
-                    else:
-                        st.warning(
-                            "Private Markets is not available for this strategy."
-                        )
+                    st.write(f"**Private Markets** - {selected_strategy}")
                 else:
                     st.write(f"**{tab_name}** - {selected_strategy}")
     else:
