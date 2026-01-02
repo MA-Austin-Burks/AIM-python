@@ -4,6 +4,7 @@ from datetime import datetime
 import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
+from great_tables import GT, loc, style
 
 from components.branding import (
     CHART_COLORS_PRIMARY,
@@ -82,14 +83,123 @@ def _render_table(data):
     for item in data:
         is_cat = item["is_category"]
         st.markdown(
-            f"""<div style="display: grid; grid-template-columns: 22px 1fr 95px 130px; gap: 6px; padding: 7px 0; border-bottom: 1px solid #eee; background: {"#f8f9fa" if is_cat else "transparent"}; font-weight: {"600" if is_cat else "400"}; font-size: 0.875rem;">
-                <div style="display: flex; align-items: center; justify-content: center;"><span style="width: 9px; height: 9px; background: {item["color"]}; border-radius: 50%; display: inline-block;"></span></div>
+            f"""
+            <div style="display: grid;
+            grid-template-columns: 22px 1fr 95px 130px;
+            gap: 6px;
+            padding: 7px 0;
+            border-bottom: 1px solid #eee;
+            background: {"#f8f9fa" if is_cat else "transparent"};
+            font-weight: {"600" if is_cat else "400"};
+            font-size: 0.875rem;">
+                <div style="display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-right: 10px;">
+                    <span style="width: 9px;
+                    height: 9px;
+                    background: {item["color"]};
+                    border-radius: 50%;
+                display: inline-block;"></span>
+                </div>
                 <div style="{"" if is_cat else "padding-left: 14px;"}">{item["name"]}</div>
                 <div style="text-align: right;">{item["allocation"]:.2f}%</div>
                 <div style="text-align: right;">${item["market_value"]:,.2f}</div>
             </div>""",
             unsafe_allow_html=True,
         )
+
+
+def _render_table_great_tables(data):
+    """Render allocation table using great-tables."""
+    df_data = []
+    for item in data:
+        # Create color dot HTML and merge it with the asset name
+        dot_html = f'<span style="width: 9px; height: 9px; background: {item["color"]}; border-radius: 50%; display: inline-block; margin-right: 10px;"></span>'
+
+        # Add indentation for subcategories and prepend the dot
+        name = item["name"]
+        if not item["is_category"]:
+            name = f'<span style="padding-left: 14px;">{name}</span>'
+
+        # Merge dot with name
+        asset_with_dot = f"{dot_html}{name}"
+
+        df_data.append(
+            {
+                "asset": asset_with_dot,
+                "allocation": item["allocation"] / 100,
+                "market_value": item["market_value"],
+                "is_category": item["is_category"],
+            }
+        )
+    df = pl.DataFrame(df_data)
+
+    table = (
+        GT(df)
+        .cols_hide(["is_category"])
+        .cols_label(
+            asset="Asset",
+            allocation="Allocation",
+            market_value="Market Value",
+        )
+        .fmt_percent(columns="allocation", decimals=2)
+        .fmt_currency(columns="market_value", currency="USD", decimals=2)
+        .cols_align(columns=["allocation", "market_value"], align="right")
+        .tab_style(
+            style=[
+                style.fill(color="#f8f9fa"),
+                style.text(weight="bold"),
+            ],
+            locations=loc.body(columns=pl.all(), rows=pl.col("is_category") == True),
+        )
+        .tab_style(
+            style=[
+                style.text(weight="normal"),
+            ],
+            locations=loc.body(columns=pl.all(), rows=pl.col("is_category") == False),
+        )
+        .tab_style(
+            style=[
+                style.text(weight="bold", color="#666", size="0.82rem"),
+            ],
+            locations=loc.column_labels(),
+        )
+        .tab_options(
+            table_font_size="0.875rem",
+            table_font_names=[
+                "IBM Plex Sans",
+                "-apple-system",
+                "BlinkMacSystemFont",
+                "Segoe UI",
+                "sans-serif",
+            ],
+            column_labels_padding="6px 0",
+            column_labels_border_bottom_color="#ddd",
+            column_labels_border_bottom_style="solid",
+            column_labels_border_bottom_width="1px",
+            data_row_padding="7px 0",
+            table_body_hlines_color="#eee",
+            table_body_hlines_style="solid",
+            table_body_hlines_width="1px",
+            table_border_bottom_style="solid",
+            table_border_bottom_width="1px",
+            table_border_bottom_color="#eee",
+        )
+    )
+
+    # Render as HTML and wrap in a div with custom CSS
+    st.html(f"""
+    <div style="width: 100%;">
+        <style>
+            .gt_table {{ width: 100% !important; table-layout: auto !important; }}
+            .gt_table table {{ width: 100% !important; }}
+            .gt_table tbody tr td {{ padding-top: 7px !important; padding-bottom: 7px !important; }}
+            .gt_table tbody tr {{ height: auto !important; }}
+        </style>
+        {table.as_raw_html(inline_css=True)}
+    </div>
+    """)
 
 
 def render_allocation_tab(strategy_name, filters):
@@ -151,4 +261,13 @@ def render_allocation_tab(strategy_name, filters):
         allocation_data = _get_strategy_allocations(
             strategy_name, filters["min_strategy"]
         )
+
+        # Original HTML table
+        st.caption("Original HTML Table")
         _render_table(allocation_data)
+
+        st.divider()
+
+        # Great Tables version
+        st.caption("Great Tables Version")
+        _render_table_great_tables(allocation_data)
