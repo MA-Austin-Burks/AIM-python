@@ -65,26 +65,26 @@ def render_sidebar(strats):
 
         col_tax, col_sma = st.columns(2)
         with col_tax:
-            tax_managed_filter = st.segmented_control(
+            tax_managed_selection = st.pills(
                 "Tax-Managed (TM)",
-                options=["All", "Yes", "No"],
+                options=["Yes", "No"],
                 selection_mode="single",
-                default="All",
+                default=None,
             )
         with col_sma:
-            has_sma_manager_filter = st.segmented_control(
+            has_sma_manager_selection = st.pills(
                 "Has SMA Manager",
-                options=["All", "Yes", "No"],
+                options=["Yes", "No"],
                 selection_mode="single",
-                default="All",
+                default=None,
                 disabled="Has SMA Manager" not in schema,
             )
 
-        private_markets_filter = st.segmented_control(
+        private_markets_selection = st.pills(
             "Private Markets",
-            options=["All", "Yes", "No"],
+            options=["Yes", "No"],
             selection_mode="single",
-            default="All",
+            default=None,
         )
 
         selected_type = st.pills(
@@ -175,6 +175,10 @@ def render_sidebar(strats):
                 - **VMQ** - Value, Momentum, Quality
                 """
             )
+
+    tax_managed_filter = tax_managed_selection if tax_managed_selection else "All"
+    has_sma_manager_filter = has_sma_manager_selection if has_sma_manager_selection else "All"
+    private_markets_filter = private_markets_selection if private_markets_selection else "All"
 
     return {
         "strategy_search": selected_strategy_search or None,

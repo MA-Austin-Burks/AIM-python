@@ -5,7 +5,7 @@ from components.branding import SERIES_COLORS
 from components.filters import build_filter_expression
 
 
-def filter_and_sort_strategies(strats, filters):
+def filter_and_sort_strategies(strats: pl.LazyFrame, filters: dict) -> pl.DataFrame:
     filter_expr = build_filter_expression(filters)
     return (
         strats.filter(filter_expr)
@@ -24,7 +24,10 @@ def filter_and_sort_strategies(strats, filters):
     )
 
 
-def render_dataframe(filtered_strategies):
+def render_dataframe_section(strats: pl.LazyFrame, filters: dict) -> tuple[str | None, dict | None]:
+    filtered_strategies: pl.DataFrame = filter_and_sort_strategies(strats, filters)
+    st.markdown(f"**{filtered_strategies.height} strategies returned**")
+    
     selected_rows = st.dataframe(
         filtered_strategies.select(
             [
@@ -75,9 +78,3 @@ def render_dataframe(filtered_strategies):
         strategy_row = filtered_strategies.row(row_idx, named=True)
         return strategy_name, strategy_row
     return None, None
-
-
-def render_dataframe_section(strats, filters):
-    filtered_strategies = filter_and_sort_strategies(strats, filters)
-    st.markdown(f"**{filtered_strategies.height} strategies returned**")
-    return render_dataframe(filtered_strategies)
