@@ -151,13 +151,13 @@ def _render_table_great_tables(data):
                 style.fill(color="#f8f9fa"),
                 style.text(weight="bold"),
             ],
-            locations=loc.body(columns=pl.all(), rows=pl.col("is_category") == True),
+            locations=loc.body(columns=pl.all(), rows=pl.col("is_category")),
         )
         .tab_style(
             style=[
                 style.text(weight="normal"),
             ],
-            locations=loc.body(columns=pl.all(), rows=pl.col("is_category") == False),
+            locations=loc.body(columns=pl.all(), rows=pl.col("is_category")),
         )
         .tab_style(
             style=[

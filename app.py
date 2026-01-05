@@ -16,11 +16,9 @@ def load_strats(path="data/strategies.csv"):
 
 render_page_header()
 
-strategies_lazy = load_strats()
-filters = render_sidebar(strats=strategies_lazy)
-selected_strategy, strategy_data = render_dataframe_section(strategies_lazy, filters)
+strats = load_strats()
+filters = render_sidebar(strats)
+selected_strategy, strategy_data = render_dataframe_section(strats, filters)
 
 st.divider()
-render_tabs(
-    selected_strategy=selected_strategy, strategy_data=strategy_data, filters=filters
-)
+render_tabs(selected_strategy, strategy_data, filters)
