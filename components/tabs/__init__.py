@@ -12,7 +12,7 @@ __all__ = [
 ]
 
 
-def render_tabs(selected_strategy: str | None, strategy_data: dict | None, filters: dict) -> None:
+def render_tabs(strategy_name: str | None, strategy_data: dict | None, filters: dict) -> None:
     tab_names: list[str] = [
         "Description",
         "Performance",
@@ -21,24 +21,24 @@ def render_tabs(selected_strategy: str | None, strategy_data: dict | None, filte
     ]
 
     # Only add Private Markets tab if a strategy is selected and it has private markets
-    if selected_strategy and strategy_data and strategy_data.get("Private Markets"):
+    if strategy_name and strategy_data and strategy_data.get("Private Markets"):
         tab_names.append("Private Markets")
 
-    tabs = st.tabs(tab_names)
+    tabs: list = st.tabs(tab_names)
 
-    if selected_strategy:
+    if strategy_name:
         for tab, tab_name in zip(tabs, tab_names):
             with tab:
                 if tab_name == "Description":
-                    render_description_tab(selected_strategy, strategy_data)
+                    render_description_tab(strategy_name, strategy_data)
                 elif tab_name == "Allocation":
-                    render_allocation_tab(selected_strategy, filters)
+                    render_allocation_tab(strategy_name, filters)
                 elif tab_name == "Performance":
-                    render_performance_tab(selected_strategy, strategy_data)
+                    render_performance_tab(strategy_name, strategy_data)
                 elif tab_name == "Private Markets":
-                    st.write(f"**Private Markets** - {selected_strategy}")
+                    st.write(f"**Private Markets** - {strategy_name}")
                 else:
-                    st.write(f"**{tab_name}** - {selected_strategy}")
+                    st.write(f"**{tab_name}** - {strategy_name}")
     else:
         for tab, tab_name in zip(tabs, tab_names):
             with tab:
