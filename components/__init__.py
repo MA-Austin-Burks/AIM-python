@@ -16,7 +16,6 @@ from components.branding import (
     TERTIARY,
 )
 from components.dataframe import (
-    render_dataframe,
     render_dataframe_section,
 )
 from components.filters import build_filter_expression
@@ -45,7 +44,6 @@ __all__ = [
     "FONTS",
     "STREAMLIT_CUSTOM_CSS",
     # Components
-    "render_dataframe",
     "render_dataframe_section",
     "build_filter_expression",
     "render_footer",

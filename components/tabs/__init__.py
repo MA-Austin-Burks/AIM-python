@@ -12,8 +12,8 @@ __all__ = [
 ]
 
 
-def render_tabs(selected_strategy, strategy_data, filters):
-    tab_names = [
+def render_tabs(selected_strategy: str | None, strategy_data: dict | None, filters: dict) -> None:
+    tab_names: list[str] = [
         "Description",
         "Performance",
         "Allocation",

@@ -10,14 +10,14 @@ from components import (
 
 
 @st.cache_data(ttl=3600)
-def load_strats(path="data/strategies.csv"):
+def load_strats(path: str = "data/strategies.csv") -> pl.LazyFrame:
     return pl.scan_csv(path, null_values=["NA"])
 
 
 render_page_header()
 
-strats = load_strats()
-filters = render_sidebar(strats)
+strats: pl.LazyFrame = load_strats()
+filters: dict = render_sidebar(strats)
 selected_strategy, strategy_data = render_dataframe_section(strats, filters)
 
 st.divider()
