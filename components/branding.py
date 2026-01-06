@@ -135,15 +135,15 @@ CHART_COLORS_SEQUENTIAL_AZURE = [
 # SERIES/CATEGORY COLORS (for dataframe tags and filters)
 # =============================================================================
 SERIES_COLORS = {
-    "Multifactor": PRIMARY["raspberry"],
-    "Market": SECONDARY["iris"],
-    "Income": TERTIARY["spring"],
-    "Equity": TERTIARY["azure"],
-    "Fixed Income": TERTIARY["dark_azure"],
-    "Cash": PRIMARY["charcoal"],
-    "Alternative": TERTIARY["gold"],
-    "Special Situation": TERTIARY["dark_gold"],
-    "Blended": SPECIAL["gray"],
+    "Multifactor Series": PRIMARY["raspberry"],
+    "Market Series": SECONDARY["iris"],
+    "Income Series": TERTIARY["spring"],
+    "Equity Strategies": TERTIARY["azure"],
+    "Fixed Income Strategies": TERTIARY["dark_azure"],
+    "Cash Strategies": PRIMARY["charcoal"],
+    "Alternative Strategies": TERTIARY["gold"],
+    "Special Situation Strategies": TERTIARY["dark_gold"],
+    "Blended Strategy": SPECIAL["gray"],
 }
 
 # =============================================================================

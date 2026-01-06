@@ -33,6 +33,7 @@ wheels/
 *.swo
 *~
 .cursor/
+.cursorignore
 
 # OS
 .DS_Store

@@ -17,7 +17,6 @@ def render_tabs(strategy_name: str | None, strategy_data: dict | None, filters: 
         "Description",
         "Performance",
         "Allocation",
-        "Minimum",
     ]
 
     # Only add Private Markets tab if a strategy is selected and it has private markets

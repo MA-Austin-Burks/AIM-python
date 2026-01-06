@@ -2,22 +2,6 @@ import polars as pl
 import streamlit as st
 
 
-@st.cache_data
-def _get_strategy_types(_strats):
-    return (
-        _strats.select("Strategy Type")
-        .drop_nulls()
-        .unique()
-        .collect()["Strategy Type"]
-        .to_list()
-    )
-
-
-@st.cache_data
-def _get_type_options(_strats):
-    return _strats.select("Type").drop_nulls().unique().collect()["Type"].to_list()
-
-
 def render_sidebar(strats):
     schema = strats.collect_schema()
 
@@ -38,11 +22,21 @@ def render_sidebar(strats):
         show_recommended = recommended_only
         show_approved = False
 
-        strategy_types = _get_strategy_types(strats)
-        default_type = "Risk-Based" if "Risk-Based" in strategy_types else None
+        strategy_types: list[str] = ["Risk-Based", "Asset-Class", "Special Situation", "Blended"]
+        default_type: str = "Risk-Based"
 
-        selected_types = [default_type] if default_type else []
-        type_options = sorted(_get_type_options(strats))
+        selected_types: list[str] = [default_type] if default_type else []
+        type_options: list[str] = ([
+            "Multifactor Series",
+            "Market Series",
+            "Income Series",
+            "Equity Strategies",
+            "Fixed Income Strategies",
+            "Cash Strategies",
+            "Alternative Strategies",
+            "Special Situation Strategies",
+            "Blended Strategy",
+        ])
 
         col_min, col_equity = st.columns(2)
         with col_min:
@@ -63,7 +57,7 @@ def render_sidebar(strats):
                 key="equity_range",
             )
 
-        col_tax, col_sma = st.columns(2)
+        col_tax, col_sma, col_private = st.columns(3)
         with col_tax:
             tax_managed_selection = st.pills(
                 "Tax-Managed (TM)",
@@ -79,13 +73,13 @@ def render_sidebar(strats):
                 default=None,
                 disabled="Has SMA Manager" not in schema,
             )
-
-        private_markets_selection = st.pills(
-            "Private Markets",
-            options=["Yes", "No"],
-            selection_mode="single",
-            default=None,
-        )
+        with col_private:
+            private_markets_selection = st.pills(
+                "Private Markets",
+                options=["Yes", "No"],
+                selection_mode="single",
+                default=None,
+            )
 
         selected_type = st.pills(
             "Strategy Type",
