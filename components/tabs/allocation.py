@@ -74,7 +74,7 @@ def _get_strategy_allocations(strategy_name, total_assets):
 
 def _render_table(data):
     st.markdown(
-        """<div style="display: grid; grid-template-columns: 22px 1fr 95px 130px; gap: 6px; padding: 6px 0; border-bottom: 1px solid #ddd; font-weight: 600; color: #666; font-size: 0.82rem;">
+        """<div style="display: grid; grid-template-columns: 22px 1fr 95px 130px; gap: 6px; padding: 6px 0; border-bottom: 1px solid #ddd; font-weight: 600; color: #666; font-size: .9rem;">
             <div></div><div>Asset</div><div style="text-align: right;">Allocation</div><div style="text-align: right;">Market Value</div>
         </div>""",
         unsafe_allow_html=True,
@@ -155,13 +155,7 @@ def _render_table_great_tables(data):
         )
         .tab_style(
             style=[
-                style.text(weight="normal"),
-            ],
-            locations=loc.body(columns=pl.all(), rows=pl.col("is_category")),
-        )
-        .tab_style(
-            style=[
-                style.text(weight="bold", color="#666", size="0.82rem"),
+                style.text(weight="bold", size="1.0rem"),
             ],
             locations=loc.column_labels(),
         )
@@ -173,18 +167,7 @@ def _render_table_great_tables(data):
                 "BlinkMacSystemFont",
                 "Segoe UI",
                 "sans-serif",
-            ],
-            column_labels_padding="6px 0",
-            column_labels_border_bottom_color="#ddd",
-            column_labels_border_bottom_style="solid",
-            column_labels_border_bottom_width="1px",
-            data_row_padding="7px 0",
-            table_body_hlines_color="#eee",
-            table_body_hlines_style="solid",
-            table_body_hlines_width="1px",
-            table_border_bottom_style="solid",
-            table_border_bottom_width="1px",
-            table_border_bottom_color="#eee",
+            ]
         )
     )
 
