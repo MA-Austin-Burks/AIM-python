@@ -297,7 +297,8 @@ def _get_equity_matrix_data(
                             )
                             if strategy_data.height > 0:
                                 # weight stored as decimal (0-1), represents final portfolio allocation
-                                prod_weight = float(strategy_data["weight"][0])
+                                weight_val = strategy_data["weight"][0]
+                                prod_weight = float(weight_val) if weight_val is not None else 0.0
                                 product_row_data[str(int(equity_pct))] = prod_weight
                             else:
                                 product_row_data[str(int(equity_pct))] = 0.0
@@ -309,7 +310,8 @@ def _get_equity_matrix_data(
                             )
                             
                             if strategy_data.height > 0:
-                                prod_weight = float(strategy_data["weight"][0])
+                                weight_val = strategy_data["weight"][0]
+                                prod_weight = float(weight_val) if weight_val is not None else 0.0
                                 product_row_data[str(int(equity_pct))] = prod_weight
                             else:
                                 product_row_data[str(int(equity_pct))] = 0.0
