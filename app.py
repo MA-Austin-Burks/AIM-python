@@ -18,7 +18,7 @@ from components.constants import (
     SELECTED_STRATEGY_MODAL_KEY,
     VIEW_MODE_KEY,
 )
-from components.dataframe import filter_and_sort_strategies
+from components.dataframe import filter_and_sort_strategies, _hash_filters
 from utils.core.data import get_strategy_table, load_cleaned_data
 
 render_page_header()
@@ -29,11 +29,13 @@ cleaned_data: pl.LazyFrame = load_cleaned_data()
 strategy_table: pl.DataFrame = get_strategy_table(cleaned_data)
 
 filters: dict[str, Any] = render_sidebar(strategy_table)
-filtered_strategies: pl.DataFrame = filter_and_sort_strategies(strategy_table, filters)
+# Compute filter hash for caching
+filter_hash = _hash_filters(filters)
+filtered_strategies: pl.DataFrame = filter_and_sort_strategies(strategy_table, filters, filter_hash)
 
 # Reset pagination when filters change to avoid showing stale results
 # Hash comparison prevents unnecessary resets on unrelated state changes
-filter_hash = hash(tuple(sorted((k, str(v)) for k, v in filters.items())))
+filter_hash = _hash_filters(filters)
 if "last_filter_hash" not in st.session_state:
     st.session_state["last_filter_hash"] = filter_hash
 elif st.session_state["last_filter_hash"] != filter_hash:

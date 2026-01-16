@@ -19,7 +19,7 @@ from components.constants import (
     DEFAULT_COLLAPSE_SMA,
     SMA_COLLAPSE_THRESHOLD,
 )
-from utils.core.data import get_model_agg_sort_order, hash_lazyframe
+from utils.core.data import get_model_agg_sort_order, get_strategy_metadata, hash_lazyframe
 from utils.core.formatting import clean_product_name, format_currency_compact, get_strategy_color
 
 CATEGORY_COLORS: dict[str, str] = {
@@ -132,6 +132,20 @@ def get_grouped_allocations_for_chart(
 
 
 @st.cache_data(hash_funcs={pl.LazyFrame: hash_lazyframe})
+def _get_model_data(cleaned_data: pl.LazyFrame, strategy_model: str) -> pl.DataFrame:
+    """Get and cache all data for a specific model.
+    
+    Pre-filters and collects model data once to avoid repeated filtering.
+    """
+    return (
+        cleaned_data
+        .filter(pl.col("model") == strategy_model)
+        .select(["strategy", "portfolio", "model_agg", "product", "ticker", "target", "agg_target", "weight", "fee", "yield", "minimum"])
+        .collect()
+    )
+
+
+@st.cache_data(hash_funcs={pl.LazyFrame: hash_lazyframe})
 def _get_equity_matrix_data(
     cleaned_data: pl.LazyFrame,
     strategy_name: str,
@@ -145,26 +159,20 @@ def _get_equity_matrix_data(
         Index of the highlighted column (selected strategy's equity %)
         List of row metadata (is_category, name) for styling
     """
-    # Get the strategy's model to find related strategies
-    strategy_row = cleaned_data.filter(pl.col("strategy") == strategy_name).first().collect()
-    if strategy_row.height == 0:
+    # Get the strategy's model to find related strategies (using cached metadata)
+    strategy_metadata = get_strategy_metadata(cleaned_data, strategy_name)
+    if strategy_metadata is None:
         return pl.DataFrame(), 0, [], {}
     
-    strategy_model = strategy_row["model"][0]
-    strategy_type = strategy_row["type"][0]
+    strategy_model = strategy_metadata["model"]
+    strategy_type = strategy_metadata["type"]
     strategy_color = get_strategy_color(strategy_type)
     
     # TM models don't have 100% equity allocation (replaced with muni bonds)
-    is_tax_managed = strategy_row["tax_managed"][0] if "tax_managed" in strategy_row.columns else False
+    is_tax_managed = strategy_metadata.get("tax_managed", False)
     
-    # Collect all model data upfront to avoid repeated LazyFrame filtering in loops
-    # Performance optimization: single collect vs many filter operations
-    all_model_data = (
-        cleaned_data
-        .filter(pl.col("model") == strategy_model)
-        .select(["strategy", "portfolio", "model_agg", "product", "ticker", "target", "agg_target", "weight", "fee", "yield", "minimum"])
-        .collect()
-    )
+    # Get cached model data (avoids repeated filtering)
+    all_model_data = _get_model_data(cleaned_data, strategy_model)
     
     selected_strategy_data = all_model_data.filter(pl.col("strategy") == strategy_name)
     
@@ -353,18 +361,23 @@ def _get_equity_matrix_data(
 
 def render_allocation_tab(strategy_name: str, filters: dict[str, Any], cleaned_data: pl.LazyFrame) -> None:
     """Render allocation tab with matrix table showing allocations across equity percentages."""
-    strategy_row = cleaned_data.filter(pl.col("strategy") == strategy_name).first().collect()
+    # Use cached metadata instead of repeated filter/collect
+    strategy_metadata = get_strategy_metadata(cleaned_data, strategy_name)
     strategy_equity_pct = None
     model_name = None
-    if strategy_row.height > 0:
-        strategy_equity_pct = strategy_row["portfolio"][0]
+    if strategy_metadata:
+        strategy_equity_pct = strategy_metadata.get("portfolio")
         # Model name preferred over strategy name for header (more general)
-        if "model" in strategy_row.columns:
-            model_name = strategy_row["model"][0]
-        elif "model_name" in strategy_row.columns:
-            model_name = strategy_row["model_name"][0]
+        model_name = strategy_metadata.get("model")
     
     collapse_sma = st.session_state.get(ALLOCATION_COLLAPSE_SMA_KEY, DEFAULT_COLLAPSE_SMA)
+    
+    # Get model data for summary table (cached)
+    if strategy_metadata and strategy_metadata.get("model"):
+        all_model_data = _get_model_data(cleaned_data, strategy_metadata["model"])
+    else:
+        all_model_data = pl.DataFrame()
+    
     matrix_df, highlighted_col_idx, row_metadata, equity_to_strategy = _get_equity_matrix_data(
         cleaned_data, strategy_name, strategy_equity_pct, collapse_sma=collapse_sma
     )
@@ -484,11 +497,11 @@ def render_allocation_tab(strategy_name: str, filters: dict[str, Any], cleaned_d
     """)
     
     # Summary table shows key metrics across all equity levels for quick comparison
+    # Use already-collected model data instead of filtering again
     all_strategies_data = (
-        cleaned_data
+        all_model_data
         .filter(pl.col("strategy").is_in(list(equity_to_strategy.values())))
         .select(["strategy", "portfolio", "target", "fee", "yield", "minimum"])
-        .collect()
     )
     
     summary_rows = {

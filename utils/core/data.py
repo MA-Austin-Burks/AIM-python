@@ -1,6 +1,7 @@
 """Data processing utilities for Polars."""
 
 import re
+from typing import Any
 
 import polars as pl
 import streamlit as st
@@ -99,11 +100,12 @@ def _get_cleaned_data_url() -> str:
     )
 
 
-@st.cache_data(ttl=3600)
+@st.cache_resource
 def load_cleaned_data(parquet_url: str | None = None) -> pl.LazyFrame:
     """Load the full cleaned-data file as a Parquet LazyFrame from Azure Blob Storage.
     
     Downloads Parquet file from Azure Blob Storage and loads into Polars as a LazyFrame.
+    Uses @st.cache_resource to keep the DataFrame in memory without serialization overhead.
     The download is cached per user session to avoid repeated downloads.
     
     Parquet format provides faster loading and better compression than CSV.
@@ -149,6 +151,71 @@ def load_cleaned_data(parquet_url: str | None = None) -> pl.LazyFrame:
     # Note: read_parquet loads into memory, but .lazy() makes subsequent operations lazy
     df = pl.read_parquet(parquet_buffer)
     return df.lazy()
+
+
+@st.cache_data(ttl=3600, hash_funcs={pl.LazyFrame: hash_lazyframe})
+def get_strategy_by_name(cleaned_data: pl.LazyFrame, strategy_name: str) -> dict[str, Any] | None:
+    """Get a strategy row as a dict by name (cached).
+    
+    Returns the full strategy row as a dict for use in modals and other components.
+    
+    Args:
+        cleaned_data: The full cleaned data LazyFrame
+        strategy_name: Name of the strategy
+    
+    Returns:
+        dict with all strategy fields, or None if not found
+    """
+    strategy_row = (
+        cleaned_data
+        .filter(pl.col("strategy") == strategy_name)
+        .first()
+        .collect()
+    )
+    
+    if strategy_row.height == 0:
+        return None
+    
+    return strategy_row.row(0, named=True)
+
+
+@st.cache_data(ttl=3600, hash_funcs={pl.LazyFrame: hash_lazyframe})
+def get_strategy_metadata(cleaned_data: pl.LazyFrame, strategy_name: str) -> dict[str, Any] | None:
+    """Get cached metadata for a specific strategy.
+    
+    Returns a lightweight dict with strategy metadata (model, type, equity %, etc.)
+    to avoid repeated filter/collect operations.
+    
+    Args:
+        cleaned_data: The full cleaned data LazyFrame
+        strategy_name: Name of the strategy to get metadata for
+    
+    Returns:
+        dict with strategy metadata, or None if strategy not found
+    """
+    strategy_row = (
+        cleaned_data
+        .filter(pl.col("strategy") == strategy_name)
+        .first()
+        .collect()
+    )
+    
+    if strategy_row.height == 0:
+        return None
+    
+    row_dict = strategy_row.row(0, named=True)
+    
+    # Extract key metadata fields
+    metadata = {
+        "strategy": row_dict.get("strategy"),
+        "model": row_dict.get("model"),
+        "type": row_dict.get("type"),
+        "portfolio": row_dict.get("portfolio"),  # equity %
+        "tax_managed": row_dict.get("tax_managed", False),
+        "category": row_dict.get("category"),
+    }
+    
+    return metadata
 
 
 @st.cache_data(ttl=3600, hash_funcs={pl.LazyFrame: hash_lazyframe})

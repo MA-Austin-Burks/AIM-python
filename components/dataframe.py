@@ -1,4 +1,5 @@
 from typing import Any, Optional
+import hashlib
 
 import polars as pl
 import streamlit as st
@@ -7,12 +8,25 @@ from styles.branding import SERIES_COLORS
 from components.filters import build_filter_expression
 
 
-def filter_and_sort_strategies(strats: pl.DataFrame, filters: dict[str, Any]) -> pl.DataFrame:
+def _hash_filters(filters: dict[str, Any]) -> str:
+    """Create a stable hash for filter dictionary."""
+    # Sort filters for consistent hashing
+    sorted_filters = tuple(sorted((k, str(v)) for k, v in filters.items()))
+    filter_str = str(sorted_filters)
+    return hashlib.md5(filter_str.encode()).hexdigest()
+
+
+@st.cache_data
+def filter_and_sort_strategies(strats: pl.DataFrame, filters: dict[str, Any], filter_hash: str) -> pl.DataFrame:
     """Filter and sort the strategy table DataFrame.
+    
+    Cached using filter_hash as part of the cache key to avoid re-filtering
+    when filters haven't changed.
     
     Args:
         strats: Strategy-level DataFrame (already collected, not LazyFrame)
         filters: Filter dictionary from sidebar
+        filter_hash: Hash of the filters for cache key (computed in app.py)
     """
     filter_expr: pl.Expr = build_filter_expression(filters)
     # Default sort prioritizes Investment Committee recommendations
