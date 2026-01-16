@@ -1,43 +1,40 @@
+from typing import Any, Optional
+
+import polars as pl
 import streamlit as st
 
 from components.tabs.allocation import render_allocation_tab
 from components.tabs.description import render_description_tab
-from components.tabs.performance import render_performance_tab
 
 __all__ = [
     "render_tabs",
     "render_description_tab",
     "render_allocation_tab",
-    "render_performance_tab",
 ]
 
 
-def render_tabs(strategy_name: str | None, strategy_data: dict | None, filters: dict) -> None:
-    tab_names: list[str] = [
-        "Description",
-        "Performance",
-        "Allocation",
-    ]
+def _get_tab_names() -> list[str]:
+    """Get tab names - only Description and Allocation."""
+    return ["Description", "Allocation"]
 
-    # Only add Private Markets tab if a strategy is selected and it has private markets
-    if strategy_name and strategy_data and strategy_data.get("Private Markets"):
-        tab_names.append("Private Markets")
 
-    tabs: list = st.tabs(tab_names)
+def render_tabs(
+    strategy_name: Optional[str],
+    strategy_data: Optional[dict[str, Any]],
+    filters: dict[str, Any],
+    cleaned_data: pl.LazyFrame,
+) -> None:
+    """Render tabs for table view (below selected strategy)."""
+    tab_names = _get_tab_names()
+    tabs = st.tabs(tab_names)
 
     if strategy_name:
         for tab, tab_name in zip(tabs, tab_names):
             with tab:
                 if tab_name == "Description":
-                    render_description_tab(strategy_name, strategy_data)
+                    render_description_tab(strategy_name, strategy_data, cleaned_data)
                 elif tab_name == "Allocation":
-                    render_allocation_tab(strategy_name, filters)
-                elif tab_name == "Performance":
-                    render_performance_tab(strategy_name, strategy_data)
-                elif tab_name == "Private Markets":
-                    st.write(f"**Private Markets** - {strategy_name}")
-                else:
-                    st.write(f"**{tab_name}** - {strategy_name}")
+                    render_allocation_tab(strategy_name, filters, cleaned_data)
     else:
         for tab, tab_name in zip(tabs, tab_names):
             with tab:

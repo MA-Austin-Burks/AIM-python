@@ -1,70 +1,32 @@
 import random
 from datetime import datetime
+from typing import Any, Optional
 
+import plotly.graph_objects as go
+import polars as pl
 import streamlit as st
 
-from components.branding import PRIMARY
+from styles.branding import (
+    CHART_CONFIG,
+    FONTS,
+    PRIMARY,
+)
+from components.constants import GROUPING_OPTIONS
 
 
-def _generate_badges(strategy_data):
-    badges = []
-
-    if strategy_data.get("Recommended"):
-        badges.append(":primary[Recommend]")
-
-    strategy_type = strategy_data.get("Strategy Type")
-    if strategy_type:
-        badges.append(f":orange-badge[{strategy_type}]")
-
-    strategy_type_field = strategy_data.get("Type")
-    if strategy_type_field:
-        badges.append(f":blue-badge[{strategy_type_field}]")
-
-    if strategy_data.get("Tax-Managed"):
-        badges.append(":green[Tax-Managed]")
-
-    if strategy_data.get("Private Markets"):
-        badges.append(":gray[Private Markets]")
-
-    return badges
 
 
-def _metric_with_date(label, value, as_of=None, help=None):
+def _metric_with_date(label: str, value: str, as_of: Optional[str] = None, help: Optional[str] = None) -> None:
     if as_of is None:
         as_of = datetime.now().strftime("%m-%d-%Y")
     st.metric(label, value, help=help)
     st.caption(f"as of {as_of}")
 
 
-def render_description_tab(strategy_name, strategy_data):
-    has_private = strategy_data["Private Markets"]
-    alt_pct = 15 if has_private else 0
-    equity_pct = strategy_data["Equity %"] - alt_pct
-    fixed_pct = 100 - equity_pct - alt_pct
-
-    # Strategy Name
-    st.markdown(
-        f'<h2 style="color: {PRIMARY["raspberry"]};">{strategy_name}</h1>',
-        unsafe_allow_html=True,
-    )
-
-    parts = [f"{int(equity_pct)}% Equity", f"{int(fixed_pct)}% Fixed Income"]
-    if alt_pct:
-        parts.append(f"{alt_pct}% Alternative")
-    exposure_display_text = " - ".join(parts)
-
-    # Strategy Exposure
-    st.markdown(f"### {exposure_display_text}")
-
-    # Strategy Description
+def render_description_tab(strategy_name: str, strategy_data: dict[str, Any], cleaned_data: Optional[pl.LazyFrame] = None) -> None:
     st.markdown(
         "Strategic, globally diversified multi-asset portfolios designed to seek long-term capital appreciation. Efficiently covers market exposures through a minimum number of holdings to reduce cost and trading."
     )
-
-    # Strategy Badges
-    badges = _generate_badges(strategy_data)
-    if badges:
-        st.markdown(" &nbsp; ".join(badges) + " &nbsp;")
 
     st.divider()
 
@@ -76,12 +38,12 @@ def render_description_tab(strategy_name, strategy_data):
             "WEIGHTED AVG EXP RATIO", f"{strategy_data['Expense Ratio']:.2}"
         )
     with c2:
-        y = strategy_data["Yield"]
+        y: Optional[float] = strategy_data.get("Yield")
         _metric_with_date("12-MONTH YIELD", f"{y:.2f}%" if y else "X.XX")
     with c3:
         _metric_with_date("3 YEAR RETURN", f"{random.uniform(10, 15):.2f}%")
     with c4:
-        inception_date = strategy_data.get("Inception Date", "01/01/2010")
+        inception_date: str = strategy_data.get("Inception Date", "01/01/2010")
         _metric_with_date(
             "SINCE INCEPTION",
             f"{random.uniform(15, 19):.2f}%",
@@ -89,6 +51,67 @@ def render_description_tab(strategy_name, strategy_data):
         )
     with c5:
         _metric_with_date("3 YR STD DEV", f"{random.uniform(10, 15):.2f}%")
+    st.divider()
+
+    # Allocation chart provides visual breakdown by grouping option
+    if cleaned_data is not None:
+        from components.tabs.allocation import (
+            get_grouped_allocations_for_chart,
+        )
+        
+        grouping_option: Optional[str] = st.segmented_control(
+            "Group By",
+            options=GROUPING_OPTIONS,
+            default="Asset Class",
+            key="description_allocation_grouping",
+        )
+        
+        # Ensure grouping_option is never None (fallback to default)
+        if grouping_option is None:
+            grouping_option = "Asset Class"
+        
+        # Total assets used for market value calculation (display only)
+        total_assets: float = 100000.0
+        chart_data: list[dict[str, Any]] = get_grouped_allocations_for_chart(
+            cleaned_data, strategy_name, grouping_option, total_assets
+        )
+        
+        if chart_data:
+            labels: list[str] = [item["name"] for item in chart_data]
+            values: list[float] = [item["allocation"] for item in chart_data]
+            colors: list[str] = [item["color"] for item in chart_data]
+
+            fig: go.Figure = go.Figure(
+                go.Pie(
+                    labels=labels,
+                    values=values,
+                    hole=0.5,
+                    marker_colors=colors,
+                    textinfo="none",
+                    showlegend=False,
+                    hovertemplate="<b>%{label}</b><br>%{percent:.1%}<extra></extra>",
+                ),
+                layout={
+                    "font": {"family": FONTS["body"], "color": PRIMARY["charcoal"]},
+                    "height": 500,
+                    "margin": {"l": 40, "r": 20, "t": 0, "b": 40},
+                },
+            )
+            
+            # Layout chart and legend side by side
+            col_chart, col_legend = st.columns([2, 1])
+            with col_chart:
+                st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
+                st.caption(f"as of {datetime.now().strftime('%m-%d-%Y')}")
+            
+            with col_legend:
+                st.markdown("**Legend**")
+                for item in chart_data:
+                    st.markdown(
+                        f'<div style="display: flex; align-items: center; margin-bottom: 0.5rem;"><span style="width: 12px; height: 12px; background: {item["color"]}; border-radius: 50%; margin-right: 8px; display: inline-block;"></span><span><strong>{item["name"]}:</strong> {item["allocation"]:.2f}%</span></div>',
+                        unsafe_allow_html=True,
+                    )
+    
     st.divider()
 
     # Factsheet

@@ -1,6 +1,7 @@
 """Component modules for the Aspen Investing Menu app."""
 
-from components.branding import (
+from components import constants  # noqa: F401
+from styles.branding import (
     CHART_COLORS_ALLOCATION,
     CHART_COLORS_EXTENDED,
     CHART_COLORS_PRIMARY,
@@ -15,16 +16,17 @@ from components.branding import (
     STREAMLIT_CUSTOM_CSS,
     TERTIARY,
 )
+from components.cards import render_card_view
 from components.dataframe import (
     render_dataframe_section,
 )
 from components.filters import build_filter_expression
 from components.header import render_page_header
+from components.modal import render_strategy_modal
 from components.sidebar import render_sidebar
 from components.tabs import (
     render_allocation_tab,
     render_description_tab,
-    render_performance_tab,
     render_tabs,
 )
 
@@ -44,14 +46,14 @@ __all__ = [
     "FONTS",
     "STREAMLIT_CUSTOM_CSS",
     # Components
+    "render_card_view",
     "render_dataframe_section",
     "build_filter_expression",
-    "render_footer",
     "render_page_header",
     "render_sidebar",
+    "render_strategy_modal",
     "render_tabs",
     # Individual tab components
     "render_description_tab",
     "render_allocation_tab",
-    "render_performance_tab",
 ]

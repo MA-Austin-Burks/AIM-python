@@ -1,12 +1,21 @@
+from typing import Any, Optional
+
 import polars as pl
 import streamlit as st
 
-from components.branding import SERIES_COLORS
+from styles.branding import SERIES_COLORS
 from components.filters import build_filter_expression
 
 
-def filter_and_sort_strategies(strats: pl.LazyFrame, filters: dict) -> pl.DataFrame:
-    filter_expr = build_filter_expression(filters)
+def filter_and_sort_strategies(strats: pl.DataFrame, filters: dict[str, Any]) -> pl.DataFrame:
+    """Filter and sort the strategy table DataFrame.
+    
+    Args:
+        strats: Strategy-level DataFrame (already collected, not LazyFrame)
+        filters: Filter dictionary from sidebar
+    """
+    filter_expr: pl.Expr = build_filter_expression(filters)
+    # Default sort prioritizes Investment Committee recommendations
     return (
         strats.filter(filter_expr)
         .sort(
@@ -14,18 +23,10 @@ def filter_and_sort_strategies(strats: pl.LazyFrame, filters: dict) -> pl.DataFr
             descending=[True, True, True],
             nulls_last=True,
         )
-        .with_columns(
-            pl.when(pl.col("Type").is_not_null())
-            .then(pl.concat_list([pl.col("Type")]))
-            .otherwise(pl.lit([]).cast(pl.List(pl.Utf8)))
-            .alias("Series"),
-        )
-        .collect()
     )
 
 
-def render_dataframe_section(strats: pl.LazyFrame, filters: dict) -> tuple[str | None, dict | None]:
-    filtered_strategies: pl.DataFrame = filter_and_sort_strategies(strats, filters)
+def render_dataframe_section(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], Optional[dict[str, Any]]]:
     st.markdown(f"**{filtered_strategies.height} strategies returned**")
     
     selected_rows = st.dataframe(

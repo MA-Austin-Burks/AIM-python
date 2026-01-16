@@ -1,12 +1,34 @@
+from typing import Any
+
 import polars as pl
 
 
-def build_filter_expression(filters):
-    expressions = []
+def build_filter_expression(filters: dict[str, Any]) -> pl.Expr:
+    """Build a Polars filter expression from the filters dictionary.
+    
+    When search_only_mode is True, only the strategy search filter is applied
+    and all other filters are ignored.
+    """
+    strategy_search = filters.get("strategy_search")
+    search_only_mode = filters.get("search_only_mode", False)
+    
+    # Search mode takes precedence - disables all other filters for focused lookup
+    if search_only_mode and strategy_search:
+        search_term = strategy_search.strip()
+        if search_term:
+            return (
+                pl.col("Strategy")
+                .str.to_lowercase()
+                .str.contains(search_term.lower(), literal=True)
+            )
+        return pl.lit(True)
+    
+    expressions: list[pl.Expr] = []
 
     equity_range = filters["equity_range"]
     expressions.append(
-        (pl.col("Equity %") >= equity_range[0])
+        (pl.col("Equity %").is_not_null())
+        & (pl.col("Equity %") >= equity_range[0])
         & (pl.col("Equity %") <= equity_range[1])
     )
 
@@ -37,7 +59,7 @@ def build_filter_expression(filters):
     if selected_subtypes:
         expressions.append(pl.col("Type").is_in(selected_subtypes))
 
-    strategy_search = filters["strategy_search"]
+    # Search can be combined with filters in normal mode (though UI typically prevents this)
     if strategy_search:
         search_term = strategy_search.strip()
         if search_term:
@@ -46,10 +68,6 @@ def build_filter_expression(filters):
                 .str.to_lowercase()
                 .str.contains(search_term.lower(), literal=True)
             )
-
-    selected_managers = filters["selected_managers"]
-    if selected_managers:
-        expressions.append(pl.col("Manager").is_in(selected_managers))
 
     if not expressions:
         return pl.lit(True)
