@@ -47,4 +47,5 @@ debug.log
 .env
 .env.local
 
-/utils
+/utils/archive/
+/archive
