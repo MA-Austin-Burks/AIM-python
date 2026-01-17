@@ -133,10 +133,17 @@ def load_cleaned_data(parquet_url: str | None = None) -> pl.LazyFrame:
     import os
     
     # Use provided URL or get from secrets/environment
-    url = parquet_url or _get_cleaned_data_url()
+    url = (parquet_url or _get_cleaned_data_url()).strip().strip('"').strip("'")
+    
+    # Debug: print URL info to help diagnose issues
+    print(f"DEBUG: URL length={len(url)}, first 10 chars={repr(url[:10])}")
+    
+    # Check if URL is a remote HTTP/HTTPS URL vs local file path
+    is_remote_url = url.lower().startswith(("http://", "https://"))
+    print(f"DEBUG: is_remote_url={is_remote_url}")
     
     # Check if URL is a local file path (for backward compatibility)
-    if url.startswith("data/") or (not url.startswith("http://") and not url.startswith("https://")):
+    if not is_remote_url:
         # Local file path - check if it exists
         parquet_path = url.replace(".csv", ".parquet")
         csv_path = url.replace(".parquet", ".csv")

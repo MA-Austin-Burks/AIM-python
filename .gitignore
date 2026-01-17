@@ -44,5 +44,8 @@ debug.log
 .env
 .env.local
 
+# Streamlit secrets
+.streamlit/secrets.toml
+
 /utils/archive/
 /archive
