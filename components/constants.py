@@ -17,7 +17,7 @@ CARDS_PER_LOAD: Final[int] = 21
 # Sidebar filter defaults
 DEFAULT_RECOMMENDED_ONLY: Final[bool] = False
 DEFAULT_STRATEGY_TYPE: Final[str] = "Risk-Based"
-DEFAULT_MIN_ACCOUNT_VALUE: Final[int] = 200000
+DEFAULT_MIN_ACCOUNT_VALUE: Final[int] = 80000
 DEFAULT_EQUITY_RANGE: Final[tuple[int, int]] = (0, 100)
 DEFAULT_SERIES_SUBTYPES: Final[list[str]] = ["Multifactor Series", "Market Series", "Income Series"]
 
