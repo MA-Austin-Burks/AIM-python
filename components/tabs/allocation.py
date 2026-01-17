@@ -425,7 +425,7 @@ def _build_allocation_tables(
         
         summary_metrics["Weighted Expense Ratio"][str(equity_pct)] = f"{weighted_expense * 100:.2f}%" if weighted_expense else "0.00%"
         summary_metrics["Weighted Indicated Yield"][str(equity_pct)] = f"{weighted_yield * 100:.2f}%" if weighted_yield else "0.00%"
-        summary_metrics["Account Minimum"][str(equity_pct)] = format_currency_compact(float(account_min)) if account_min else "$0"
+        summary_metrics["Account Minimum"][str(equity_pct)] = format_currency_compact(float(account_min)) if account_min else "$0.0"
     
     # Build summary table DataFrame
     summary_table_data: list[dict[str, Any]] = [

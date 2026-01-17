@@ -8,29 +8,21 @@ from styles.branding import PRIMARY, SERIES_COLORS
 def format_currency_compact(value: float) -> str:
     """Format currency value with K (thousands) and M (millions) suffixes."""
     if value is None or value == 0:
-        return "$0"
+        return "$0.0"
     
     abs_value = abs(value)
     
     if abs_value >= 1_000_000:
-        # Format as millions with 1-2 decimal places
+        # Format as millions with 1 decimal place
         millions = value / 1_000_000
-        if millions % 1 == 0:
-            return f"${int(millions)}M"
-        elif millions * 10 % 1 == 0:
-            return f"${millions:.1f}M"
-        else:
-            return f"${millions:.2f}M"
+        return f"${millions:.1f}M"
     elif abs_value >= 1_000:
-        # Format as thousands with 0-1 decimal places
+        # Format as thousands with 1 decimal place
         thousands = value / 1_000
-        if thousands % 1 == 0:
-            return f"${int(thousands)}K"
-        else:
-            return f"${thousands:.1f}K"
+        return f"${thousands:.1f}K"
     else:
-        # Format as regular number
-        return f"${int(value):,}"
+        # Format as regular number with 1 decimal place
+        return f"${value:.1f}"
 
 
 def generate_badges(strategy_data: dict[str, Any]) -> list[str]:
