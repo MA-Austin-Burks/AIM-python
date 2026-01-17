@@ -14,6 +14,7 @@ from styles.branding import (
 )
 from components.constants import GROUPING_OPTIONS
 from utils.core.data import hash_lazyframe
+from utils.core.formatting import format_currency_compact
 
 
 CATEGORY_COLORS: dict[str, str] = {
@@ -183,27 +184,45 @@ def render_description_tab(strategy_name: str, strategy_data: dict[str, Any], cl
     # ============================================================================
     # STEP 2: Render summary statistics metrics
     # ============================================================================
-    # Summary Statistics
+    # Summary Statistics - 2 rows x 3 columns
     st.markdown("#### Summary Statistics")
-    c1, c2, c3, c4, c5 = st.columns(5)
-    with c1:
+    
+    # Row 1: Expense Ratio, Yield, Minimum
+    row1_col1, row1_col2, row1_col3 = st.columns(3)
+    with row1_col1:
+        expense_ratio = strategy_data.get("Expense Ratio", 0)
         _metric_with_date(
-            "WEIGHTED AVG EXP RATIO", f"{strategy_data['Expense Ratio']:.2}"
+            "WEIGHTED AVG EXP RATIO", f"{expense_ratio * 100:.2f}%"
         )
-    with c2:
+    with row1_col2:
         y: Optional[float] = strategy_data.get("Yield")
-        _metric_with_date("12-MONTH YIELD", f"{y:.2f}%" if y else "X.XX")
-    with c3:
-        _metric_with_date("3 YEAR RETURN", "XX.XX%")
-    with c4:
-        inception_date: str = strategy_data.get("Inception Date", "01/01/2010")
+        _metric_with_date("12-MONTH YIELD", f"{y * 100:.2f}%" if y else "0.00%")
+    with row1_col3:
+        minimum = strategy_data.get("Minimum", 0)
+        _metric_with_date(
+            "ACCOUNT MINIMUM", format_currency_compact(float(minimum)) if minimum else "$0.0"
+        )
+    
+    # Row 2: 3 Year Return, 3 Year Std, Inception
+    row2_col1, row2_col2, row2_col3 = st.columns(3)
+    with row2_col1:
+        three_year_return = strategy_data.get("3 Year Return") or strategy_data.get("3_year_return")
+        _metric_with_date(
+            "3 YEAR RETURN", 
+            f"{three_year_return * 100:.2f}%" if three_year_return else "XX.XX%"
+        )
+    with row2_col2:
+        three_year_std = strategy_data.get("3 Year Std") or strategy_data.get("3_year_std") or strategy_data.get("3 YR STD DEV")
+        _metric_with_date(
+            "3 YR STD DEV",
+            f"{three_year_std * 100:.2f}%" if three_year_std else "XX.XX%"
+        )
+    with row2_col3:
+        inception_date: str = strategy_data.get("Inception Date") or strategy_data.get("inception_date") or "01/01/2010"
         _metric_with_date(
             "SINCE INCEPTION",
-            "XX.XX%",
-            help=inception_date,
+            inception_date,
         )
-    with c5:
-        _metric_with_date("3 YR STD DEV", "XX.XX%")
     st.divider()
 
     # ============================================================================

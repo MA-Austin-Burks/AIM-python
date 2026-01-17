@@ -109,7 +109,7 @@ def _render_strategy_card(strategy_row: dict[str, Any], index: int) -> tuple[boo
     description_lines = [
         f"Equity: {equity_pct:.0f}%",
         f"Yield: {yield_str}",
-        f"Expense Ratio: {expense_ratio:.2f}%",
+        f"Expense Ratio: {expense_ratio * 100:.2f}%",
         f"Minimum: ${minimum:,.0f}",
     ]
     
