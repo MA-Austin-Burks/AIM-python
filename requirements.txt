@@ -5,3 +5,5 @@ numpy>=1.24.0
 great-tables>=0.2.0
 pyarrow>=14.0.0
 streamlit-product-card>=0.1.0
+css-inline
+requests
