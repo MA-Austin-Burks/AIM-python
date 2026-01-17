@@ -17,9 +17,6 @@ from styles.branding import (
     TERTIARY,
 )
 from components.cards import render_card_view
-from components.dataframe import (
-    render_dataframe_section,
-)
 from components.filters import build_filter_expression
 from components.header import render_page_header
 from components.modal import render_strategy_modal
@@ -47,7 +44,6 @@ __all__ = [
     "STREAMLIT_CUSTOM_CSS",
     # Components
     "render_card_view",
-    "render_dataframe_section",
     "build_filter_expression",
     "render_page_header",
     "render_sidebar",

@@ -78,34 +78,23 @@ def get_model_agg_sort_order(model_agg: str | None) -> int:
 
 
 def _get_cleaned_data_url() -> str:
-    """Get the cleaned-data parquet URL from secrets or environment.
-    
-    Checks Streamlit secrets first, then falls back to environment variable.
+    """Get the cleaned-data parquet URL from environment variable.
     
     Returns:
         str: The Azure Blob Storage URL for cleaned-data.parquet
     
     Raises:
-        ValueError: If neither secrets nor environment variable is available
+        ValueError: If environment variable is not set
     """
-    # Try Streamlit secrets first (production)
-    try:
-        return st.secrets['azure_blob_storage']['cleaned_data_parquet_url']
-    except (AttributeError, KeyError, TypeError):
-        # Secrets not available or key doesn't exist
-        pass
-    
-    # Fallback to environment variable
     import os
+    
     env_url = os.getenv('CLEANED_DATA_PARQUET_URL')
     if env_url:
-        return env_url
+        return env_url.strip()
     
-    # No fallback - raise error if neither is available
     raise ValueError(
         "Azure Blob Storage URL not found. "
-        "Please set it in .streamlit/secrets.toml under [azure_blob_storage].cleaned_data_parquet_url "
-        "or as environment variable CLEANED_DATA_PARQUET_URL"
+        "Please set the CLEANED_DATA_PARQUET_URL environment variable."
     )
 
 
@@ -135,12 +124,8 @@ def load_cleaned_data(parquet_url: str | None = None) -> pl.LazyFrame:
     # Use provided URL or get from secrets/environment
     url = (parquet_url or _get_cleaned_data_url()).strip().strip('"').strip("'")
     
-    # Debug: print URL info to help diagnose issues
-    print(f"DEBUG: URL length={len(url)}, first 10 chars={repr(url[:10])}")
-    
     # Check if URL is a remote HTTP/HTTPS URL vs local file path
     is_remote_url = url.lower().startswith(("http://", "https://"))
-    print(f"DEBUG: is_remote_url={is_remote_url}")
     
     # Check if URL is a local file path (for backward compatibility)
     if not is_remote_url:

@@ -3,23 +3,21 @@
 from typing import Final
 
 # Session state keys
-VIEW_MODE_KEY: Final[str] = "view_mode"
 SELECTED_STRATEGY_MODAL_KEY: Final[str] = "selected_strategy_for_modal"
 CARD_ORDER_KEY: Final[str] = "card_order_by"
 CARDS_DISPLAYED_KEY: Final[str] = "cards_displayed"
 ALLOCATION_COLLAPSE_SMA_KEY: Final[str] = "allocation_collapse_sma"
 
 # Default values
-DEFAULT_VIEW_MODE: Final[str] = "card"
 DEFAULT_CARD_ORDER: Final[str] = "Recommended (Default)"
 CARDS_PER_LOAD: Final[int] = 21
 
 # Sidebar filter defaults
 DEFAULT_RECOMMENDED_ONLY: Final[bool] = False
 DEFAULT_STRATEGY_TYPE: Final[str] = "Risk-Based"
-DEFAULT_MIN_ACCOUNT_VALUE: Final[int] = 80000
+DEFAULT_MIN_ACCOUNT_VALUE: Final[int] = 50000
 DEFAULT_EQUITY_RANGE: Final[tuple[int, int]] = (0, 100)
-DEFAULT_SERIES_SUBTYPES: Final[list[str]] = ["Multifactor Series", "Market Series", "Income Series"]
+DEFAULT_SERIES_SUBTYPES: Final[list[str]] = ["Multifactor Series", "Market Series"]
 
 # Filter options lists
 STRATEGY_TYPES: Final[list[str]] = ["Risk-Based", "Asset-Class", "Special Situation", "Blended"]

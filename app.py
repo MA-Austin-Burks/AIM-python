@@ -5,18 +5,14 @@ import streamlit as st
 
 from components import (
     render_card_view,
-    render_dataframe_section,
     render_page_header,
     render_sidebar,
     render_strategy_modal,
-    render_tabs,
 )
 from components.constants import (
     CARDS_DISPLAYED_KEY,
     CARDS_PER_LOAD,
-    DEFAULT_VIEW_MODE,
     SELECTED_STRATEGY_MODAL_KEY,
-    VIEW_MODE_KEY,
 )
 from components.dataframe import filter_and_sort_strategies, _hash_filters
 from utils.core.data import get_strategy_table, load_cleaned_data
@@ -42,22 +38,11 @@ elif st.session_state["last_filter_hash"] != filter_hash:
     st.session_state["last_filter_hash"] = filter_hash
     st.session_state[CARDS_DISPLAYED_KEY] = CARDS_PER_LOAD
 
-if VIEW_MODE_KEY not in st.session_state:
-    st.session_state[VIEW_MODE_KEY] = DEFAULT_VIEW_MODE
-
-view_mode: str = st.session_state[VIEW_MODE_KEY]
-if view_mode == "table":
-    selected_strategy: Optional[str]
-    strategy_data: Optional[dict[str, Any]]
-    selected_strategy, strategy_data = render_dataframe_section(filtered_strategies)
-    st.divider()
-    render_tabs(selected_strategy, strategy_data, filters, cleaned_data)
-else:
-    selected_strategy, strategy_data = render_card_view(filtered_strategies)
+selected_strategy, strategy_data = render_card_view(filtered_strategies)
 
 # Modal state persists across reruns via @st.dialog decorator
 # Clearing trigger prevents reopening when other interactions cause reruns
-if view_mode == "card" and SELECTED_STRATEGY_MODAL_KEY in st.session_state:
+if SELECTED_STRATEGY_MODAL_KEY in st.session_state:
     strategy_name: str = st.session_state[SELECTED_STRATEGY_MODAL_KEY]
     strategy_row: pl.DataFrame = filtered_strategies.filter(pl.col("Strategy") == strategy_name)
     if strategy_row.height > 0:

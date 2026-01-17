@@ -102,7 +102,7 @@ def _render_strategy_card(strategy_row: dict[str, Any], index: int) -> tuple[boo
     colored_image_url = _generate_card_svg(series_color, recommended)
     
     if yield_val is not None:
-        yield_str = f"{yield_val:.2f}%"
+        yield_str = f"{yield_val * 100:.2f}%"
     else:
         yield_str = "N/A"
     
