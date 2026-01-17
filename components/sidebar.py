@@ -33,7 +33,20 @@ def _schedule_clear_search() -> None:
 
 
 def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
-    """Render sidebar filters using the strategy table DataFrame."""
+    """Render sidebar filters using the strategy table DataFrame.
+    
+    Steps:
+    1. Handle search input and clear functionality
+    2. Render search input and filters toggle
+    3. Render filter controls (recommended, account value, equity range)
+    4. Render boolean filters (tax-managed, SMA manager, private markets)
+    5. Render type and series filters
+    6. Render abbreviations section
+    7. Return filter dictionary
+    """
+    # ============================================================================
+    # STEP 1: Handle search input and clear functionality
+    # ============================================================================
     schema: pl.Schema = strats.schema
     
     # Check if we need to clear search from a previous shortcut button press
@@ -42,6 +55,9 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
         st.session_state[_PENDING_CLEAR_KEY] = False
 
     with st.sidebar:
+        # ============================================================================
+        # STEP 2: Render search input and filters toggle
+        # ============================================================================
         st.header("Search")
         
         col_search, col_clear = st.columns([9, 1])
@@ -75,6 +91,9 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
             if st.button("Enable Filters", key="enable_filters_btn", type="primary", width="stretch"):
                 _schedule_clear_search()
         
+        # ============================================================================
+        # STEP 3: Render filter controls (recommended, account value, equity range)
+        # ============================================================================
         recommended_only = st.toggle(
             "Investment Committee Recommended Only",
             value=DEFAULT_RECOMMENDED_ONLY,
@@ -111,6 +130,9 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
                 disabled=search_active,
             )
 
+        # ============================================================================
+        # STEP 4: Render boolean filters (tax-managed, SMA manager, private markets)
+        # ============================================================================
         col_tax, col_sma, col_private = st.columns(3)
         with col_tax:
             tax_managed_selection = st.pills(
@@ -119,6 +141,7 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
                 selection_mode="single",
                 default=None,
                 disabled=search_active,
+                key="sidebar_tax_managed",
             )
         with col_sma:
             has_sma_manager_selection = st.pills(
@@ -127,6 +150,7 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
                 selection_mode="single",
                 default=None,
                 disabled=search_active or "Has SMA Manager" not in schema,
+                key="sidebar_sma_manager",
             )
         with col_private:
             private_markets_selection = st.pills(
@@ -135,14 +159,19 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
                 selection_mode="single",
                 default=None,
                 disabled=search_active,
+                key="sidebar_private_markets",
             )
 
+        # ============================================================================
+        # STEP 5: Render type and series filters
+        # ============================================================================
         selected_type = st.pills(
             "Strategy Type",
             options=strategy_types,
             selection_mode="single",
             default=default_type,
             disabled=search_active,
+            key="sidebar_strategy_type",
         )
         selected_types = [selected_type] if selected_type else []
 
@@ -154,8 +183,12 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
             if all(subtype in type_options for subtype in DEFAULT_SERIES_SUBTYPES)
             else [],
             disabled=search_active,
+            key="sidebar_series",
         )
 
+        # ============================================================================
+        # STEP 6: Render abbreviations section
+        # ============================================================================
         st.divider()
         with st.container(border=True):
             st.markdown("**Abbreviations**")
@@ -174,6 +207,9 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
                 """
             )
 
+    # ============================================================================
+    # STEP 7: Return filter dictionary
+    # ============================================================================
     tax_managed_filter = tax_managed_selection if tax_managed_selection else "All"
     has_sma_manager_filter = has_sma_manager_selection if has_sma_manager_selection else "All"
     private_markets_filter = private_markets_selection if private_markets_selection else "All"

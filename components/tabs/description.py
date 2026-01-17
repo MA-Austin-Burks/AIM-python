@@ -53,7 +53,18 @@ def get_grouped_allocations_for_chart(
     grouping_option: str,
     total_assets: float,
 ) -> list[dict[str, Any]]:
-    """Get grouped allocation data for pie chart only."""
+    """Get grouped allocation data for pie chart only.
+    
+    Steps:
+    1. Validate and map grouping option to column name
+    2. Apply product name cleaning if grouping by Product
+    3. Group and aggregate allocation data
+    4. Convert to chart data format with colors
+    5. Combine excess items into "Others" if more than 15
+    """
+    # ============================================================================
+    # STEP 1: Validate and map grouping option to column name
+    # ============================================================================
     strategy_data = cleaned_data.filter(pl.col("strategy") == strategy_name)
     
     # Ensure grouping_option is valid, default to "Asset Type" if None
@@ -72,6 +83,9 @@ def get_grouped_allocations_for_chart(
     
     group_column = group_column_map[grouping_option]
     
+    # ============================================================================
+    # STEP 2: Apply product name cleaning if grouping by Product
+    # ============================================================================
     # Apply vectorized product name cleaning if grouping by Product
     strategy_data_processed = strategy_data
     if grouping_option == "Product":
@@ -83,6 +97,9 @@ def get_grouped_allocations_for_chart(
             .alias(group_column)
         ])
     
+    # ============================================================================
+    # STEP 3: Group and aggregate allocation data
+    # ============================================================================
     grouped = (
         strategy_data_processed
         .group_by(group_column)
@@ -97,6 +114,9 @@ def get_grouped_allocations_for_chart(
         .collect()
     )
     
+    # ============================================================================
+    # STEP 4: Convert to chart data format with colors
+    # ============================================================================
     data = []
     for row in grouped.to_dicts():
         group_name = str(row[group_column])
@@ -111,6 +131,9 @@ def get_grouped_allocations_for_chart(
             "color": color,
         })
     
+    # ============================================================================
+    # STEP 5: Combine excess items into "Others" if more than 15
+    # ============================================================================
     # If more than 15 items, combine the rest into "Others"
     if len(data) > 15:
         top_15 = data[:15]
@@ -140,12 +163,26 @@ def _metric_with_date(label: str, value: str, as_of: Optional[str] = None, help:
 
 
 def render_description_tab(strategy_name: str, strategy_data: dict[str, Any], cleaned_data: Optional[pl.LazyFrame] = None) -> None:
+    """Render description tab with summary statistics and allocation chart.
+    
+    Steps:
+    1. Display strategy description
+    2. Render summary statistics metrics
+    3. Render allocation chart with grouping options
+    4. Render fact sheet download button
+    """
+    # ============================================================================
+    # STEP 1: Display strategy description
+    # ============================================================================
     st.markdown(
         "Strategic, globally diversified multi-asset portfolios designed to seek long-term capital appreciation. Efficiently covers market exposures through a minimum number of holdings to reduce cost and trading."
     )
 
     st.divider()
 
+    # ============================================================================
+    # STEP 2: Render summary statistics metrics
+    # ============================================================================
     # Summary Statistics
     st.markdown("#### Summary Statistics")
     c1, c2, c3, c4, c5 = st.columns(5)
@@ -169,6 +206,9 @@ def render_description_tab(strategy_name: str, strategy_data: dict[str, Any], cl
         _metric_with_date("3 YR STD DEV", "XX.XX%")
     st.divider()
 
+    # ============================================================================
+    # STEP 3: Render allocation chart with grouping options
+    # ============================================================================
     # Allocation chart provides visual breakdown by grouping option
     if cleaned_data is not None:
         grouping_option: Optional[str] = st.segmented_control(
@@ -226,6 +266,9 @@ def render_description_tab(strategy_name: str, strategy_data: dict[str, Any], cl
     
     st.divider()
 
+    # ============================================================================
+    # STEP 4: Render fact sheet download button
+    # ============================================================================
     # Factsheet
     st.download_button(
         label="📄 Download Fact Sheet",

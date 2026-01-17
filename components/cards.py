@@ -187,7 +187,18 @@ def _reset_cards_displayed() -> None:
 
 
 def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], Optional[dict[str, Any]]]:
-    """Render the card view with filtered strategies."""
+    """Render the card view with filtered strategies.
+    
+    Steps:
+    1. Initialize session state for card ordering and pagination
+    2. Render sort order selector
+    3. Apply sorting and check for empty results
+    4. Render cards in grid layout
+    5. Render "Load More" button if more cards available
+    """
+    # ============================================================================
+    # STEP 1: Initialize session state for card ordering and pagination
+    # ============================================================================
     total_count = filtered_strategies.height
     
     if CARD_ORDER_KEY not in st.session_state:
@@ -196,6 +207,9 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
     if CARDS_DISPLAYED_KEY not in st.session_state:
         st.session_state[CARDS_DISPLAYED_KEY] = CARDS_PER_LOAD
     
+    # ============================================================================
+    # STEP 2: Render sort order selector
+    # ============================================================================
     selected_order = st.selectbox(
         "Order By:",
         options=CARD_ORDER_OPTIONS,
@@ -205,6 +219,9 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
     )
     st.session_state[CARD_ORDER_KEY] = selected_order
     
+    # ============================================================================
+    # STEP 3: Apply sorting and check for empty results
+    # ============================================================================
     filtered_strategies = _apply_sort_order(filtered_strategies, selected_order)
     
     if filtered_strategies.height == 0:
@@ -217,6 +234,9 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
     
     st.markdown(f"**Showing {cards_to_show} of {total_count} strategies**")
     
+    # ============================================================================
+    # STEP 4: Render cards in grid layout
+    # ============================================================================
     cols = st.columns(CARD_GRID_COLUMNS)
     
     for idx, row in enumerate(display_strategies.iter_rows(named=True)):
@@ -227,6 +247,9 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
                 st.session_state[SELECTED_STRATEGY_MODAL_KEY] = strategy_name
                 st.rerun()
     
+    # ============================================================================
+    # STEP 5: Render "Load More" button if more cards available
+    # ============================================================================
     remaining = total_count - cards_to_show
     if remaining > 0:
         st.divider()

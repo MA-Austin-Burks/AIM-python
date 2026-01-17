@@ -40,7 +40,18 @@ def _get_equity_matrix_data(
     collapse_sma: bool = DEFAULT_COLLAPSE_SMA,
 ) -> tuple[pl.DataFrame, int, list[dict[str, Any]], dict[int, str]]:
     """Get allocation data in matrix format with equity % columns.
+    
+    Steps:
+    1. Load strategy data and get model information
+    2. Pre-process data with vectorized operations
+    3. Build lookup dictionaries for efficient data access
+    4. Iterate over model aggregates to build matrix rows
+    5. Add product rows and spacer rows as needed
+    6. Calculate highlighted column index
     """
+    # ============================================================================
+    # STEP 1: Load strategy data and get model information
+    # ============================================================================
     # Get the strategy's model to find related strategies
     strategy_data: dict[str, Any] | None = get_strategy_by_name(cleaned_data, strategy_name)
     strategy_model: str = strategy_data["model"]
@@ -49,6 +60,9 @@ def _get_equity_matrix_data(
     
     all_model_data: pl.DataFrame = _get_model_data(cleaned_data, strategy_model)
     
+    # ============================================================================
+    # STEP 2: Pre-process data with vectorized operations
+    # ============================================================================
     # Pre-process data using vectorized operations (much faster than map_elements)
     all_model_data: pl.DataFrame = all_model_data.with_columns([
         # Vectorized product name cleaning: remove trailing "ETF" (case-insensitive) and whitespace
@@ -62,6 +76,9 @@ def _get_equity_matrix_data(
     
     selected_strategy_data: pl.DataFrame = all_model_data.filter(pl.col("strategy") == strategy_name)
     
+    # ============================================================================
+    # STEP 3: Build lookup dictionaries for efficient data access
+    # ============================================================================
     # Optimize: Build equity_to_strategy lookup directly from DataFrame without intermediate steps
     all_strategies: pl.DataFrame = (
         all_model_data
@@ -129,6 +146,9 @@ def _get_equity_matrix_data(
         weight_val: float = row["weight_float"]
         product_weight_lookup[(strat, model_agg_val, ticker_val)] = weight_val
     
+    # ============================================================================
+    # STEP 4: Iterate over model aggregates to build matrix rows
+    # ============================================================================
     # Iterate over model aggs to build the matrix data
     for model_agg in model_aggs:
         model_agg_name: str = model_agg_names[model_agg]
@@ -197,6 +217,9 @@ def _get_equity_matrix_data(
                 "color": strategy_color
             })
     
+    # ============================================================================
+    # STEP 5: Calculate highlighted column index
+    # ============================================================================
     # Highlight the column corresponding to the selected strategy's equity
     highlighted_col_idx: int = 0
     if strategy_equity_pct is not None and strategy_equity_pct in available_equity_levels:
