@@ -6,8 +6,6 @@ from great_tables import GT, loc, style
 
 from styles.branding import (
     PRIMARY,
-    SECONDARY,
-    TERTIARY,
     hex_to_rgba,
 )
 from styles import (
@@ -19,123 +17,18 @@ from components.constants import (
     DEFAULT_COLLAPSE_SMA,
     SMA_COLLAPSE_THRESHOLD,
 )
-from utils.core.data import get_model_agg_sort_order, get_strategy_metadata, hash_lazyframe
+from utils.core.data import get_model_agg_sort_order, get_strategy_by_name, hash_lazyframe
 from utils.core.formatting import clean_product_name, format_currency_compact, get_strategy_color
 
-CATEGORY_COLORS: dict[str, str] = {
-    "Equity": PRIMARY["raspberry"],
-    "Bonds": TERTIARY["azure"],
-    "Alternative": SECONDARY["iris"],
-    "Cash": TERTIARY["spring"],
-    "Other": PRIMARY["charcoal"],
-    "Fixed Income": TERTIARY["azure"],
-}
 
-
-
-
-def _get_color_for_group(group_name: str, grouping_option: str) -> str:
-    """Get color for a group based on grouping option."""
-    if grouping_option == "Asset Category":
-        return CATEGORY_COLORS.get(group_name, PRIMARY["charcoal"])
-    
-    # Hash-based assignment ensures same group name always gets same color
-    # Important for consistency when switching between grouping options
-    import hashlib
-    hash_val = int(hashlib.md5(group_name.encode()).hexdigest()[:6], 16)
-    colors = [
-        PRIMARY["raspberry"],
-        TERTIARY["azure"],
-        SECONDARY["iris"],
-        TERTIARY["spring"],
-        PRIMARY["charcoal"],
-        TERTIARY["gold"],
-    ]
-    return colors[hash_val % len(colors)]
-
-
-@st.cache_data(hash_funcs={pl.LazyFrame: hash_lazyframe})
-def get_grouped_allocations_for_chart(
-    cleaned_data: pl.LazyFrame,
-    strategy_name: str,
-    grouping_option: str,
-    total_assets: float,
-) -> list[dict[str, Any]]:
-    """Get grouped allocation data for pie chart only."""
-    strategy_data = cleaned_data.filter(pl.col("strategy") == strategy_name)
-    
-    # Ensure grouping_option is valid, default to "Asset Type" if None
-    if grouping_option is None:
-        grouping_option = "Asset Type"
-    
-    group_column_map = {
-        "Asset Category": "asset_category",
-        "Asset Type": "asset_type",
-        "Asset Class": "asset_class",
-        "Product": "product",
-    }
-    
-    if grouping_option not in group_column_map:
-        grouping_option = "Asset Type"
-    
-    group_column = group_column_map[grouping_option]
-    
-    grouped = (
-        strategy_data
-        .group_by(group_column)
-        .agg([
-            pl.sum("weight").alias("total_weight"),
-        ])
-        .filter(
-            pl.col(group_column).is_not_null() &
-            (pl.col(group_column) != "")
-        )
-        .sort("total_weight", descending=True)
-        .collect()
-    )
-    
-    data = []
-    for row in grouped.iter_rows(named=True):
-        group_name_raw = str(row[group_column])
-        # Product names cleaned for readability (removes redundant "ETF" suffix)
-        group_name = clean_product_name(group_name_raw) if grouping_option == "Product" else group_name_raw
-        # weight is stored as decimal (0-1), convert to percentage
-        allocation_pct = float(row["total_weight"]) * 100
-        color = _get_color_for_group(group_name, grouping_option)
-        
-        data.append({
-            "name": group_name,
-            "allocation": allocation_pct,
-            "market_value": total_assets * allocation_pct / 100,
-            "color": color,
-        })
-    
-    # If more than 15 items, combine the rest into "Others"
-    if len(data) > 15:
-        top_15 = data[:15]
-        others_allocation = sum(item["allocation"] for item in data[15:])
-        others_market_value = sum(item["market_value"] for item in data[15:])
-        
-        # Use a neutral color for "Others"
-        others_color = PRIMARY["charcoal"]
-        
-        top_15.append({
-            "name": "Others",
-            "allocation": others_allocation,
-            "market_value": others_market_value,
-            "color": others_color,
-        })
-        
-        return top_15
-    
-    return data
+def _is_not_none(value: str | None) -> bool:
+    """Type guard to filter out None values."""
+    return value is not None
 
 
 @st.cache_data(hash_funcs={pl.LazyFrame: hash_lazyframe})
 def _get_model_data(cleaned_data: pl.LazyFrame, strategy_model: str) -> pl.DataFrame:
     """Get and cache all data for a specific model.
-    
-    Pre-filters and collects model data once to avoid repeated filtering.
     """
     return (
         cleaned_data
@@ -153,90 +46,55 @@ def _get_equity_matrix_data(
     collapse_sma: bool = DEFAULT_COLLAPSE_SMA,
 ) -> tuple[pl.DataFrame, int, list[dict[str, Any]], dict[int, str]]:
     """Get allocation data in matrix format with equity % columns.
-    
-    Returns:
-        DataFrame with model_agg and products as rows, equity percentages as columns
-        Index of the highlighted column (selected strategy's equity %)
-        List of row metadata (is_category, name) for styling
     """
-    # Get the strategy's model to find related strategies (using cached metadata)
-    strategy_metadata = get_strategy_metadata(cleaned_data, strategy_name)
-    if strategy_metadata is None:
-        return pl.DataFrame(), 0, [], {}
+    # Get the strategy's model to find related strategies
+    strategy_data: dict[str, Any] | None = get_strategy_by_name(cleaned_data, strategy_name)
+    strategy_model: str = strategy_data["model"]
+    strategy_type: str = strategy_data["type"]
+    strategy_color: str = get_strategy_color(strategy_type)
     
-    strategy_model = strategy_metadata["model"]
-    strategy_type = strategy_metadata["type"]
-    strategy_color = get_strategy_color(strategy_type)
+    all_model_data: pl.DataFrame = _get_model_data(cleaned_data, strategy_model)
     
-    # TM models don't have 100% equity allocation (replaced with muni bonds)
-    is_tax_managed = strategy_metadata.get("tax_managed", False)
+    selected_strategy_data: pl.DataFrame = all_model_data.filter(pl.col("strategy") == strategy_name)
     
-    # Get cached model data (avoids repeated filtering)
-    all_model_data = _get_model_data(cleaned_data, strategy_model)
-    
-    selected_strategy_data = all_model_data.filter(pl.col("strategy") == strategy_name)
-    
-    all_strategies = (
+    all_strategies: pl.DataFrame = (
         all_model_data
         .select(["strategy", "portfolio"])
         .unique()
         .sort("portfolio", descending=True)
     )
     
-    # Map equity percentage to strategy name for O(1) lookup
-    equity_to_strategy = {}
+    equity_to_strategy: dict[int, str] = {}
     for row in all_strategies.iter_rows(named=True):
         equity_to_strategy[int(row["portfolio"])] = row["strategy"]
     
-    # Only show columns for equity levels that exist for this model
-    # Some models may not have all standard allocations (e.g., missing 10% or 20%)
-    equity_levels = [100, 90, 80, 70, 60, 50, 40, 30, 20, 10]
-    available_equity_levels = [eq for eq in equity_levels if eq in equity_to_strategy]
+    # Only show columns for equity levels that exist
+    available_equity_levels: list[int] = [
+        eq for eq in [100, 90, 80, 70, 60, 50, 40, 30, 20, 10] 
+        if eq in equity_to_strategy
+    ]
     
-    # TM models use muni bonds instead of taxable bonds at 100% equity
-    if is_tax_managed and 100 in available_equity_levels:
-        available_equity_levels.remove(100)
+    model_aggs: list[str | None] = sorted(
+        [ma for ma in selected_strategy_data["model_agg"].unique().to_list() if ma is not None],
+        key=get_model_agg_sort_order
+    )
     
-    # Sort model aggregations to match R spreadsheet ordering
-    # Ensures consistent display order across different strategies in same model
-    model_aggs = selected_strategy_data["model_agg"].unique().to_list()
-    has_none = None in model_aggs
-    model_aggs_filtered = [ma for ma in model_aggs if ma is not None]
+    matrix_data: list[dict[str, Any]] = []
+    row_metadata: list[dict[str, Any]] = []
     
-    model_aggs_sorted = sorted(model_aggs_filtered, key=get_model_agg_sort_order)
-    if has_none:
-        model_aggs_sorted.append(None)
-    model_aggs = model_aggs_sorted
+    # Track which model_agg is the last one for the spacer row
+    last_model_agg: str | None = model_aggs[-1] if model_aggs else None
     
-    # Pre-compute totals to avoid repeated calculations when scaling product allocations
-    model_agg_totals = {}
-    for strategy in equity_to_strategy.values():
-        strategy_data = all_model_data.filter(pl.col("strategy") == strategy)
-        for model_agg in strategy_data["model_agg"].unique().to_list():
-            if model_agg is not None:
-                key = (strategy, model_agg)
-                # agg_target is consistent across all products in a model_agg
-                agg_target_data = strategy_data.filter(pl.col("model_agg") == model_agg)
-                if agg_target_data.height > 0:
-                    total = agg_target_data["agg_target"].first()
-                    model_agg_totals[key] = float(total) if total else 0.0
-                else:
-                    model_agg_totals[key] = 0.0
+    # Pre-process model agg names: remove "Portfolio" suffix
+    model_agg_names: dict[str | None, str] = {
+        ma: str(ma).replace(" Portfolio", "").replace("Portfolio", "")
+        for ma in model_aggs
+    }
     
-    matrix_data = []
-    row_metadata = []
-    
-    # Track which model_agg is the last one (excluding None values)
-    valid_model_aggs = [ma for ma in model_aggs if ma is not None]
-    last_model_agg = valid_model_aggs[-1] if valid_model_aggs else None
-    
+    # Iterate over model aggs to build the matrix data
     for model_agg in model_aggs:
-        if model_agg is None:
-            continue
-        
-        # Remove redundant "Portfolio" suffix from display names
-        model_agg_name = str(model_agg).replace(" Portfolio", "").replace("Portfolio", "")
-        row_data = {"asset": model_agg_name, "ticker": ""}
+        model_agg_name: str = model_agg_names[model_agg]
+        row_data: dict[str, Any] = {"asset": model_agg_name, "ticker": ""}
         row_metadata.append({
             "is_category": True, 
             "name": model_agg_name,
@@ -248,17 +106,15 @@ def _get_equity_matrix_data(
         # Product rows below show individual product allocations (weight)
         for equity_pct in available_equity_levels:
             if equity_pct in equity_to_strategy:
-                strategy_name_at_equity = equity_to_strategy[equity_pct]
-                # Use pre-collected data instead of filtering
-                strategy_data = all_model_data.filter(
+                strategy_name_at_equity: str = equity_to_strategy[equity_pct]
+                strategy_data: pl.DataFrame = all_model_data.filter(
                     (pl.col("strategy") == strategy_name_at_equity) &
                     (pl.col("model_agg") == model_agg)
                 )
                 
                 if strategy_data.height > 0:
-                    # agg_target stored as decimal (0-1), not percentage
-                    agg_target = strategy_data["agg_target"].first()
-                    row_data[str(int(equity_pct))] = float(agg_target) if agg_target else 0.0
+                    agg_target: float = strategy_data["agg_target"].first()
+                    row_data[str(int(equity_pct))] = float(agg_target)
                 else:
                     row_data[str(int(equity_pct))] = 0.0
             else:
@@ -361,20 +217,20 @@ def _get_equity_matrix_data(
 
 def render_allocation_tab(strategy_name: str, filters: dict[str, Any], cleaned_data: pl.LazyFrame) -> None:
     """Render allocation tab with matrix table showing allocations across equity percentages."""
-    # Use cached metadata instead of repeated filter/collect
-    strategy_metadata = get_strategy_metadata(cleaned_data, strategy_name)
+    # Use cached strategy data instead of repeated filter/collect
+    strategy_data = get_strategy_by_name(cleaned_data, strategy_name)
     strategy_equity_pct = None
     model_name = None
-    if strategy_metadata:
-        strategy_equity_pct = strategy_metadata.get("portfolio")
+    if strategy_data:
+        strategy_equity_pct = strategy_data.get("portfolio")
         # Model name preferred over strategy name for header (more general)
-        model_name = strategy_metadata.get("model")
+        model_name = strategy_data.get("model")
     
     collapse_sma = st.session_state.get(ALLOCATION_COLLAPSE_SMA_KEY, DEFAULT_COLLAPSE_SMA)
     
     # Get model data for summary table (cached)
-    if strategy_metadata and strategy_metadata.get("model"):
-        all_model_data = _get_model_data(cleaned_data, strategy_metadata["model"])
+    if strategy_data and strategy_data.get("model"):
+        all_model_data = _get_model_data(cleaned_data, strategy_data["model"])
     else:
         all_model_data = pl.DataFrame()
     
@@ -609,12 +465,9 @@ def render_allocation_tab(strategy_name: str, filters: dict[str, Any], cleaned_d
     </div>
     """)
     
-    # Add toggle for SMA settings at the bottom of the page
-    st.divider()
     st.checkbox(
-        f"Collapse SMAs (>{SMA_COLLAPSE_THRESHOLD} holdings)",
+        "Collapse SMAs",
         value=st.session_state.get(ALLOCATION_COLLAPSE_SMA_KEY, DEFAULT_COLLAPSE_SMA),
-        help=f"When enabled, model aggregations with more than {SMA_COLLAPSE_THRESHOLD} products will show only the summary row",
         key=ALLOCATION_COLLAPSE_SMA_KEY
     )
     

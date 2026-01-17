@@ -6,7 +6,7 @@ import streamlit as st
 from components.constants import SELECTED_STRATEGY_MODAL_KEY
 from components.tabs.allocation import render_allocation_tab
 from components.tabs.description import render_description_tab
-from utils.core.formatting import generate_badges
+from utils.core.formatting import generate_badges, get_strategy_color
 
 
 def _clear_modal_state() -> None:
@@ -20,9 +20,14 @@ def render_strategy_modal(strategy_name: str, strategy_data: dict[str, Any], fil
     """Render strategy details in a modal dialog."""
     from styles.branding import PRIMARY
     
+    # Get strategy color based on Type field (capitalized from get_strategy_table)
+    # Fallback to lowercase "type" for compatibility, then default to raspberry
+    strategy_type = strategy_data.get("Type") or strategy_data.get("type")
+    strategy_color = get_strategy_color(strategy_type) if strategy_type else PRIMARY["raspberry"]
+    
     # Large header provides visual hierarchy over dialog title
     st.markdown(
-        f'<h1 style="color: {PRIMARY["raspberry"]}; margin-top: -8px; margin-bottom: 8px;">{strategy_name}</h1>',
+        f'<h1 style="color: {strategy_color}; margin-top: -8px; margin-bottom: 8px;">{strategy_name}</h1>',
         unsafe_allow_html=True,
     )
     

@@ -10,10 +10,119 @@ from styles.branding import (
     CHART_CONFIG,
     FONTS,
     PRIMARY,
+    SECONDARY,
+    TERTIARY,
 )
 from components.constants import GROUPING_OPTIONS
+from utils.core.data import hash_lazyframe
+from utils.core.formatting import clean_product_name
 
 
+CATEGORY_COLORS: dict[str, str] = {
+    "Equity": PRIMARY["raspberry"],
+    "Bonds": TERTIARY["azure"],
+    "Alternative": SECONDARY["iris"],
+    "Cash": TERTIARY["spring"],
+    "Other": PRIMARY["charcoal"],
+    "Fixed Income": TERTIARY["azure"],
+}
+
+
+def _get_color_for_group(group_name: str, grouping_option: str) -> str:
+    """Get color for a group based on grouping option."""
+    if grouping_option == "Asset Category":
+        return CATEGORY_COLORS.get(group_name, PRIMARY["charcoal"])
+    
+    # Hash-based assignment ensures same group name always gets same color
+    # Important for consistency when switching between grouping options
+    import hashlib
+    hash_val = int(hashlib.md5(group_name.encode()).hexdigest()[:6], 16)
+    colors = [
+        PRIMARY["raspberry"],
+        TERTIARY["azure"],
+        SECONDARY["iris"],
+        TERTIARY["spring"],
+        PRIMARY["charcoal"],
+        TERTIARY["gold"],
+    ]
+    return colors[hash_val % len(colors)]
+
+
+@st.cache_data(hash_funcs={pl.LazyFrame: hash_lazyframe})
+def get_grouped_allocations_for_chart(
+    cleaned_data: pl.LazyFrame,
+    strategy_name: str,
+    grouping_option: str,
+    total_assets: float,
+) -> list[dict[str, Any]]:
+    """Get grouped allocation data for pie chart only."""
+    strategy_data = cleaned_data.filter(pl.col("strategy") == strategy_name)
+    
+    # Ensure grouping_option is valid, default to "Asset Type" if None
+    if grouping_option is None:
+        grouping_option = "Asset Type"
+    
+    group_column_map = {
+        "Asset Category": "asset_category",
+        "Asset Type": "asset_type",
+        "Asset Class": "asset_class",
+        "Product": "product",
+    }
+    
+    if grouping_option not in group_column_map:
+        grouping_option = "Asset Type"
+    
+    group_column = group_column_map[grouping_option]
+    
+    grouped = (
+        strategy_data
+        .group_by(group_column)
+        .agg([
+            pl.sum("weight").alias("total_weight"),
+        ])
+        .filter(
+            pl.col(group_column).is_not_null() &
+            (pl.col(group_column) != "")
+        )
+        .sort("total_weight", descending=True)
+        .collect()
+    )
+    
+    data = []
+    for row in grouped.iter_rows(named=True):
+        group_name_raw = str(row[group_column])
+        # Product names cleaned for readability (removes redundant "ETF" suffix)
+        group_name = clean_product_name(group_name_raw) if grouping_option == "Product" else group_name_raw
+        # weight is stored as decimal (0-1), convert to percentage
+        allocation_pct = float(row["total_weight"]) * 100
+        color = _get_color_for_group(group_name, grouping_option)
+        
+        data.append({
+            "name": group_name,
+            "allocation": allocation_pct,
+            "market_value": total_assets * allocation_pct / 100,
+            "color": color,
+        })
+    
+    # If more than 15 items, combine the rest into "Others"
+    if len(data) > 15:
+        top_15 = data[:15]
+        others_allocation = sum(item["allocation"] for item in data[15:])
+        others_market_value = sum(item["market_value"] for item in data[15:])
+        
+        # Use a neutral color for "Others"
+        others_color = PRIMARY["charcoal"]
+        
+        top_15.append({
+            "name": "Others",
+            "allocation": others_allocation,
+            "market_value": others_market_value,
+            "color": others_color,
+        })
+        
+        return top_15
+    
+    return data
 
 
 def _metric_with_date(label: str, value: str, as_of: Optional[str] = None, help: Optional[str] = None) -> None:
@@ -55,10 +164,6 @@ def render_description_tab(strategy_name: str, strategy_data: dict[str, Any], cl
 
     # Allocation chart provides visual breakdown by grouping option
     if cleaned_data is not None:
-        from components.tabs.allocation import (
-            get_grouped_allocations_for_chart,
-        )
-        
         grouping_option: Optional[str] = st.segmented_control(
             "Group By",
             options=GROUPING_OPTIONS,

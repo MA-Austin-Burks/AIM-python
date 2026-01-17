@@ -180,45 +180,6 @@ def get_strategy_by_name(cleaned_data: pl.LazyFrame, strategy_name: str) -> dict
 
 
 @st.cache_data(ttl=3600, hash_funcs={pl.LazyFrame: hash_lazyframe})
-def get_strategy_metadata(cleaned_data: pl.LazyFrame, strategy_name: str) -> dict[str, Any] | None:
-    """Get cached metadata for a specific strategy.
-    
-    Returns a lightweight dict with strategy metadata (model, type, equity %, etc.)
-    to avoid repeated filter/collect operations.
-    
-    Args:
-        cleaned_data: The full cleaned data LazyFrame
-        strategy_name: Name of the strategy to get metadata for
-    
-    Returns:
-        dict with strategy metadata, or None if strategy not found
-    """
-    strategy_row = (
-        cleaned_data
-        .filter(pl.col("strategy") == strategy_name)
-        .first()
-        .collect()
-    )
-    
-    if strategy_row.height == 0:
-        return None
-    
-    row_dict = strategy_row.row(0, named=True)
-    
-    # Extract key metadata fields
-    metadata = {
-        "strategy": row_dict.get("strategy"),
-        "model": row_dict.get("model"),
-        "type": row_dict.get("type"),
-        "portfolio": row_dict.get("portfolio"),  # equity %
-        "tax_managed": row_dict.get("tax_managed", False),
-        "category": row_dict.get("category"),
-    }
-    
-    return metadata
-
-
-@st.cache_data(ttl=3600, hash_funcs={pl.LazyFrame: hash_lazyframe})
 def get_strategy_table(df: pl.LazyFrame) -> pl.DataFrame:
     """Build and cache a strategy-level DataFrame for card filtering, sorting, and rendering.
     

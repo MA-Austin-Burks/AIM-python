@@ -3,7 +3,6 @@
 from utils.core.data import (
     get_model_agg_sort_order,
     get_strategy_by_name,
-    get_strategy_metadata,
     get_strategy_table,
     hash_lazyframe,
     load_cleaned_data,
@@ -31,7 +30,6 @@ __all__ = [
     "hash_lazyframe",
     "load_cleaned_data",
     "get_strategy_table",
-    "get_strategy_metadata",
     "get_strategy_by_name",
     "get_model_agg_sort_order",
 ]
