@@ -20,12 +20,6 @@ from components.constants import (
 from utils.core.data import get_model_agg_sort_order, get_strategy_by_name, hash_lazyframe
 from utils.core.formatting import clean_product_name, format_currency_compact, get_strategy_color
 
-
-def _is_not_none(value: str | None) -> bool:
-    """Type guard to filter out None values."""
-    return value is not None
-
-
 @st.cache_data(hash_funcs={pl.LazyFrame: hash_lazyframe})
 def _get_model_data(cleaned_data: pl.LazyFrame, strategy_model: str) -> pl.DataFrame:
     """Get and cache all data for a specific model.
@@ -42,7 +36,7 @@ def _get_model_data(cleaned_data: pl.LazyFrame, strategy_model: str) -> pl.DataF
 def _get_equity_matrix_data(
     cleaned_data: pl.LazyFrame,
     strategy_name: str,
-    strategy_equity_pct: float,
+    strategy_equity_pct: int | None,
     collapse_sma: bool = DEFAULT_COLLAPSE_SMA,
 ) -> tuple[pl.DataFrame, int, list[dict[str, Any]], dict[int, str]]:
     """Get allocation data in matrix format with equity % columns.
@@ -54,6 +48,12 @@ def _get_equity_matrix_data(
     strategy_color: str = get_strategy_color(strategy_type)
     
     all_model_data: pl.DataFrame = _get_model_data(cleaned_data, strategy_model)
+    
+    # Pre-process data
+    all_model_data: pl.DataFrame = all_model_data.with_columns([
+        pl.col("product").map_elements(clean_product_name, return_dtype=pl.Utf8).alias("product_cleaned"),
+        pl.col("weight").fill_null(0.0).cast(pl.Float64).alias("weight_float")
+    ])
     
     selected_strategy_data: pl.DataFrame = all_model_data.filter(pl.col("strategy") == strategy_name)
     
@@ -79,7 +79,7 @@ def _get_equity_matrix_data(
         key=get_model_agg_sort_order
     )
     
-    matrix_data: list[dict[str, Any]] = []
+    data: list[dict[str, Any]] = []
     row_metadata: list[dict[str, Any]] = []
     
     # Track which model_agg is the last one for the spacer row
@@ -91,207 +91,185 @@ def _get_equity_matrix_data(
         for ma in model_aggs
     }
     
+    agg_target_lookup: dict[tuple[str, str], float] = {}
+    agg_target_data: pl.DataFrame = (
+        all_model_data
+        .select(["strategy", "model_agg", "agg_target"])
+        .unique(subset=["strategy", "model_agg"], keep="first")
+    )
+    for row in agg_target_data.iter_rows(named=True):
+        strat_name: str = row["strategy"]
+        model_agg_name: str = row["model_agg"]
+        agg_target: float = row["agg_target"]
+        if strat_name and model_agg_name is not None:
+            agg_target_lookup[(strat_name, str(model_agg_name))] = float(agg_target) if agg_target is not None else 0.0
+    
+    product_weight_lookup: dict[tuple[str, str, str], float] = {}
+    product_weight_data: pl.DataFrame = (
+        all_model_data
+        .select(["strategy", "model_agg", "ticker", "weight_float"])
+        .unique(subset=["strategy", "model_agg", "ticker"], keep="first")
+    )
+    for row in product_weight_data.iter_rows(named=True):
+        strat: str = row["strategy"]
+        model_agg_val: str = row["model_agg"]
+        ticker_val: str = row["ticker"]
+        weight_val: float = row["weight_float"]
+        product_weight_lookup[(strat, str(model_agg_val), str(ticker_val))] = weight_val
+    
     # Iterate over model aggs to build the matrix data
     for model_agg in model_aggs:
         model_agg_name: str = model_agg_names[model_agg]
-        row_data: dict[str, Any] = {"asset": model_agg_name, "ticker": ""}
+        row_data: dict[str, Any] = {"asset": model_agg_name}
         row_metadata.append({
             "is_category": True, 
             "name": model_agg_name,
-            "ticker": "",
             "color": strategy_color
         })
         
-        # Model agg rows show total allocation percentage (agg_target)
-        # Product rows below show individual product allocations (weight)
-        for equity_pct in available_equity_levels:
-            if equity_pct in equity_to_strategy:
-                strategy_name_at_equity: str = equity_to_strategy[equity_pct]
-                strategy_data: pl.DataFrame = all_model_data.filter(
-                    (pl.col("strategy") == strategy_name_at_equity) &
-                    (pl.col("model_agg") == model_agg)
-                )
-                
-                if strategy_data.height > 0:
-                    agg_target: float = strategy_data["agg_target"].first()
-                    row_data[str(int(equity_pct))] = float(agg_target)
-                else:
-                    row_data[str(int(equity_pct))] = 0.0
-            else:
-                row_data[str(int(equity_pct))] = None
+        # Model agg rows use agg_target
+        # Product rows below use weight
+        for eq_pct in available_equity_levels:
+            strategy_name_at_equity: str = equity_to_strategy[eq_pct]
+            strategy_model_agg_key: tuple[str, str] = (strategy_name_at_equity, str(model_agg))
+            row_data[str(int(eq_pct))] = agg_target_lookup.get(strategy_model_agg_key, 0.0)
         
-        matrix_data.append(row_data)
+        data.append(row_data)
         
-        products = (
+        products: pl.DataFrame = (
             selected_strategy_data
             .filter(pl.col("model_agg") == model_agg)
-            .select(["product", "ticker", "weight"])
-            .sort("weight", descending=True)
+            .select(["product_cleaned", "ticker", "weight_float"])
+            .sort("weight_float", descending=True)
         )
         
         # Collapse SMAs with many holdings to reduce visual clutter
-        # Threshold prevents overwhelming users with long product lists
-        num_products = products.height
-        should_collapse = collapse_sma and num_products > SMA_COLLAPSE_THRESHOLD
+        num_products: int = products.height
+        should_collapse: bool = collapse_sma and num_products > SMA_COLLAPSE_THRESHOLD
         
         if not should_collapse:
             for product_row in products.iter_rows(named=True):
-                product_name_raw = product_row["product"]
-                product_name = clean_product_name(product_name_raw)
-                ticker = product_row["ticker"]
+                product_name: str = product_row["product_cleaned"]
+                ticker: str = product_row["ticker"]
                 
-                product_row_data = {"asset": product_name, "ticker": ticker if ticker else ""}
+                product_row_data: dict[str, Any] = {"asset": product_name}
                 row_metadata.append({
                     "is_category": False, 
                     "name": product_name,
-                    "ticker": ticker if ticker else "",
+                    "ticker": ticker,
                     "color": strategy_color
                 })
                 
                 # Product allocations shown across all equity levels for comparison
-                for equity_pct in available_equity_levels:
-                    if equity_pct in equity_to_strategy:
-                        strategy_name_at_equity = equity_to_strategy[equity_pct]
-                        
-                        # Use pre-collected data for performance
-                        if strategy_name_at_equity == strategy_name:
-                            strategy_data = selected_strategy_data.filter(
-                                (pl.col("model_agg") == model_agg) &
-                                (pl.col("ticker") == ticker)
-                            )
-                            if strategy_data.height > 0:
-                                # weight stored as decimal (0-1), represents final portfolio allocation
-                                weight_val = strategy_data["weight"][0]
-                                prod_weight = float(weight_val) if weight_val is not None else 0.0
-                                product_row_data[str(int(equity_pct))] = prod_weight
-                            else:
-                                product_row_data[str(int(equity_pct))] = 0.0
-                        else:
-                            strategy_data = all_model_data.filter(
-                                (pl.col("strategy") == strategy_name_at_equity) &
-                                (pl.col("model_agg") == model_agg) &
-                                (pl.col("ticker") == ticker)
-                            )
-                            
-                            if strategy_data.height > 0:
-                                weight_val = strategy_data["weight"][0]
-                                prod_weight = float(weight_val) if weight_val is not None else 0.0
-                                product_row_data[str(int(equity_pct))] = prod_weight
-                            else:
-                                product_row_data[str(int(equity_pct))] = 0.0
-                    else:
-                        product_row_data[str(int(equity_pct))] = None
+                for eq_pct in available_equity_levels:
+                    strategy_name_at_equity: str = equity_to_strategy[eq_pct]
+                    product_weight_key: tuple[str, str, str] = (
+                        strategy_name_at_equity,
+                        str(model_agg),
+                        ticker
+                    )
+                    product_row_data[str(int(eq_pct))] = product_weight_lookup.get(product_weight_key, 0.0)
                 
-                matrix_data.append(product_row_data)
+                data.append(product_row_data)
         
-        # Visual spacing between model aggregations improves readability
-        # Spacer only added if products exist (even if collapsed) and not last model_agg
+        # Spacer row between model aggs
         if products.height > 0 and model_agg != last_model_agg:
-            spacer_row = {"asset": "", "ticker": ""}
-            for equity_pct in available_equity_levels:
-                spacer_row[str(int(equity_pct))] = None
-            matrix_data.append(spacer_row)
+            spacer_row = {"asset": ""}
+            for eq_pct in available_equity_levels:
+                spacer_row[str(int(eq_pct))] = None
+            data.append(spacer_row)
             row_metadata.append({
                 "is_category": False,
                 "is_spacer": True,
                 "name": "",
-                "ticker": "",
                 "color": strategy_color
             })
     
-    df = pl.DataFrame(matrix_data)
+    # Highlight the column corresponding to the selected strategy's equity
+    highlighted_col_idx: int = 0
+    if strategy_equity_pct is not None and strategy_equity_pct in available_equity_levels:
+        highlighted_col_idx = available_equity_levels.index(strategy_equity_pct) + 1  # +1 for asset_formatted column
     
-    # Highlight the column corresponding to the selected strategy's equity percentage
-    # Helps users quickly identify their strategy's allocation column
-    highlighted_col_idx = 0
-    if strategy_equity_pct is not None:
-        try:
-            equity_int = int(strategy_equity_pct)
-            if equity_int in available_equity_levels:
-                highlighted_col_idx = available_equity_levels.index(equity_int) + 2
-        except (ValueError, TypeError):
-            pass
-    
-    return df, highlighted_col_idx, row_metadata, equity_to_strategy
+    return pl.DataFrame(data), highlighted_col_idx, row_metadata, equity_to_strategy
 
 
-def render_allocation_tab(strategy_name: str, filters: dict[str, Any], cleaned_data: pl.LazyFrame) -> None:
-    """Render allocation tab with matrix table showing allocations across equity percentages."""
-    # Use cached strategy data instead of repeated filter/collect
-    strategy_data = get_strategy_by_name(cleaned_data, strategy_name)
-    strategy_equity_pct = None
-    model_name = None
-    if strategy_data:
-        strategy_equity_pct = strategy_data.get("portfolio")
-        # Model name preferred over strategy name for header (more general)
-        model_name = strategy_data.get("model")
+def _build_allocation_tables(
+    matrix_df: pl.DataFrame,
+    equity_cols: list[str],
+    row_metadata: list[dict[str, Any]],
+    header_name: str,
+    highlighted_col_idx: int,
+    all_model_data: pl.DataFrame,
+    equity_to_strategy: dict[int, str],
+    strategy_color: str,
+) -> tuple[GT, GT]:
+    """Build both main allocation table and summary metrics table with Great Tables.
     
-    collapse_sma = st.session_state.get(ALLOCATION_COLLAPSE_SMA_KEY, DEFAULT_COLLAPSE_SMA)
+    Steps:
+    1. Format asset names (combine with tickers)
+    2. Prepare matrix data with formatted columns
+    3. Build and style main allocation table
+    4. Pre-compute summary metrics lookup
+    5. Build and style summary metrics table
     
-    # Get model data for summary table (cached)
-    if strategy_data and strategy_data.get("model"):
-        all_model_data = _get_model_data(cleaned_data, strategy_data["model"])
-    else:
-        all_model_data = pl.DataFrame()
+    Returns:
+        Tuple of (main_table, summary_table) GT objects
+    """
+    strategy_color: str = row_metadata[0]["color"] if row_metadata else PRIMARY["raspberry"]
     
-    matrix_df, highlighted_col_idx, row_metadata, equity_to_strategy = _get_equity_matrix_data(
-        cleaned_data, strategy_name, strategy_equity_pct, collapse_sma=collapse_sma
-    )
-    
-    if matrix_df.height == 0:
-        st.info("No allocation data available for this strategy.")
-        return
-    
-    equity_cols = [col for col in matrix_df.columns if col not in ["asset", "ticker"]]
-    
-    # Prepare metadata for styling: category rows get background color, products get indentation
-    is_category_list = [meta["is_category"] for meta in row_metadata]
-    row_colors = [meta.get("color", PRIMARY["raspberry"]) for meta in row_metadata]
-    
-    # Indent product names to show hierarchy (model_agg -> products)
-    asset_names = []
-    ticker_values = []
-    for meta in row_metadata:
-        name = meta["name"]
-        ticker = meta.get("ticker", "")
-        is_spacer = meta.get("is_spacer", False)
+    # ============================================================================
+    # STEP 1: Format asset names (combine with tickers)
+    # ============================================================================
+    asset_names_combined: list[str] = []
+    for row in row_metadata:
+        name: str = row["name"]
+        ticker: str = row.get("ticker", "")
+        is_spacer: bool = row.get("is_spacer", False)
+        
         if is_spacer:
-            name = '<span style="display: block; height: 4px;"></span>'
-        elif not meta["is_category"]:
-            name = f'<span style="padding-left: 20px;">{name}</span>'
-        asset_names.append(name)
-        ticker_values.append(ticker if ticker else "")
+            # Spacer rows: empty content (height handled by Great Tables CSS)
+            combined_name = ""
+        elif not row["is_category"]:
+            # Product rows: include ticker if available
+            if ticker:
+                combined_name = f"{name} ({ticker})"
+            else:
+                combined_name = name
+        else:
+            # Category rows: plain name
+            combined_name = name
+        asset_names_combined.append(combined_name)
     
-    matrix_df = matrix_df.with_columns([
+    # ============================================================================
+    # STEP 2: Prepare matrix data with formatted columns
+    # ============================================================================
+    is_category_list: list[bool] = [meta["is_category"] for meta in row_metadata]
+    row_colors: list[str] = [meta.get("color", PRIMARY["raspberry"]) for meta in row_metadata]
+    
+    formatted_matrix_df: pl.DataFrame = matrix_df.with_columns([
         pl.Series("is_category", is_category_list),
-        pl.Series("asset_formatted", asset_names),
-        pl.Series("ticker_formatted", ticker_values),
+        pl.Series("asset_formatted", asset_names_combined),
         pl.Series("row_color", row_colors),
     ])
     
-    # Hidden columns used for styling logic, formatted columns for display
-    column_order = ["asset_formatted", "ticker_formatted"] + equity_cols + ["is_category", "asset", "ticker", "row_color"]
-    matrix_df = matrix_df.select(column_order)
-
-    strategy_color = row_metadata[0]["color"] if row_metadata else PRIMARY["raspberry"]
+    column_order: list[str] = ["asset_formatted"] + equity_cols + ["is_category", "asset", "row_color"]
+    formatted_matrix_df = formatted_matrix_df.select(column_order)
     
-    if model_name:
-        header_name = str(model_name)
-    else:
-        header_name = strategy_name.replace(" Portfolio", "").replace("Portfolio", "")
-    table = (
-        GT(matrix_df)
-        .cols_hide(["is_category", "asset", "ticker", "row_color"])
-        .cols_label(asset_formatted=header_name, ticker_formatted="")
+    # ============================================================================
+    # STEP 3: Build and style main allocation table
+    # ============================================================================
+    main_table: GT = (
+        GT(formatted_matrix_df)
+        .cols_hide(["is_category", "asset", "row_color"])
+        .cols_label(asset_formatted=header_name)
         .fmt_percent(columns=equity_cols, decimals=2)
         .sub_missing(columns=equity_cols, missing_text="")
         .cols_align(columns=equity_cols, align="center")
         .cols_align(columns=["asset_formatted"], align="left")
-        .cols_align(columns=["ticker_formatted"], align="center")
     )
     
     # Header uses strategy color for brand consistency
-    table = table.tab_style(
+    main_table = main_table.tab_style(
         style=[
             style.fill(color=strategy_color),
             style.text(color="white", weight="bold", size="1.0rem"),
@@ -299,12 +277,26 @@ def render_allocation_tab(strategy_name: str, filters: dict[str, Any], cleaned_d
         locations=loc.column_labels(),
     )
     
-    # Category rows use pastel background to visually group products underneath
+    # Collect row indices for batch styling
+    category_row_indices: list[int] = []
+    product_row_indices: list[int] = []
+    spacer_row_indices: list[int] = []
+    
     for idx, meta in enumerate(row_metadata):
         if meta["is_category"]:
-            row_color = meta["color"]
-            rgba_color = hex_to_rgba(row_color, alpha=0.15)
-            table = table.tab_style(
+            category_row_indices.append(idx)
+        elif meta.get("is_spacer", False):
+            spacer_row_indices.append(idx)
+        else:
+            product_row_indices.append(idx)
+    
+    # Category rows: pastel background to visually group products underneath
+    # Note: Each category row may have different colors, so we style them individually
+    if category_row_indices:
+        for idx in category_row_indices:
+            row_color: str = row_metadata[idx]["color"]
+            rgba_color: str = hex_to_rgba(row_color, alpha=0.15)
+            main_table = main_table.tab_style(
                 style=[
                     style.fill(color=rgba_color),
                     style.text(color="black", weight="bold"),
@@ -312,7 +304,25 @@ def render_allocation_tab(strategy_name: str, filters: dict[str, Any], cleaned_d
                 locations=loc.body(columns=pl.all(), rows=[idx]),
             )
     
-    table = table.tab_options(
+    # Product rows: add indentation using Great Tables style.css() API
+    if product_row_indices:
+        main_table = main_table.tab_style(
+            style=[
+                style.css(rule="padding-left: 20px;"),
+            ],
+            locations=loc.body(columns=["asset_formatted"], rows=product_row_indices),
+        )
+    
+    # Spacer rows: add height using Great Tables style.css() API
+    if spacer_row_indices:
+        main_table = main_table.tab_style(
+            style=[
+                style.css(rule="height: 4px; line-height: 4px;"),
+            ],
+            locations=loc.body(columns=["asset_formatted"], rows=spacer_row_indices),
+        )
+    
+    main_table = main_table.tab_options(
         table_font_size="0.875rem",
         table_font_names=[
             "IBM Plex Sans",
@@ -324,101 +334,109 @@ def render_allocation_tab(strategy_name: str, filters: dict[str, Any], cleaned_d
     )
     
     # Highlight selected strategy's equity column for quick identification
-    if highlighted_col_idx >= 2 and highlighted_col_idx - 2 < len(equity_cols):
-        highlighted_col = equity_cols[highlighted_col_idx - 2]
-        table = table.tab_style(
+    if highlighted_col_idx >= 1 and highlighted_col_idx - 1 < len(equity_cols):
+        highlighted_col: str = equity_cols[highlighted_col_idx - 1]
+        main_table = main_table.tab_style(
             style=[
                 style.fill(color="#fff3cd"),
             ],
             locations=loc.body(columns=[highlighted_col]),
         )
-
-    # Fixed widths for asset/ticker ensure consistent layout
-    # Equity columns share remaining space equally for balanced comparison
-    num_equity_cols = len(equity_cols)
-    asset_col_width = "30%"
-    ticker_col_width = "10%"
-    equity_col_width = f"{(60 / num_equity_cols):.2f}%" if num_equity_cols > 0 else "0%"
     
-    # Render table using Great Tables with fixed column widths
-    st.html(f"""
-    <div style="width: 100%; margin: 0 !important; padding: 0 !important;">
-        <style>
-            {get_allocation_table_main_css(asset_col_width, ticker_col_width, equity_col_width)}
-        </style>
-        <div id="allocation-table-main">
-            {table.as_raw_html(inline_css=True)}
-        </div>
-    </div>
-    """)
-    
-    # Summary table shows key metrics across all equity levels for quick comparison
-    # Use already-collected model data instead of filtering again
-    all_strategies_data = (
+    # ============================================================================
+    # STEP 4: Pre-compute summary metrics lookup
+    # ============================================================================
+    # Pre-filter and group data once instead of filtering in loop
+    summary_strategies_data: pl.DataFrame = (
         all_model_data
         .filter(pl.col("strategy").is_in(list(equity_to_strategy.values())))
-        .select(["strategy", "portfolio", "target", "fee", "yield", "minimum"])
+        .select(["strategy", "target", "fee", "yield", "minimum"])
+        .group_by("strategy")
+        .agg([
+            pl.col("target").sum().alias("total_target"),
+            (pl.col("target") * pl.col("fee")).sum().alias("weighted_fee_sum"),
+            (pl.col("target") * pl.col("yield")).sum().alias("weighted_yield_sum"),
+            pl.col("minimum").first().alias("account_min")
+        ])
     )
     
-    summary_rows = {
+    # Build lookup dictionary for O(1) access
+    summary_metrics_lookup: dict[str, dict[str, float]] = {}
+    for row in summary_strategies_data.iter_rows(named=True):
+        strategy_name_for_lookup: str = row["strategy"]
+        total_target: float = row["total_target"]
+        weighted_fee_sum: float = row["weighted_fee_sum"]
+        weighted_yield_sum: float = row["weighted_yield_sum"]
+        account_min: float = row["account_min"]
+        
+        if total_target > 0:
+            weighted_expense: float = weighted_fee_sum / total_target
+            weighted_yield: float = weighted_yield_sum / total_target
+        else:
+            weighted_expense = 0.0
+            weighted_yield = 0.0
+        
+        summary_metrics_lookup[strategy_name_for_lookup] = {
+            "weighted_expense": weighted_expense,
+            "weighted_yield": weighted_yield,
+            "account_min": account_min
+        }
+    
+    # ============================================================================
+    # STEP 5: Build and style summary metrics table
+    # ============================================================================
+    summary_metrics: dict[str, dict[str, Any]] = {
         "Weighted Expense Ratio": {"Metric": "Weighted Expense Ratio"},
         "Weighted Indicated Yield": {"Metric": "Weighted Indicated Yield"},
         "Account Minimum": {"Metric": "Account Minimum"}
     }
     
-    # Calculate metrics for each equity level that exists in the model
-    for equity_col in equity_cols:
+    # Calculate metrics for each equity level using lookup (O(1) instead of O(n) filtering)
+    for equity_col_name in equity_cols:
         try:
-            equity_pct = int(equity_col)
+            equity_pct: int = int(equity_col_name)
         except ValueError:
             continue
         
         if equity_pct not in equity_to_strategy:
             continue
         
-        strategy_at_equity = equity_to_strategy[equity_pct]
-        strategy_data = all_strategies_data.filter(pl.col("strategy") == strategy_at_equity)
+        strategy_name_at_equity: str = equity_to_strategy[equity_pct]
         
-        if strategy_data.height == 0:
+        if strategy_name_at_equity not in summary_metrics_lookup:
             continue
         
-        # Weighted averages account for different allocation sizes across products
-        total_target = strategy_data["target"].sum()
-        if total_target > 0:
-            weighted_expense = (strategy_data["target"] * strategy_data["fee"]).sum() / total_target
-            weighted_yield = (strategy_data["target"] * strategy_data["yield"]).sum() / total_target
-        else:
-            weighted_expense = 0.0
-            weighted_yield = 0.0
+        metrics = summary_metrics_lookup[strategy_name_at_equity]
+        weighted_expense: float = metrics["weighted_expense"]
+        weighted_yield: float = metrics["weighted_yield"]
+        account_min: float = metrics["account_min"]
         
-        account_min = strategy_data["minimum"].first()
-        
-        summary_rows["Weighted Expense Ratio"][str(equity_pct)] = f"{float(weighted_expense) * 100:.2f}%" if weighted_expense else "0.00%"
-        summary_rows["Weighted Indicated Yield"][str(equity_pct)] = f"{float(weighted_yield) * 100:.2f}%" if weighted_yield else "0.00%"
-        summary_rows["Account Minimum"][str(equity_pct)] = format_currency_compact(float(account_min)) if account_min else "$0"
+        summary_metrics["Weighted Expense Ratio"][str(equity_pct)] = f"{weighted_expense * 100:.2f}%" if weighted_expense else "0.00%"
+        summary_metrics["Weighted Indicated Yield"][str(equity_pct)] = f"{weighted_yield * 100:.2f}%" if weighted_yield else "0.00%"
+        summary_metrics["Account Minimum"][str(equity_pct)] = format_currency_compact(float(account_min)) if account_min else "$0"
     
-    # Build summary table
-    summary_table_data = [
-        summary_rows["Weighted Expense Ratio"],
-        summary_rows["Weighted Indicated Yield"],
-        summary_rows["Account Minimum"]
+    # Build summary table DataFrame
+    summary_table_data: list[dict[str, Any]] = [
+        summary_metrics["Weighted Expense Ratio"],
+        summary_metrics["Weighted Indicated Yield"],
+        summary_metrics["Account Minimum"]
     ]
     
-    summary_df = pl.DataFrame(summary_table_data)
+    summary_df: pl.DataFrame = pl.DataFrame(summary_table_data)
     
     # Column alignment critical for visual comparison between main and summary tables
     for col in equity_cols:
         if col not in summary_df.columns:
             summary_df = summary_df.with_columns(pl.lit(None).alias(col))
     
-    summary_column_order = ["Metric"] + equity_cols
+    summary_column_order: list[str] = ["Metric"] + equity_cols
     summary_df = summary_df.select([col for col in summary_column_order if col in summary_df.columns])
-    summary_equity_cols = [col for col in equity_cols if col in summary_df.columns]
+    summary_equity_cols: list[str] = [col for col in equity_cols if col in summary_df.columns]
     
-    # Render summary table with aligned columns
-    summary_table = (
+    # Build summary table with aligned columns
+    summary_table: GT = (
         GT(summary_df)
-        .cols_label(**{col: col for col in summary_equity_cols})
+        .cols_label({col: col for col in summary_equity_cols})
         .cols_align(columns=summary_equity_cols, align="center")
         .cols_align(columns=["Metric"], align="left")
         .tab_style(
@@ -442,8 +460,8 @@ def render_allocation_tab(strategy_name: str, filters: dict[str, Any], cleaned_d
     )
     
     # Match highlight from main table for consistency
-    if highlighted_col_idx >= 2 and highlighted_col_idx - 2 < len(summary_equity_cols):
-        highlighted_col = summary_equity_cols[highlighted_col_idx - 2]
+    if highlighted_col_idx >= 1 and highlighted_col_idx - 1 < len(summary_equity_cols):
+        highlighted_col: str = summary_equity_cols[highlighted_col_idx - 1]
         summary_table = summary_table.tab_style(
             style=[
                 style.fill(color="#fff3cd"),
@@ -451,8 +469,112 @@ def render_allocation_tab(strategy_name: str, filters: dict[str, Any], cleaned_d
             locations=loc.body(columns=[highlighted_col]),
         )
     
-    # Metric column width matches asset+ticker combined width for perfect alignment
-    summary_metric_col_width = f"{(float(asset_col_width.rstrip('%')) + float(ticker_col_width.rstrip('%'))):.2f}%"
+    return main_table, summary_table
+
+
+def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> None:
+    """Render allocation tab with matrix table showing allocations across equity percentages.
+    
+    Steps:
+    1. Load strategy data and prepare model data
+    2. Build equity matrix data (product allocations across equity levels)
+    3. Format matrix data (combine asset names with tickers)
+    4. Build and render main allocation table
+    5. Build and render summary metrics table
+    6. Render collapse SMAs checkbox
+    """
+    # ============================================================================
+    # STEP 1: Load strategy data and prepare model data
+    # ============================================================================
+    strategy_data: dict[str, Any] | None = get_strategy_by_name(cleaned_data, strategy_name)
+    strategy_equity_pct: int | None = None
+    model_name: str | None = None
+    if strategy_data:
+        portfolio_val = strategy_data.get("portfolio")
+        strategy_equity_pct = int(portfolio_val) if portfolio_val is not None else None
+        model_name = strategy_data.get("model")
+    
+    collapse_sma: bool = st.session_state.get(ALLOCATION_COLLAPSE_SMA_KEY, DEFAULT_COLLAPSE_SMA)
+    
+    # Get model data for summary table (cached)
+    if strategy_data and strategy_data.get("model"):
+        all_model_data: pl.DataFrame = _get_model_data(cleaned_data, strategy_data["model"])
+    else:
+        all_model_data = pl.DataFrame()
+    
+    # ============================================================================
+    # STEP 2: Build equity matrix data (product allocations across equity levels)
+    # ============================================================================
+    matrix_df, highlighted_col_idx, row_metadata, equity_to_strategy = _get_equity_matrix_data(
+        cleaned_data, strategy_name, strategy_equity_pct, collapse_sma=collapse_sma
+    )
+    
+    if matrix_df.height == 0:
+        st.info("No allocation data available for this strategy.")
+        return
+    
+    equity_cols: list[str] = [col for col in matrix_df.columns if col != "asset"]
+    
+    # ============================================================================
+    # STEP 3: Format matrix data and build tables
+    # ============================================================================
+    # Prepare metadata for styling: category rows get background color, products get indentation
+    is_category_list: list[bool] = [meta["is_category"] for meta in row_metadata]
+    row_colors: list[str] = [meta.get("color", PRIMARY["raspberry"]) for meta in row_metadata]
+    
+    # Format asset names (will be done inside _build_allocation_tables)
+    # Add formatted columns to matrix_df
+    matrix_df = matrix_df.with_columns([
+        pl.Series("is_category", is_category_list),
+        pl.Series("row_color", row_colors),
+    ])
+    
+    # Determine header name (model name preferred over strategy name)
+    if model_name:
+        header_name: str = str(model_name)
+    else:
+        header_name = strategy_name.replace(" Portfolio", "").replace("Portfolio", "")
+    
+    strategy_color: str = row_metadata[0]["color"] if row_metadata else PRIMARY["raspberry"]
+    
+    # Build both tables using Great Tables API (formatting and styling handled inside)
+    main_table, summary_table = _build_allocation_tables(
+        matrix_df=matrix_df,
+        equity_cols=equity_cols,
+        row_metadata=row_metadata,
+        header_name=header_name,
+        highlighted_col_idx=highlighted_col_idx,
+        all_model_data=all_model_data,
+        equity_to_strategy=equity_to_strategy,
+        strategy_color=strategy_color,
+    )
+    
+    # ============================================================================
+    # STEP 4: Render main allocation table
+    # ============================================================================
+    # Calculate column widths for consistent layout
+    num_equity_cols: int = len(equity_cols)
+    asset_col_width: str = "40%"  # Combined width for asset+ticker
+    equity_col_width: str = f"{(60 / num_equity_cols):.2f}%" if num_equity_cols > 0 else "0%"
+    
+    # Render table using Great Tables with fixed column widths
+    st.html(f"""
+    <div style="width: 100%; margin: 0 !important; padding: 0 !important;">
+        <style>
+            {get_allocation_table_main_css(asset_col_width, equity_col_width)}
+        </style>
+        <div id="allocation-table-main">
+            {main_table.as_raw_html(inline_css=True)}
+        </div>
+    </div>
+    """)
+    
+    # ============================================================================
+    # STEP 5: Render summary metrics table
+    # ============================================================================
+    
+    # Metric column width matches asset column width for perfect alignment
+    summary_metric_col_width: str = asset_col_width
     
     st.html(f"""
     <div style="width: 100%; margin-top: 4px;">
@@ -465,6 +587,9 @@ def render_allocation_tab(strategy_name: str, filters: dict[str, Any], cleaned_d
     </div>
     """)
     
+    # ============================================================================
+    # STEP 6: Render collapse SMAs checkbox
+    # ============================================================================
     st.checkbox(
         "Collapse SMAs",
         value=st.session_state.get(ALLOCATION_COLLAPSE_SMA_KEY, DEFAULT_COLLAPSE_SMA),

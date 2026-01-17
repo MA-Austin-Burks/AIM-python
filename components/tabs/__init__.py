@@ -34,7 +34,7 @@ def render_tabs(
                 if tab_name == "Description":
                     render_description_tab(strategy_name, strategy_data, cleaned_data)
                 elif tab_name == "Allocation":
-                    render_allocation_tab(strategy_name, filters, cleaned_data)
+                    render_allocation_tab(strategy_name, cleaned_data)
     else:
         for tab, tab_name in zip(tabs, tab_names):
             with tab:

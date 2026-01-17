@@ -1,7 +1,7 @@
 """Table styling constants and utilities."""
 
 # CSS for allocation table main section
-def get_allocation_table_main_css(asset_col_width: str, ticker_col_width: str, equity_col_width: str) -> str:
+def get_allocation_table_main_css(asset_col_width: str, equity_col_width: str) -> str:
     """Generate CSS for the main allocation table."""
     return f"""
         #allocation-table-main {{ margin: 0 !important; padding: 0 !important; }}
@@ -15,10 +15,9 @@ def get_allocation_table_main_css(asset_col_width: str, ticker_col_width: str, e
         #allocation-table-main .gt_table table td, #allocation-table-main .gt_table table th {{ border: none !important; }}
         #allocation-table-main .gt_table thead th:nth-child(1) {{ width: {asset_col_width} !important; }}
         #allocation-table-main .gt_table tbody td:nth-child(1) {{ width: {asset_col_width} !important; }}
-        #allocation-table-main .gt_table thead th:nth-child(2) {{ width: {ticker_col_width} !important; text-align: center !important; }}
-        #allocation-table-main .gt_table tbody td:nth-child(2) {{ width: {ticker_col_width} !important; text-align: center !important; }}
-        #allocation-table-main .gt_table thead th:not(:nth-child(1)):not(:nth-child(2)) {{ width: {equity_col_width} !important; text-align: center !important; }}
-        #allocation-table-main .gt_table tbody td:not(:nth-child(1)):not(:nth-child(2)) {{ width: {equity_col_width} !important; text-align: center !important; }}
+        #allocation-table-main .gt_table thead th:not(:nth-child(1)) {{ width: {equity_col_width} !important; text-align: center !important; }}
+        #allocation-table-main .gt_table tbody td:not(:nth-child(1)) {{ width: {equity_col_width} !important; text-align: center !important; }}
+        /* Note: Indentation and spacing handled via Great Tables style.css() API */
     """
 
 

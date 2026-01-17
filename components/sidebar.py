@@ -44,7 +44,7 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
     with st.sidebar:
         st.header("Search")
         
-        col_search, col_clear = st.columns([5, 1])
+        col_search, col_clear = st.columns([9, 1])
         with col_search:
             strategy_search_text = st.text_input(
                 "Strategy Name",
@@ -173,8 +173,6 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
                 - **VMQ** - Value, Momentum, Quality
                 """
             )
-        
-        st.divider()
 
     tax_managed_filter = tax_managed_selection if tax_managed_selection else "All"
     has_sma_manager_filter = has_sma_manager_selection if has_sma_manager_selection else "All"

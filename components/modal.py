@@ -58,7 +58,7 @@ def render_strategy_modal(strategy_name: str, strategy_data: dict[str, Any], fil
             if tab_name == "Description":
                 render_description_tab(strategy_name, strategy_data, cleaned_data)
             elif tab_name == "Allocation":
-                render_allocation_tab(strategy_name, filters, cleaned_data)
+                render_allocation_tab(strategy_name, cleaned_data)
     
     st.divider()
     col1, col2, col3 = st.columns([1, 1, 1])
