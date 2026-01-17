@@ -63,6 +63,6 @@ def render_strategy_modal(strategy_name: str, strategy_data: dict[str, Any], fil
     st.divider()
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
-        if st.button("Close", use_container_width=True, type="primary"):
+        if st.button("Close", width="stretch", type="primary"):
             _clear_modal_state()
             st.rerun()

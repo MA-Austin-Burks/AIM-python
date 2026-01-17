@@ -9,7 +9,6 @@ from utils.core.data import (
 )
 from utils.core.dates import PERIOD_OPTIONS, get_period_dates
 from utils.core.formatting import (
-    clean_product_name,
     format_currency_compact,
     generate_badges,
     get_series_color_from_row,
@@ -22,7 +21,6 @@ __all__ = [
     "generate_badges",
     "get_strategy_color",
     "get_series_color_from_row",
-    "clean_product_name",
     # Date utilities
     "PERIOD_OPTIONS",
     "get_period_dates",

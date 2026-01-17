@@ -72,7 +72,7 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
         )
         st.space("small")
         if search_active:
-            if st.button("Enable Filters", key="enable_filters_btn", type="primary", use_container_width=True):
+            if st.button("Enable Filters", key="enable_filters_btn", type="primary", width="stretch"):
                 _schedule_clear_search()
         
         recommended_only = st.toggle(

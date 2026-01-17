@@ -1,4 +1,3 @@
-import random
 from datetime import datetime
 from typing import Any, Optional
 
@@ -15,7 +14,6 @@ from styles.branding import (
 )
 from components.constants import GROUPING_OPTIONS
 from utils.core.data import hash_lazyframe
-from utils.core.formatting import clean_product_name
 
 
 CATEGORY_COLORS: dict[str, str] = {
@@ -74,8 +72,19 @@ def get_grouped_allocations_for_chart(
     
     group_column = group_column_map[grouping_option]
     
+    # Apply vectorized product name cleaning if grouping by Product
+    strategy_data_processed = strategy_data
+    if grouping_option == "Product":
+        strategy_data_processed = strategy_data.with_columns([
+            pl.col(group_column)
+            .str.strip_chars()
+            .str.replace(r"(?i)ETF\s*$", "", literal=False)
+            .str.strip_chars()
+            .alias(group_column)
+        ])
+    
     grouped = (
-        strategy_data
+        strategy_data_processed
         .group_by(group_column)
         .agg([
             pl.sum("weight").alias("total_weight"),
@@ -89,10 +98,8 @@ def get_grouped_allocations_for_chart(
     )
     
     data = []
-    for row in grouped.iter_rows(named=True):
-        group_name_raw = str(row[group_column])
-        # Product names cleaned for readability (removes redundant "ETF" suffix)
-        group_name = clean_product_name(group_name_raw) if grouping_option == "Product" else group_name_raw
+    for row in grouped.to_dicts():
+        group_name = str(row[group_column])
         # weight is stored as decimal (0-1), convert to percentage
         allocation_pct = float(row["total_weight"]) * 100
         color = _get_color_for_group(group_name, grouping_option)
@@ -150,16 +157,16 @@ def render_description_tab(strategy_name: str, strategy_data: dict[str, Any], cl
         y: Optional[float] = strategy_data.get("Yield")
         _metric_with_date("12-MONTH YIELD", f"{y:.2f}%" if y else "X.XX")
     with c3:
-        _metric_with_date("3 YEAR RETURN", f"{random.uniform(10, 15):.2f}%")
+        _metric_with_date("3 YEAR RETURN", "XX.XX%")
     with c4:
         inception_date: str = strategy_data.get("Inception Date", "01/01/2010")
         _metric_with_date(
             "SINCE INCEPTION",
-            f"{random.uniform(15, 19):.2f}%",
+            "XX.XX%",
             help=inception_date,
         )
     with c5:
-        _metric_with_date("3 YR STD DEV", f"{random.uniform(10, 15):.2f}%")
+        _metric_with_date("3 YR STD DEV", "XX.XX%")
     st.divider()
 
     # Allocation chart provides visual breakdown by grouping option
@@ -206,7 +213,7 @@ def render_description_tab(strategy_name: str, strategy_data: dict[str, Any], cl
             # Layout chart and legend side by side
             col_chart, col_legend = st.columns([2, 1])
             with col_chart:
-                st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
+                st.plotly_chart(fig, width="stretch", config=CHART_CONFIG)
                 st.caption(f"as of {datetime.now().strftime('%m-%d-%Y')}")
             
             with col_legend:

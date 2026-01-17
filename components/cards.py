@@ -235,7 +235,7 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
             next_load = min(CARDS_PER_LOAD, remaining)
             if st.button(
                 f"Load {next_load} More ({remaining} remaining)",
-                use_container_width=True,
+                width="stretch",
                 type="secondary",
             ):
                 st.session_state[CARDS_DISPLAYED_KEY] += CARDS_PER_LOAD

@@ -77,21 +77,3 @@ def get_series_color_from_row(strategy_row: dict[str, Any]) -> str:
     return PRIMARY["light_gray"]
 
 
-def clean_product_name(product_name: str) -> str:
-    """Remove 'ETF' suffix from product names if present.
-    
-    Args:
-        product_name: Original product name
-    
-    Returns:
-        Product name with 'ETF' removed from the end (if present)
-    """
-    if not product_name:
-        return product_name
-    
-    # Remove trailing "ETF" (case-insensitive, with optional whitespace)
-    cleaned = product_name.rstrip()
-    if cleaned.upper().endswith("ETF"):
-        cleaned = cleaned[:-3].rstrip()
-    
-    return cleaned

@@ -11,10 +11,17 @@ from utils.download_parquet_from_azure import download_parquet_from_azure
 
 
 def hash_lazyframe(lf: pl.LazyFrame) -> str:
-    """Create a stable hash for a LazyFrame based on its schema."""
-    return str(sorted(lf.schema.items()))
+    """Create a stable hash for a LazyFrame based on its schema.
+    
+    Note: This only checks schema, not data content. For content-aware caching,
+    consider adding file modification time or content hash to cache keys.
+    
+    Uses collect_schema() to avoid performance warnings about schema resolution.
+    """
+    return str(sorted(lf.collect_schema().items()))
 
 
+@st.cache_data(ttl=3600)
 def get_model_agg_sort_order(model_agg: str | None) -> int:
     """Get sort order for model aggregate based on name patterns.
     
@@ -24,6 +31,8 @@ def get_model_agg_sort_order(model_agg: str | None) -> int:
     Uses substring matching: checks if each pattern appears anywhere in the
     model aggregate name (case-insensitive). Prefers longer/more specific patterns
     to avoid substring issues (e.g., "ALL CAP" matching in "SMALL CAP").
+    
+    Cached to avoid repeated regex operations on the same model aggregate names.
     
     Args:
         model_agg: Model aggregate name (can be None)
@@ -147,10 +156,18 @@ def load_cleaned_data(parquet_url: str | None = None) -> pl.LazyFrame:
     # Download from Azure Blob Storage
     parquet_buffer, _ = download_parquet_from_azure(url)
     
-    # Load into Polars and convert to LazyFrame
-    # Note: read_parquet loads into memory, but .lazy() makes subsequent operations lazy
-    df = pl.read_parquet(parquet_buffer)
-    return df.lazy()
+    # Optimize: Use scan_parquet for true lazy evaluation
+    # Write to temp file since scan_parquet requires a file path
+    # The file persists during the session since load_cleaned_data is cached
+    import tempfile
+    
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.parquet') as tmp_file:
+        tmp_file.write(parquet_buffer.getvalue())
+        tmp_path = tmp_file.name
+    
+    # Use scan_parquet for true lazy evaluation (doesn't load entire file into memory)
+    # File cleanup handled by OS temp directory cleanup (or can be managed in cache clear)
+    return pl.scan_parquet(tmp_path)
 
 
 @st.cache_data(ttl=3600, hash_funcs={pl.LazyFrame: hash_lazyframe})
@@ -158,6 +175,7 @@ def get_strategy_by_name(cleaned_data: pl.LazyFrame, strategy_name: str) -> dict
     """Get a strategy row as a dict by name (cached).
     
     Returns the full strategy row as a dict for use in modals and other components.
+    Optimized to use head(1) instead of first() for better performance.
     
     Args:
         cleaned_data: The full cleaned data LazyFrame
@@ -169,7 +187,7 @@ def get_strategy_by_name(cleaned_data: pl.LazyFrame, strategy_name: str) -> dict
     strategy_row = (
         cleaned_data
         .filter(pl.col("strategy") == strategy_name)
-        .first()
+        .head(1)
         .collect()
     )
     

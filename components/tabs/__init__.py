@@ -14,7 +14,7 @@ __all__ = [
 
 
 def _get_tab_names() -> list[str]:
-    """Get tab names - only Description and Allocation."""
+    """Get tab names - Description first, then Allocation."""
     return ["Description", "Allocation"]
 
 

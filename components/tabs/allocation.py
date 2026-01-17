@@ -18,7 +18,7 @@ from components.constants import (
     SMA_COLLAPSE_THRESHOLD,
 )
 from utils.core.data import get_model_agg_sort_order, get_strategy_by_name, hash_lazyframe
-from utils.core.formatting import clean_product_name, format_currency_compact, get_strategy_color
+from utils.core.formatting import format_currency_compact, get_strategy_color
 
 @st.cache_data(hash_funcs={pl.LazyFrame: hash_lazyframe})
 def _get_model_data(cleaned_data: pl.LazyFrame, strategy_model: str) -> pl.DataFrame:
@@ -49,14 +49,20 @@ def _get_equity_matrix_data(
     
     all_model_data: pl.DataFrame = _get_model_data(cleaned_data, strategy_model)
     
-    # Pre-process data
+    # Pre-process data using vectorized operations (much faster than map_elements)
     all_model_data: pl.DataFrame = all_model_data.with_columns([
-        pl.col("product").map_elements(clean_product_name, return_dtype=pl.Utf8).alias("product_cleaned"),
+        # Vectorized product name cleaning: remove trailing "ETF" (case-insensitive) and whitespace
+        pl.col("product")
+        .str.strip_chars()
+        .str.replace(r"(?i)ETF\s*$", "", literal=False)
+        .str.strip_chars()
+        .alias("product_cleaned"),
         pl.col("weight").fill_null(0.0).cast(pl.Float64).alias("weight_float")
     ])
     
     selected_strategy_data: pl.DataFrame = all_model_data.filter(pl.col("strategy") == strategy_name)
     
+    # Optimize: Build equity_to_strategy lookup directly from DataFrame without intermediate steps
     all_strategies: pl.DataFrame = (
         all_model_data
         .select(["strategy", "portfolio"])
@@ -64,9 +70,11 @@ def _get_equity_matrix_data(
         .sort("portfolio", descending=True)
     )
     
-    equity_to_strategy: dict[int, str] = {}
-    for row in all_strategies.iter_rows(named=True):
-        equity_to_strategy[int(row["portfolio"])] = row["strategy"]
+    # Use Polars native to_dicts for faster lookup construction
+    equity_to_strategy: dict[int, str] = {
+        int(row["portfolio"]): row["strategy"]
+        for row in all_strategies.to_dicts()
+    }
     
     # Only show columns for equity levels that exist
     available_equity_levels: list[int] = [
@@ -91,31 +99,35 @@ def _get_equity_matrix_data(
         for ma in model_aggs
     }
     
+    # Optimize: Build lookup using Polars native operations, convert to dict in one pass
     agg_target_lookup: dict[tuple[str, str], float] = {}
     agg_target_data: pl.DataFrame = (
         all_model_data
         .select(["strategy", "model_agg", "agg_target"])
         .unique(subset=["strategy", "model_agg"], keep="first")
     )
-    for row in agg_target_data.iter_rows(named=True):
+    # Single pass conversion to dict (preserve original null checking logic)
+    for row in agg_target_data.to_dicts():
         strat_name: str = row["strategy"]
         model_agg_name: str = row["model_agg"]
         agg_target: float = row["agg_target"]
         if strat_name and model_agg_name is not None:
             agg_target_lookup[(strat_name, str(model_agg_name))] = float(agg_target) if agg_target is not None else 0.0
     
+    # Optimize: Build lookup using Polars native operations, convert to dict in one pass
     product_weight_lookup: dict[tuple[str, str, str], float] = {}
     product_weight_data: pl.DataFrame = (
         all_model_data
         .select(["strategy", "model_agg", "ticker", "weight_float"])
         .unique(subset=["strategy", "model_agg", "ticker"], keep="first")
     )
-    for row in product_weight_data.iter_rows(named=True):
+    # Single pass conversion to dict
+    for row in product_weight_data.to_dicts():
         strat: str = row["strategy"]
-        model_agg_val: str = row["model_agg"]
-        ticker_val: str = row["ticker"]
+        model_agg_val: str = str(row["model_agg"])
+        ticker_val: str = str(row["ticker"])
         weight_val: float = row["weight_float"]
-        product_weight_lookup[(strat, str(model_agg_val), str(ticker_val))] = weight_val
+        product_weight_lookup[(strat, model_agg_val, ticker_val)] = weight_val
     
     # Iterate over model aggs to build the matrix data
     for model_agg in model_aggs:
@@ -148,7 +160,7 @@ def _get_equity_matrix_data(
         should_collapse: bool = collapse_sma and num_products > SMA_COLLAPSE_THRESHOLD
         
         if not should_collapse:
-            for product_row in products.iter_rows(named=True):
+            for product_row in products.to_dicts():
                 product_name: str = product_row["product_cleaned"]
                 ticker: str = product_row["ticker"]
                 
@@ -360,9 +372,9 @@ def _build_allocation_tables(
         ])
     )
     
-    # Build lookup dictionary for O(1) access
+    # Build lookup dictionary for O(1) access using native Polars conversion
     summary_metrics_lookup: dict[str, dict[str, float]] = {}
-    for row in summary_strategies_data.iter_rows(named=True):
+    for row in summary_strategies_data.to_dicts():
         strategy_name_for_lookup: str = row["strategy"]
         total_target: float = row["total_target"]
         weighted_fee_sum: float = row["weighted_fee_sum"]
