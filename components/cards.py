@@ -24,21 +24,26 @@ def render_explanation_card() -> None:
     with st.container(border=False):
         st.markdown("### Aspen Investing Menu (AIM 2.0)")
         st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d')}")
-        with st.expander("About this app"):
+        with st.expander("About this platform"):
             st.markdown(
                 """
-                This application replaces [**AIM 1.0**](https://merceradvisors.sharepoint.com/:x:/r/sites/InvestmentStrategy/_layouts/15/Doc.aspx?sourcedoc=%7BE603B512-F595-4006-B33C-C6DB7CEA1487%7D&file=Aspen%20Investing%20Menu.xlsx&action=default&mobileredirect=true) 
-                and helps you explore and filter investment strategies available on the Aspen Investment platform. 
-                Use the sidebar filters to narrow down strategies based on your investment criteria, or search 
-                for specific strategy names.
+                The Aspen Investment platform offers investment strategies organized into three main buckets:
                 
-                **How to use:**
-                - **Search**: Type a strategy name in the search box to quickly find specific strategies
-                - **Filters**: Use the sidebar filters to refine results
-                - **View Details**: Click on any strategy card to see detailed allocation information
-                - **Sort**: Use the "Order By" dropdown to sort strategies by various criteria
+                **Risk-Based Strategies**
+                These strategies are designed to match specific risk profiles and include three series:
+                - **Multifactor Series**: Strategies that combine multiple investment factors for enhanced risk-adjusted returns
+                - **Market Series**: Broad market exposure strategies designed for core portfolio allocations
+                - **Income Series**: Strategies focused on generating income while managing risk, tilted towards academically validated income factors
                 
-                Click on any strategy card below to explore its detailed allocation breakdown.
+                **Asset-Class Strategies**
+                These strategies target specific asset classes and include:
+                - **Equity Strategies**: Stock-based investment approaches
+                - **Fixed Income Strategies**: Bond and fixed-income security strategies
+                - **Cash Strategies**: Cash and cash-equivalent investment options
+                - **Alternative Strategies**: Non-traditional investment approaches including real estate, commodities, and other alternatives
+                
+                **Special Situation Strategies**
+                These are specialized strategies designed for unique investment needs and circumstances, including tax-aware approaches, liability-driven investing, and other tailored solutions.
                 """
             )
 

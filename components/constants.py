@@ -20,7 +20,7 @@ DEFAULT_EQUITY_RANGE: Final[tuple[int, int]] = (0, 100)
 DEFAULT_SERIES_SUBTYPES: Final[list[str]] = ["Multifactor Series", "Market Series"]
 
 # Filter options lists
-STRATEGY_TYPES: Final[list[str]] = ["Risk-Based", "Asset-Class", "Special Situation", "Blended"]
+STRATEGY_TYPES: Final[list[str]] = ["Risk-Based", "Asset-Class", "Special Situation"]
 SERIES_OPTIONS: Final[list[str]] = [
     "Multifactor Series",
     "Market Series",
@@ -30,7 +30,6 @@ SERIES_OPTIONS: Final[list[str]] = [
     "Cash Strategies",
     "Alternative Strategies",
     "Special Situation Strategies",
-    "Blended Strategy",
 ]
 
 # Card view options
