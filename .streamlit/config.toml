@@ -1,5 +1,4 @@
 [theme]
-# Brand color palette - Raspberry and Iris theme
 primaryColor = "#C00686"            # Raspberry - Primary brand color
 backgroundColor = "#FFFFFF"         # White - Clean background
 secondaryBackgroundColor = "#F3F4F6"  # Pale Gray - Sidebar/panels
@@ -10,13 +9,11 @@ showWidgetBorder = true
 baseRadius = "0.5rem"
 showSidebarBorder = true
 
-# Fonts - Using Google Fonts URLs
 font = "IBM Plex Sans:https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap, sans-serif"
 headingFont = "Merriweather:https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap, serif"
 codeFont = "IBM Plex Sans:https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap, monospace"
 codeBackgroundColor = "#F3F4F6"     # Pale Gray
 
-# Font sizes and weights
 baseFontSize = 16
 baseFontWeight = 400
 headingFontSizes = ["2.75rem", "2.25rem", "1.75rem", "1.5rem", "1.25rem", "1rem"]
@@ -24,11 +21,9 @@ headingFontWeights = [700, 700, 700, 600, 600, 600]  # Bold for h1-h3, semi-bold
 codeFontSize = "0.875rem"
 codeFontWeight = 400
 
-# Borders
 dataframeBorderColor = "#D1D1D6"    # Light Gray
 dataframeHeaderBackgroundColor = "#F3F4F6"  # Pale Gray
 
-# Basic color palette - mapped to brand colors
 redColor = "#DA0028"                # Red from Warm palette
 redBackgroundColor = "#FA696E19"    # Light Red with ~10% opacity
 redTextColor = "#DA0028"            # Red text
@@ -57,24 +52,21 @@ grayColor = "#ABACB4"              # Medium Gray from Primary palette
 grayBackgroundColor = "#D1D1D619"   # Light Gray with ~10% opacity
 grayTextColor = "#747583"           # Gray (with appropriate opacity)
 
-# Links
 linkUnderline = false               # No underline for links
 
-# Code blocks
 codeTextColor = "#00C48C"          # Spring green for code
 
-# Chart colors - using brand palette
 chartCategoricalColors = [
     "#C00686",  # Raspberry
     "#7673DC",  # Iris
     "#1E90FF",  # Azure
     "#00C48C",  # Spring
     "#F9A602",  # Gold
-    "#DA0028",  # Red
-    "#820361",  # Dark Raspberry
+    "#454759",  # Charcoal
     "#50439B",  # Dark Iris
     "#225CBD",  # Dark Azure
-    "#ABACB4",  # Medium Gray
+    "#00826B",  # Dark Spring
+    "#CC8700",  # Dark Gold
 ]
 
 chartSequentialColors = [
@@ -90,9 +82,8 @@ chartSequentialColors = [
     "#FFFFFF",  # White
 ]
 
-# Sidebar theme - uses same primaryColor (Raspberry) as main theme
 [theme.sidebar]
-primaryColor = "#C00686"            # Raspberry - same as main theme
+primaryColor = "#C00686"            # Raspberry
 backgroundColor = "#F3F4F6"         # Pale Gray
 secondaryBackgroundColor = "#FFFFFF" # White for widgets
 textColor = "#454759"               # Charcoal

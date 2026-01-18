@@ -1,0 +1,27 @@
+﻿Asset Type,Model Aggregate,Primary TLH Replacement,Secondary TLH Replacement
+Global Equity,MA Market Series Global (SMA),Vanguard Total World Stock ETF (VT),iShares MSCI ACWI ETF (ACWI)
+Global Equity,Quantitative Portfolio: Factor-Enhanced Global V + M + Q,Dimensional World Equity ETF (DFAW),
+Global Equity,Quantitative Portfolio: Factor-Enhanced Global V+Q,Dimensional World Equity ETF (DFAW),
+US All Cap Equity,MA Market Series US All Cap (SMA),iShares Russell 3000 ETF (IWV),Vanguard Russell 3000 (VTHR)
+US All Cap Equity,Quantitative Portfolio: Factor-Enhanced All Cap: V + M + Q,Dimensional US Core Equity 2 ETF (DFAC),
+US All Cap Equity,Quantitative Portfolio: Factor-Enhanced All Cap: V + Q,Dimensional US Core Equity 2 ETF (DFAC),
+US Large Cap Equity,MA Market Series U.S. Large Cap (SMA Low Min),iShares Core S&P 500 ETF (IVV),State Street SPDR Portfolio S&P 500 ETF (SPYM)
+US Large Cap Equity,MA Market Series US Large Cap (SMA),iShares Core S&P 500 ETF (IVV),State Street SPDR Portfolio S&P 500 ETF (SPYM)
+US Large Cap Equity,MA Multifactor Series U.S. Large Cap (SMA Low Min),Dimensional US Equity Market ETF (DFUS),
+US Large Cap Equity,Quantitative Portfolio: Factor-Enhanced Large Cap Low Volatility,iShares MSCI USA Min Vol Factor ETF (USMV),
+US Large Cap Equity,Quantitative Portfolio: Factor-Enhanced Large Cap: V + M + Q,Dimensional US Equity Market ETF (DFUS),
+US Large Cap Equity,Quantitative Portfolio: Factor-Enhanced Large Cap: V + Q,Dimensional US Equity Market ETF (DFUS),
+US Large Cap Equity,Quantitative Portfolio: Market Series Large Cap Core - Low Minimum,iShares Core S&P 500 ETF (IVV),State Street SPDR Portfolio S&P 500 ETF (SPYM)
+US Large Cap Equity,Quantitative Portfolio: Market Series Large Cap Dividend Income,Schwab US Dividend Equity ETF (SCHD),
+US Large Cap Equity,Quantitative Portfolio: Market Series Large Cap Dividend Income - Low Min.,Schwab US Dividend Equity ETF (SCHD),
+US Large Cap Equity,Quantitative Portfolio: Market Series Large Cap Growth,iShares Core S&P 500 ETF (IVV),State Street SPDR Portfolio S&P 500 ETF (SPYM)
+US Large Cap Equity,Quantitative Portfolio: Market Series Large Cap Value,iShares Core S&P 500 ETF (IVV),State Street SPDR Portfolio S&P 500 ETF (SPYM)
+US Small Cap Equity,MA Market Series US Small Cap (SMA),iShares Russell 2000 ETF (IWM),iShares Core S&P Small-Cap ETF (IJR)
+US Small Cap Equity,Quantitative Portfolio: Factor-Enhanced Small Cap: V + M + Q,Dimensional US Small Cap ETF (DFAS),
+US Small Cap Equity,Quantitative Portfolio: Factor-Enhanced Small Cap: V + Q,Dimensional US Small Cap ETF (DFAS),
+International Developed Equity,MA Market Series Int'l Developed Markets (SMA),iShares Core MSCI EAFE ETF (IEFA),iShares MSCI EAFE ETF (EFA)
+International Developed Equity,Quantitative Portfolio: Factor-Enhanced Intl ADR: V + M + Q,Dimensional International Core Equity Market ETF (DFAI),
+International Developed Equity,Quantitative Portfolio: Factor-Enhanced Intl ADR: V + Q,Dimensional International Core Equity Market ETF (DFAI),
+Emerging Market Equity,Quantitative Portfolio: Factor-Enhanced Emerg Mrkts ADR: V + M + Q,Dimensional Emerging Markets Core Equity 2 ETF (DFEM),
+Emerging Market Equity,Quantitative Portfolio: Factor-Enhanced Emerg Mrkts ADR: V + Q,Dimensional Emerging Markets Core Equity 2 ETF (DFEM),
+Emerging Market Equity,Quantitative Portfolio: Market Series Emerg Mrkts ADR,iShares Core MSCI Emerging Markets ETF (IEMG),iShares MSCI Emerging Markets ETF (EEM)

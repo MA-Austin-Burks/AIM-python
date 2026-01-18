@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 import polars as pl
 import streamlit as st
@@ -12,9 +12,10 @@ from components import (
 from components.constants import (
     CARDS_DISPLAYED_KEY,
     CARDS_PER_LOAD,
+    EXPLANATION_CARD_UPDATE_DATE,
     SELECTED_STRATEGY_MODAL_KEY,
 )
-from components.dataframe import filter_and_sort_strategies, _hash_filters
+from components.dataframe import filter_and_sort_strategies, _hash_filter_expression
 from utils.core.data import get_strategy_table, load_cleaned_data
 from utils.core.formatting import get_strategy_color
 from styles.branding import PRIMARY
@@ -38,16 +39,19 @@ render_page_header()
 cleaned_data: pl.LazyFrame = load_cleaned_data()
 strategy_table: pl.DataFrame = get_strategy_table(cleaned_data)
 
-filters: dict[str, Any] = render_sidebar(strategy_table)
+filter_expr = render_sidebar()
+
+st.markdown("## Aspen Investing Menu (AIM 2.0)")
+st.caption(f"last updated: {EXPLANATION_CARD_UPDATE_DATE}")
 
 render_explanation_card()
 # Compute filter hash for caching
-filter_hash = _hash_filters(filters)
-filtered_strategies: pl.DataFrame = filter_and_sort_strategies(strategy_table, filters, filter_hash)
+filter_hash = _hash_filter_expression(filter_expr)
+filtered_strategies: pl.DataFrame = filter_and_sort_strategies(strategy_table, filter_expr, filter_hash)
 
 # Reset pagination when filters change to avoid showing stale results
 # Hash comparison prevents unnecessary resets on unrelated state changes
-filter_hash = _hash_filters(filters)
+filter_hash = _hash_filter_expression(filter_expr)
 if "last_filter_hash" not in st.session_state:
     st.session_state["last_filter_hash"] = filter_hash
 elif st.session_state["last_filter_hash"] != filter_hash:

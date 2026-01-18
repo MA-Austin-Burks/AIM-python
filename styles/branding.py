@@ -3,6 +3,9 @@ Mercer Advisors Brand Guidelines Configuration
 ===============================================
 Centralized styling and color palettes for charts, UI elements, and typography.
 Based on official Mercer Advisors brand guidelines.
+
+Note: Theme colors, fonts, and UI styling are now configured in .streamlit/config.toml.
+This module provides programmatic access to brand colors and chart color sequences.
 """
 
 # =============================================================================
@@ -148,6 +151,8 @@ SERIES_COLORS = {
 
 # =============================================================================
 # TYPOGRAPHY
+# Note: Fonts are configured in .streamlit/config.toml for Streamlit UI.
+# This dictionary is kept for programmatic use in Plotly charts.
 # =============================================================================
 FONTS = {
     "headline": "'Merriweather', Georgia, serif",
@@ -177,6 +182,8 @@ def hex_to_rgba(hex_color: str, alpha: float) -> str:
 
 # =============================================================================
 # STREAMLIT CUSTOM CSS
+# Note: Most styling is now handled by .streamlit/config.toml, but this is
+# kept for backward compatibility or additional customizations if needed.
 # =============================================================================
 STREAMLIT_CUSTOM_CSS = f"""
 {GOOGLE_FONTS_IMPORT}

@@ -6,8 +6,14 @@ from typing import Any
 import polars as pl
 import streamlit as st
 
-from components.constants import MODEL_AGG_SORT_DEFAULT, MODEL_AGG_SORT_ORDER
 from utils.download_parquet_from_azure import download_parquet_from_azure
+
+# Load model aggregate sort order from CSV
+_MODEL_AGG_SORT_DF = pl.read_csv("data/model_agg_sort_order.csv")
+MODEL_AGG_SORT_ORDER: dict[str, int] = dict(
+    zip(_MODEL_AGG_SORT_DF["ModelAggregate"].to_list(), _MODEL_AGG_SORT_DF["SortOrder"].to_list())
+)
+MODEL_AGG_SORT_DEFAULT: int = 99
 
 
 def hash_lazyframe(lf: pl.LazyFrame) -> str:

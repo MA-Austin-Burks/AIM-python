@@ -1,10 +1,8 @@
-from typing import Any
-
 import polars as pl
 import streamlit as st
-from datetime import datetime
 
 from components.constants import (
+    ABBREVIATIONS_UPDATE_DATE,
     ACCOUNT_VALUE_STEP,
     DEFAULT_EQUITY_RANGE,
     DEFAULT_MIN_ACCOUNT_VALUE,
@@ -18,6 +16,7 @@ from components.constants import (
     SERIES_OPTIONS,
     STRATEGY_TYPES,
     STRATEGY_TYPE_TO_SERIES,
+    UNDER_DEVELOPMENT_UPDATE_DATE,
 )
 
 # Session state key for pending clear action
@@ -30,32 +29,34 @@ def _clear_search() -> None:
 
 
 def _schedule_clear_search() -> None:
-    """Schedule a clear for the next rerun (used by shortcut button)."""
+    """Schedule a clear for the next rerun."""
     st.session_state[_PENDING_CLEAR_KEY] = True
 
 
-def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
-    """Render sidebar filters using the strategy table DataFrame.
-    
-    Steps:
-    1. Handle search input and clear functionality
-    2. Render search input and filters toggle
-    3. Render filter controls (recommended, account value, equity range)
-    4. Render boolean filters (tax-managed, SMA manager, private markets)
-    5. Render type and series filters
-    6. Render abbreviations section
-    7. Render under development popover
-    8. Return filter dictionary
-    """
+def _render_yes_no_filter(label: str, key: str, disabled: bool) -> str | None:
+    """Render a boolean filter pill widget with Yes/No options."""
+    return st.pills(
+        label,
+        options=["Yes", "No"],
+        selection_mode="single",
+        default=None,
+        disabled=disabled,
+        key=key,
+    )
+
+
+def render_sidebar() -> pl.Expr:
+    """Render sidebar filters and return a Polars filter expression."""
     # ============================================================================
     # STEP 1: Handle search input and clear functionality
     # ============================================================================
-    schema: pl.Schema = strats.schema
-    
     # Check if we need to clear search from a previous shortcut button press
     if st.session_state.get(_PENDING_CLEAR_KEY, False):
         st.session_state["strategy_search_input"] = ""
         st.session_state[_PENDING_CLEAR_KEY] = False
+
+    # Initialize filter expression list - build incrementally as filters are rendered
+    expressions: list[pl.Expr] = []
 
     with st.sidebar:
         # ============================================================================
@@ -77,6 +78,15 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
         
         # Search mode disables filters to prevent confusion (search is OR, filters are AND)
         search_active = bool(strategy_search_text and strategy_search_text.strip())
+        strategy_search = strategy_search_text.strip() if strategy_search_text else None
+        
+        # Handle search-only mode (returns early if active)
+        if search_active and strategy_search:
+            return (
+                pl.col("Strategy")
+                .str.to_lowercase()
+                .str.contains(strategy_search.lower(), literal=True)
+            )
         
         # Visual separator clarifies that search and filters are mutually exclusive modes
         st.markdown(
@@ -103,8 +113,8 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
             help="Show only recommended strategies when enabled",
             disabled=search_active,
         )
-        show_recommended = recommended_only
-        show_approved = False
+        if recommended_only:
+            expressions.append(pl.col("Recommended"))
 
         strategy_types: list[str] = STRATEGY_TYPES
         default_type: str = DEFAULT_STRATEGY_TYPE
@@ -121,6 +131,8 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
                 key="min_strategy",
                 disabled=search_active,
             )
+        expressions.append(pl.col("Minimum") <= min_strategy)
+        
         with col_equity:
             equity_range = st.slider(
                 "Equity Allocation Range",
@@ -131,38 +143,38 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
                 key="equity_range",
                 disabled=search_active,
             )
+        expressions.append(
+            (pl.col("Equity %").is_not_null())
+            & (pl.col("Equity %") >= equity_range[0])
+            & (pl.col("Equity %") <= equity_range[1])
+        )
 
         # ============================================================================
         # STEP 4: Render boolean filters (tax-managed, SMA manager, private markets)
         # ============================================================================
         col_tax, col_sma, col_private = st.columns(3)
         with col_tax:
-            tax_managed_selection = st.pills(
-                "Tax-Managed (TM)",
-                options=["Yes", "No"],
-                selection_mode="single",
-                default=None,
-                disabled=search_active,
-                key="sidebar_tax_managed",
+            tax_managed_selection: str | None = _render_yes_no_filter(
+                label="Tax-Managed (TM)", key="sidebar_tax_managed", disabled=search_active
             )
+        if tax_managed_selection:
+            expressions.append(pl.col("Tax-Managed") == (tax_managed_selection == "Yes"))
+        
         with col_sma:
-            has_sma_manager_selection = st.pills(
-                "Has SMA Manager",
-                options=["Yes", "No"],
-                selection_mode="single",
-                default=None,
-                disabled=search_active or "Has SMA Manager" not in schema,
-                key="sidebar_sma_manager",
+            has_sma_manager_selection: str | None = _render_yes_no_filter(
+                label="Has SMA Manager", key="sidebar_sma_manager", disabled=search_active
             )
+        if has_sma_manager_selection:
+            expressions.append(pl.col("Has SMA Manager") == (has_sma_manager_selection == "Yes"))
+        
         with col_private:
-            private_markets_selection = st.pills(
-                "Private Markets",
-                options=["Yes", "No"],
-                selection_mode="single",
-                default=None,
-                disabled=search_active,
-                key="sidebar_private_markets",
+            private_markets_selection: str | None = _render_yes_no_filter(
+                label="Private Markets", key="sidebar_private_markets", disabled=search_active
             )
+        if private_markets_selection == "Yes":
+            expressions.append(pl.col("Private Markets"))
+        elif private_markets_selection == "No":
+            expressions.append(~pl.col("Private Markets"))
 
         # ============================================================================
         # STEP 5: Render type and series filters
@@ -226,88 +238,46 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
             disabled=search_active,
             key="sidebar_series",
         )
+        if selected_types:
+            expressions.append(pl.col("Strategy Type").is_in(selected_types))
+        if selected_subtypes:
+            expressions.append(pl.col("Type").is_in(selected_subtypes))
+        
+        # Add search filter if provided (in normal mode)
+        if strategy_search:
+            expressions.append(
+                pl.col("Strategy")
+                .str.to_lowercase()
+                .str.contains(strategy_search.lower(), literal=True)
+            )
 
         # ============================================================================
         # STEP 6: Render abbreviations section
         # ============================================================================
         st.divider()
         with st.expander("**Abbreviations**", icon=":material/menu_book:"):
-            st.caption(f"last updated: {datetime.now().strftime('%Y-%m-%d')}")
-            st.markdown(
-                """
-                - **MUSALMKT** - MA Market US All (SMA)
-                - **MUSLGMKT** - MA Market US Large (SMA)
-                - **QUSALVMQ** - QP Factor US All Cap VMQ
-                - **QUSLGVMQ** - QP Factor US Large Cap VMQ
-                - **QUSLGDIV** - QP Market US Large Div Income
-                - **QIDMVMQ** - QP Factor Int'l Dev ADR VMQ
-                - **MUSLGMKTLM** - MA Market US Large (SMA Low Min)
-                - **MUSLGMFTLM** - MA Multifct US Large (SMA Low Min)
-                - **5YTRYSMA** - MA 5 Year Treasury Ladder (SMA)
-                - **5YCRPETF** - MA 5 Year US Corporate Ladder (ETF)
-                - **5YTRYETF** - MA 5 Year US Treasury Ladder (ETF)
-                - **9YTRYETF** - MA 9 Year US Treasury Ladder (ETF)
-                - **5YMUNETF** - MA 5 Year Municipal Ladder (ETF)
-                - **B5YCRP** - BlackRock Corporate 1-5 Year
-                - **B10YCRP** - BlackRock Corporate 1-10 Year
-                - **N7YMUN** - Nuveen Municipal 1-7 Year
-                - **N15YMUN** - Nuveen Municipal 1-15 Year
-                """
+            st.caption(f"last updated: {ABBREVIATIONS_UPDATE_DATE}")
+            abbreviations_df = pl.read_csv("data/abbreviations.csv")
+            st.dataframe(
+                abbreviations_df,
+                height="content",
             )
         
         # ============================================================================
         # STEP 7: Render under development expander
         # ============================================================================
         with st.expander("**Under Development**", icon=":material/construction:"):
-            st.caption(f"last updated: {datetime.now().strftime('%Y-%m-%d')}")
-            st.markdown("### **Risk-Based Strategies**")
-            st.markdown("""
-            - Market (ETF, Hedged Equity)
-            """)
-            st.markdown("### **Asset Class Strategies**")
-            st.markdown("""
-            - MA Market Global (SMA)
-            - MA Market Non-US Developed Markets (SMA)
-            - MA Market Non-US Emerging Markets (SMA)
-            - MA Market US All Cap (SMA)
-            - MA Market US Large Cap (SMA)
-            - MA Market US Small Cap (SMA)
-            - MA Multifactor Global (SMA)
-            - MA Multifactor Non-US Developed Markets (SMA)
-            - MA Multifactor Non-US Emerging Markets (SMA)
-            - MA Multifactor US All Cap (SMA)
-            - MA Multifactor US Large Cap (SMA)
-            - MA Multifactor US Small Cap (SMA)
-            - MA Income US Large Cap (SMA)
-            - MA Income US Large Cap (SMA Low Min)
-            - MA Income Non-US Developed Markets (SMA)
-            - MA Absolute Return
-            - MA Commodities
-            """)
-            st.markdown("### **Special Situation Strategies**")
-            st.markdown("""
-            - Ares Real Estate Exchange Program
-            - Goldman Sachs Tax Aware Fixed Income
-            - DFA Liability Driven Investing
-            """)
+            st.caption(f"last updated: {UNDER_DEVELOPMENT_UPDATE_DATE}")
+            with open("data/under_development.txt", "r", encoding="utf-8") as f:
+                st.markdown(f.read())
 
     # ============================================================================
-    # STEP 8: Return filter dictionary
+    # STEP 8: Combine all filter expressions with AND logic
     # ============================================================================
-    tax_managed_filter = tax_managed_selection if tax_managed_selection else "All"
-    has_sma_manager_filter = has_sma_manager_selection if has_sma_manager_selection else "All"
-    private_markets_filter = private_markets_selection if private_markets_selection else "All"
-
-    return {
-        "strategy_search": strategy_search_text.strip() if strategy_search_text else None,
-        "search_only_mode": search_active,
-        "min_strategy": min_strategy,
-        "tax_managed_filter": tax_managed_filter,
-        "has_sma_manager_filter": has_sma_manager_filter,
-        "private_markets_filter": private_markets_filter,
-        "show_recommended": show_recommended,
-        "show_approved": show_approved,
-        "selected_types": selected_types,
-        "selected_subtypes": selected_subtypes,
-        "equity_range": equity_range,
-    }
+    if not expressions:
+        return pl.lit(True)
+    
+    combined_expr = expressions[0]
+    for expr in expressions[1:]:
+        combined_expr = combined_expr & expr
+    return combined_expr

@@ -1,0 +1,26 @@
+### Risk-Based Strategies
+- Market (ETF, Hedged Equity)
+
+### Asset Class Strategies
+- MA Market Global (SMA)
+- MA Market Non-US Developed Markets (SMA)
+- MA Market Non-US Emerging Markets (SMA)
+- MA Market US All Cap (SMA)
+- MA Market US Large Cap (SMA)
+- MA Market US Small Cap (SMA)
+- MA Multifactor Global (SMA)
+- MA Multifactor Non-US Developed Markets (SMA)
+- MA Multifactor Non-US Emerging Markets (SMA)
+- MA Multifactor US All Cap (SMA)
+- MA Multifactor US Large Cap (SMA)
+- MA Multifactor US Small Cap (SMA)
+- MA Income US Large Cap (SMA)
+- MA Income US Large Cap (SMA Low Min)
+- MA Income Non-US Developed Markets (SMA)
+- MA Absolute Return
+- MA Commodities
+
+### Special Situation Strategies
+- Ares Real Estate Exchange Program
+- Goldman Sachs Tax Aware Fixed Income
+- DFA Liability Driven Investing

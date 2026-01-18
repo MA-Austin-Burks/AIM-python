@@ -1,0 +1,18 @@
+﻿Abbreviation,Description
+MUSALMKT,MA Market US All (SMA)
+MUSLGMKT,MA Market US Large (SMA)
+QUSALVMQ,QP Factor US All Cap VMQ
+QUSLGVMQ,QP Factor US Large Cap VMQ
+QUSLGDIV,QP Market US Large Div Income
+QIDMVMQ,QP Factor Int'l Dev ADR VMQ
+MUSLGMKTLM,MA Market US Large (SMA Low Min)
+MUSLGMFTLM,MA Multifct US Large (SMA Low Min)
+5YTRYSMA,MA 5 Year Treasury Ladder (SMA)
+5YCRPETF,MA 5 Year US Corporate Ladder (ETF)
+5YTRYETF,MA 5 Year US Treasury Ladder (ETF)
+9YTRYETF,MA 9 Year US Treasury Ladder (ETF)
+5YMUNETF,MA 5 Year Municipal Ladder (ETF)
+B5YCRP,BlackRock Corporate 1-5 Year
+B10YCRP,BlackRock Corporate 1-10 Year
+N7YMUN,Nuveen Municipal 1-7 Year
+N15YMUN,Nuveen Municipal 1-15 Year

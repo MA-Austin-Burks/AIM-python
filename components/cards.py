@@ -3,10 +3,9 @@ import base64
 
 import polars as pl
 import streamlit as st
-from datetime import datetime
 from streamlit_product_card import product_card
 
-from styles.branding import hex_to_rgba
+from styles.branding import hex_to_rgba, SERIES_COLORS
 from utils.core.formatting import get_series_color_from_row
 from components.constants import (
     CARD_GRID_COLUMNS,
@@ -21,31 +20,46 @@ from components.constants import (
 
 def render_explanation_card() -> None:
     """Render an explanation card describing the site's intent and how to use it."""
-    with st.container(border=False):
-        st.markdown("### Aspen Investing Menu (AIM 2.0)")
-        st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d')}")
-        with st.expander("About the Aspen Investment Menu", icon=":material/book:"):
-            st.markdown(
-                """
-                The Aspen Investment Menu offers investment strategies organized into three main buckets:
-                
-                **Risk-Based Strategies** \n
-                These strategies are designed to match specific risk profiles and include three series:
-                - **Multifactor Series**: Strategies that combine multiple investment factors for enhanced risk-adjusted returns
-                - **Market Series**: Broad market exposure strategies designed for core portfolio allocations
-                - **Income Series**: Strategies focused on generating income while managing risk, tilted towards academically validated income factors
-                
-                **Asset-Class Strategies** \n
-                These strategies target specific asset classes and include:
-                - **Equity Strategies**: Stock-based investment approaches
-                - **Fixed Income Strategies**: Bond and fixed-income security strategies
-                - **Cash Strategies**: Cash and cash-equivalent investment options
-                - **Alternative Strategies**: Non-traditional investment approaches including real estate, commodities, and other alternatives
-                
-                **Special Situation Strategies** \n
-                These are specialized strategies designed for unique investment needs and circumstances, including tax-aware approaches, liability-driven investing, and other tailored solutions.
-                """
-            )
+    with st.expander("About the Aspen Investment Menu", icon=":material/book:"):
+        with open("data/explanation_card.txt", "r", encoding="utf-8") as f:
+            st.markdown(f.read())
+
+# Pre-generated SVG cache for common series colors to speed up initial load
+# Generates SVGs for all common series colors in both recommended states
+def _create_svg_data_url(series_color: str, recommended: bool) -> str:
+    """Generate SVG data URL for a card."""
+    star_html = ""
+    if recommended:
+        star_html = '''
+        <defs>
+            <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+                <feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity="0.3"/>
+            </filter>
+        </defs>
+        <text x="20" y="30" fill="#FFD700" font-size="24" font-weight="bold" 
+              text-anchor="middle" filter="url(#shadow)">★</text>
+        '''
+    
+    svg_content = f'''<svg xmlns="http://www.w3.org/2000/svg" width="40" height="200">
+        <defs>
+            <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:{series_color};stop-opacity:1" />
+                <stop offset="100%" style="stop-color:{series_color};stop-opacity:0.85" />
+            </linearGradient>
+        </defs>
+        <rect width="40" height="200" fill="url(#grad)"/>
+        {star_html}
+    </svg>'''
+    
+    svg_encoded = base64.b64encode(svg_content.encode()).decode()
+    return f"data:image/svg+xml;base64,{svg_encoded}"
+
+
+# Pre-generate SVGs for all common series colors (both recommended states)
+_PREGENERATED_SVG_CACHE: dict[tuple[str, bool], str] = {}
+for series_name, color in SERIES_COLORS.items():
+    _PREGENERATED_SVG_CACHE[(color, False)] = _create_svg_data_url(color, False)
+    _PREGENERATED_SVG_CACHE[(color, True)] = _create_svg_data_url(color, True)
 
 # Card styles defined at module level to avoid recreating dict on every render
 # This improves performance when rendering many cards
@@ -90,32 +104,18 @@ _CARD_STYLES = {
 
 @st.cache_data(ttl=3600)
 def _generate_card_svg(series_color: str, recommended: bool) -> str:
-    """Generate and cache the SVG image for a card. Returns base64 data URL."""
-    star_html = ""
-    if recommended:
-        star_html = '''
-        <defs>
-            <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-                <feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity="0.3"/>
-            </filter>
-        </defs>
-        <text x="20" y="30" fill="#FFD700" font-size="24" font-weight="bold" 
-              text-anchor="middle" filter="url(#shadow)">★</text>
-        '''
+    """Generate and cache the SVG image for a card. Returns base64 data URL.
     
-    svg_content = f'''<svg xmlns="http://www.w3.org/2000/svg" width="40" height="200">
-        <defs>
-            <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" style="stop-color:{series_color};stop-opacity:1" />
-                <stop offset="100%" style="stop-color:{series_color};stop-opacity:0.85" />
-            </linearGradient>
-        </defs>
-        <rect width="40" height="200" fill="url(#grad)"/>
-        {star_html}
-    </svg>'''
+    First checks pre-generated cache for common series colors, then generates
+    on-the-fly for any custom colors not in the cache.
+    """
+    # Check pre-generated cache first for instant lookup
+    cache_key = (series_color, recommended)
+    if cache_key in _PREGENERATED_SVG_CACHE:
+        return _PREGENERATED_SVG_CACHE[cache_key]
     
-    svg_encoded = base64.b64encode(svg_content.encode()).decode()
-    return f"data:image/svg+xml;base64,{svg_encoded}"
+    # Generate on-the-fly for colors not in cache
+    return _create_svg_data_url(series_color, recommended)
 
 
 def _render_strategy_card(strategy_row: dict[str, Any], index: int) -> tuple[bool, str]:

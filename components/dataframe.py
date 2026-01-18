@@ -5,19 +5,17 @@ import polars as pl
 import streamlit as st
 
 from styles.branding import SERIES_COLORS
-from components.filters import build_filter_expression
 
 
-def _hash_filters(filters: dict[str, Any]) -> str:
-    """Create a stable hash for filter dictionary."""
-    # Sort filters for consistent hashing
-    sorted_filters = tuple(sorted((k, str(v)) for k, v in filters.items()))
-    filter_str = str(sorted_filters)
+def _hash_filter_expression(filter_expr: pl.Expr) -> str:
+    """Create a stable hash for filter expression."""
+    # Convert expression to string representation for hashing
+    filter_str = str(filter_expr)
     return hashlib.md5(filter_str.encode()).hexdigest()
 
 
 @st.cache_data
-def filter_and_sort_strategies(strats: pl.DataFrame, filters: dict[str, Any], filter_hash: str) -> pl.DataFrame:
+def filter_and_sort_strategies(strats: pl.DataFrame, _filter_expr: pl.Expr, filter_hash: str) -> pl.DataFrame:
     """Filter and sort the strategy table DataFrame.
     
     Cached using filter_hash as part of the cache key to avoid re-filtering
@@ -25,13 +23,12 @@ def filter_and_sort_strategies(strats: pl.DataFrame, filters: dict[str, Any], fi
     
     Args:
         strats: Strategy-level DataFrame (already collected, not LazyFrame)
-        filters: Filter dictionary from sidebar
-        filter_hash: Hash of the filters for cache key (computed in app.py)
+        _filter_expr: Polars filter expression from sidebar (prefixed with _ to exclude from cache key)
+        filter_hash: Hash of the filter expression for cache key (computed in app.py)
     """
-    filter_expr: pl.Expr = build_filter_expression(filters)
     # Default sort prioritizes Investment Committee recommendations
     return (
-        strats.filter(filter_expr)
+        strats.filter(_filter_expr)
         .sort(
             by=["Recommended", "Equity %", "Strategy"],
             descending=[True, True, True],
