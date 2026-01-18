@@ -1,11 +1,9 @@
 from typing import Any, Optional
-import base64
 
 import polars as pl
 import streamlit as st
-from streamlit_product_card import product_card
+from components.model_card import model_card
 
-from styles.branding import hex_to_rgba, SERIES_COLORS
 from utils.core.formatting import get_series_color_from_row
 from utils.core.session_state import get_or_init
 from components.constants import (
@@ -25,102 +23,9 @@ def render_explanation_card() -> None:
         with open("data/explanation_card.txt", "r", encoding="utf-8") as f:
             st.markdown(f.read())
 
-# Pre-generated SVG cache for common series colors to speed up initial load
-# Generates SVGs for all common series colors in both recommended states
-def _create_svg_data_url(series_color: str, recommended: bool) -> str:
-    """Generate SVG data URL for a card."""
-    star_html = ""
-    if recommended:
-        star_html = '''
-        <defs>
-            <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-                <feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity="0.3"/>
-            </filter>
-        </defs>
-        <text x="20" y="30" fill="#FFD700" font-size="24" font-weight="bold" 
-              text-anchor="middle" filter="url(#shadow)">★</text>
-        '''
-    
-    svg_content = f'''<svg xmlns="http://www.w3.org/2000/svg" width="40" height="200">
-        <defs>
-            <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" style="stop-color:{series_color};stop-opacity:1" />
-                <stop offset="100%" style="stop-color:{series_color};stop-opacity:0.85" />
-            </linearGradient>
-        </defs>
-        <rect width="40" height="200" fill="url(#grad)"/>
-        {star_html}
-    </svg>'''
-    
-    svg_encoded = base64.b64encode(svg_content.encode()).decode()
-    return f"data:image/svg+xml;base64,{svg_encoded}"
-
-
-# Pre-generate SVGs for all common series colors (both recommended states)
-_PREGENERATED_SVG_CACHE: dict[tuple[str, bool], str] = {}
-for series_name, color in SERIES_COLORS.items():
-    _PREGENERATED_SVG_CACHE[(color, False)] = _create_svg_data_url(color, False)
-    _PREGENERATED_SVG_CACHE[(color, True)] = _create_svg_data_url(color, True)
-
-# Card styles defined at module level to avoid recreating dict on every render
-# This improves performance when rendering many cards
-_CARD_STYLES = {
-    "card": {
-        "border-radius": "12px",
-        "box-shadow": "0 4px 12px rgba(0,0,0,0.08)",
-        "border": "1px solid rgba(0,0,0,0.06)",
-        "cursor": "pointer",
-        "transition": "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-        "background": "linear-gradient(135deg, #ffffff 0%, #fafafa 100%)",
-        "overflow": "hidden",
-    },
-    "card:hover": {
-        "box-shadow": "0 12px 24px rgba(0,0,0,0.15)",
-        "transform": "translateY(-4px)",
-        "border-color": "rgba(192, 6, 134, 0.2)",
-    },
-    "image": {
-        "min-width": "40px",
-        "border-radius": "12px 0 0 12px",
-        "position": "relative",
-    },
-    "title": {
-        "font-size": "1.15rem",
-        "font-weight": "600",
-        "color": "#2c3e50",
-        "margin-bottom": "0.875rem",
-        "line-height": "1.4",
-        "letter-spacing": "-0.01em",
-    },
-    "description": {
-        "line-height": "1.8",
-        "color": "#546e7a",
-        "font-size": "0.925rem",
-        "font-weight": "400",
-    },
-}
-
-
-
-
-@st.cache_data(ttl=3600)
-def _generate_card_svg(series_color: str, recommended: bool) -> str:
-    """Generate and cache the SVG image for a card. Returns base64 data URL.
-    
-    First checks pre-generated cache for common series colors, then generates
-    on-the-fly for any custom colors not in the cache.
-    """
-    # Check pre-generated cache first for instant lookup
-    cache_key = (series_color, recommended)
-    if cache_key in _PREGENERATED_SVG_CACHE:
-        return _PREGENERATED_SVG_CACHE[cache_key]
-    
-    # Generate on-the-fly for colors not in cache
-    return _create_svg_data_url(series_color, recommended)
-
 
 def _render_strategy_card(strategy_row: dict[str, Any], index: int) -> tuple[bool, str]:
-    """Render a single strategy card, return (clicked, strategy_name)."""
+    """Render a single strategy card using the custom investment card component, return (clicked, strategy_name)."""
     strategy_name = strategy_row["Strategy"]
     series_color = get_series_color_from_row(strategy_row)
     
@@ -130,46 +35,28 @@ def _render_strategy_card(strategy_row: dict[str, Any], index: int) -> tuple[boo
     expense_ratio = strategy_row.get("Expense Ratio", 0)
     minimum = strategy_row.get("Minimum", 0)
     
-    colored_image_url = _generate_card_svg(series_color, recommended)
+    # Convert decimal values to percentages for display
+    # yield_val is stored as decimal (e.g., 0.085 for 8.5%)
+    yield_pct_display = (yield_val * 100) if yield_val is not None else 0.0
     
-    if yield_val is not None:
-        yield_str = f"{yield_val * 100:.2f}%"
-    else:
-        yield_str = "N/A"
-    
-    description_lines = [
-        f"Equity: {equity_pct:.0f}%",
-        f"Yield: {yield_str}",
-        f"Expense Ratio: {expense_ratio * 100:.2f}%",
-        f"Minimum: ${minimum:,.0f}",
-    ]
-    
-    # Background color uses series color at low opacity for visual grouping
-    # Helps users quickly identify strategy series without overwhelming the card
-    card_bg_color = hex_to_rgba(series_color, alpha=0.1)
-    card_styles = {
-        **_CARD_STYLES,
-        "card": {
-            **_CARD_STYLES["card"],
-            "background": card_bg_color,
-        },
-    }
+    # expense_ratio is stored as decimal (e.g., 0.0045 for 0.45%)
+    expense_ratio_display = expense_ratio * 100
     
     card_key = f"strategy_card_{index}"
-    clicked = product_card(
-        product_name=strategy_name,
-        description=description_lines,
-        product_image=colored_image_url,
-        picture_position="left",
-        image_width_percent=10,
-        image_aspect_ratio="native",
-        image_object_fit="cover",
-        enable_animation=True,
-        on_button_click=None,
-        button_text=None,
-        styles=card_styles,
+    clicked_id = model_card(
+        id=strategy_name,
+        name=strategy_name,
+        equity=equity_pct,
+        yield_pct=yield_pct_display,
+        expense_ratio=expense_ratio_display,
+        minimum=minimum,
+        color=series_color,
+        featured=recommended,
         key=card_key,
     )
+    
+    # Return True if this card was clicked (clicked_id matches strategy_name)
+    clicked = clicked_id == strategy_name
     return clicked, strategy_name
 
 

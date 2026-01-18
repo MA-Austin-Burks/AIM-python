@@ -22,42 +22,32 @@ from utils.core.session_state import reset_if_changed
 from styles.branding import PRIMARY
 
 
-def render_page_header() -> None:
-    st.set_page_config(
-        page_title="Aspen Investing Menu",
-        layout="wide",
-        initial_sidebar_state=475,
-        menu_items={
-            "Report a Bug": "mailto:aburks@merceradvisors.com",
-        },
-    )
+st.set_page_config(
+    page_title="Aspen Investing Menu",
+    layout="wide",
+    initial_sidebar_state=475,
+    menu_items={
+        "Report a Bug": "mailto:aburks@merceradvisors.com",
+    },
+)
 
-
-render_page_header()
-
-# Full dataset only needed when viewing allocation details (product-level data)
-# Strategy table is pre-aggregated for performance in card/table views
 cleaned_data: pl.LazyFrame = load_cleaned_data()
-strategy_table: pl.DataFrame = get_strategy_table(cleaned_data)
+strats: pl.DataFrame = get_strategy_table(cleaned_data)
 
-filter_expr = render_sidebar()
+filter_expr: pl.Expr = render_sidebar()
 
 st.markdown("## Aspen Investing Menu (AIM 2.0)")
 st.caption(f"last updated: {EXPLANATION_CARD_UPDATE_DATE}")
 
 render_explanation_card()
-# Compute filter hash for caching and reset pagination when filters change
-filter_hash = _hash_filter_expression(filter_expr)
-filtered_strategies: pl.DataFrame = filter_and_sort_strategies(strategy_table, filter_expr, filter_hash)
 
-# Reset pagination when filters change to avoid showing stale results
-# Hash comparison prevents unnecessary resets on unrelated state changes
+filter_hash: str = _hash_filter_expression(filter_expr)
+filtered_strategies: pl.DataFrame = filter_and_sort_strategies(strats, filter_expr, filter_hash)
+
 reset_if_changed("last_filter_hash", filter_hash, CARDS_DISPLAYED_KEY, CARDS_PER_LOAD)
 
 selected_strategy, strategy_data = render_card_view(filtered_strategies)
 
-# Modal state persists across reruns via @st.dialog decorator
-# Clearing trigger prevents reopening when other interactions cause reruns
 strategy_name = st.session_state.get(SELECTED_STRATEGY_MODAL_KEY)
 if strategy_name:
     strategy_row: pl.DataFrame = filtered_strategies.filter(pl.col("Strategy") == strategy_name)
