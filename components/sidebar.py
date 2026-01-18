@@ -9,6 +9,7 @@ from components.constants import (
     DEFAULT_RECOMMENDED_ONLY,
     DEFAULT_SERIES_SUBTYPES,
     DEFAULT_STRATEGY_TYPE,
+    EQUIVALENTS_UPDATE_DATE,
     EQUITY_MAX_VALUE,
     EQUITY_MIN_VALUE,
     EQUITY_STEP,
@@ -16,6 +17,7 @@ from components.constants import (
     SERIES_OPTIONS,
     STRATEGY_TYPES,
     STRATEGY_TYPE_TO_SERIES,
+    TLH_UPDATE_DATE,
     UNDER_DEVELOPMENT_UPDATE_DATE,
 )
 
@@ -264,7 +266,29 @@ def render_sidebar() -> pl.Expr:
             )
         
         # ============================================================================
-        # STEP 7: Render under development expander
+        # STEP 7: Render TLH section
+        # ============================================================================
+        with st.expander("**Tax-Loss Harvesting (TLH)**", icon=":material/money_off:"):
+            st.caption(f"last updated: {TLH_UPDATE_DATE}")
+            tlh_df = pl.read_csv("data/tlh.csv")
+            st.dataframe(
+                tlh_df,
+                height="content",
+            )
+        
+        # ============================================================================
+        # STEP 8: Render equivalents section
+        # ============================================================================
+        with st.expander("**Equivalents**", icon=":material/equal:"):
+            st.caption(f"last updated: {EQUIVALENTS_UPDATE_DATE}")
+            equivalents_df = pl.read_csv("data/equivalents.csv")
+            st.dataframe(
+                equivalents_df,
+                height="content",
+            )
+        
+        # ============================================================================
+        # STEP 9: Render under development expander
         # ============================================================================
         with st.expander("**Under Development**", icon=":material/construction:"):
             st.caption(f"last updated: {UNDER_DEVELOPMENT_UPDATE_DATE}")
@@ -272,7 +296,7 @@ def render_sidebar() -> pl.Expr:
                 st.markdown(f.read())
 
     # ============================================================================
-    # STEP 8: Combine all filter expressions with AND logic
+    # STEP 10: Combine all filter expressions with AND logic
     # ============================================================================
     if not expressions:
         return pl.lit(True)
