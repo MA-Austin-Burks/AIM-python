@@ -5,7 +5,7 @@ import streamlit as st
 
 from components import (
     render_card_view,
-    render_page_header,
+    render_explanation_card,
     render_sidebar,
     render_strategy_modal,
 )
@@ -17,6 +17,18 @@ from components.constants import (
 from components.dataframe import filter_and_sort_strategies, _hash_filters
 from utils.core.data import get_strategy_table, load_cleaned_data
 
+
+def render_page_header() -> None:
+    st.set_page_config(
+        page_title="Aspen Investing Menu",
+        layout="wide",
+        initial_sidebar_state=400,
+        menu_items={
+            "Report a Bug": "mailto:aburks@merceradvisors.com",
+        },
+    )
+
+
 render_page_header()
 
 # Full dataset only needed when viewing allocation details (product-level data)
@@ -25,6 +37,8 @@ cleaned_data: pl.LazyFrame = load_cleaned_data()
 strategy_table: pl.DataFrame = get_strategy_table(cleaned_data)
 
 filters: dict[str, Any] = render_sidebar(strategy_table)
+
+render_explanation_card()
 # Compute filter hash for caching
 filter_hash = _hash_filters(filters)
 filtered_strategies: pl.DataFrame = filter_and_sort_strategies(strategy_table, filters, filter_hash)

@@ -3,6 +3,7 @@ import base64
 
 import polars as pl
 import streamlit as st
+from datetime import datetime
 from streamlit_product_card import product_card
 
 from styles.branding import hex_to_rgba
@@ -16,6 +17,30 @@ from components.constants import (
     DEFAULT_CARD_ORDER,
     SELECTED_STRATEGY_MODAL_KEY,
 )
+
+
+def render_explanation_card() -> None:
+    """Render an explanation card describing the site's intent and how to use it."""
+    with st.container(border=False):
+        st.markdown("### Aspen Investing Menu 2.0")
+        st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d')}")
+        with st.expander("About this app", expanded=True):
+            st.markdown(
+                """
+                This application replaces [**AIM 1.0**](https://merceradvisors.sharepoint.com/:x:/r/sites/InvestmentStrategy/_layouts/15/Doc.aspx?sourcedoc=%7BE603B512-F595-4006-B33C-C6DB7CEA1487%7D&file=Aspen%20Investing%20Menu.xlsx&action=default&mobileredirect=true) 
+                and helps you explore and filter investment strategies available on the Aspen Investment platform. 
+                Use the sidebar filters to narrow down strategies based on your investment criteria, or search 
+                for specific strategy names.
+                
+                **How to use:**
+                - **Search**: Type a strategy name in the search box to quickly find specific strategies
+                - **Filters**: Use the sidebar filters to refine results
+                - **View Details**: Click on any strategy card to see detailed allocation information
+                - **Sort**: Use the "Order By" dropdown to sort strategies by various criteria
+                
+                Click on any strategy card below to explore its detailed allocation breakdown.
+                """
+            )
 
 # Card styles defined at module level to avoid recreating dict on every render
 # This improves performance when rendering many cards
