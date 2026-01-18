@@ -137,14 +137,17 @@ export default function(component) {
 }
 """
 
-# ======================
-# REGISTER COMPONENT
-# ======================
-_model_card = st.components.v2.component(
-    "model_card_inline",
-    js=JS,
-    css=CSS,
-)
+@st.cache_resource
+def _get_model_card_component():
+    """Register and cache the inline model card component."""
+    return st.components.v2.component(
+        "model_card_inline",
+        js=JS,
+        css=CSS,
+    )
+
+
+_model_card = _get_model_card_component()
 
 
 # ======================
