@@ -3,48 +3,16 @@ from typing import Any
 import polars as pl
 import streamlit as st
 
-from components.constants import SELECTED_STRATEGY_MODAL_KEY
 from components.tabs.allocation import render_allocation_tab
 from components.tabs.description import render_description_tab
-from utils.core.formatting import generate_badges, get_strategy_color
+from utils.core.formatting import generate_badges
 
 
-def _clear_modal_state() -> None:
-    """Clear modal-related session state."""
-    if SELECTED_STRATEGY_MODAL_KEY in st.session_state:
-        del st.session_state[SELECTED_STRATEGY_MODAL_KEY]
+@st.dialog("Details", width="large", icon=":material/strategy:")
+def render_strategy_modal(strategy_name: str, strategy_data: dict[str, Any], strategy_color: str, cleaned_data: pl.LazyFrame) -> None:
+    """Render strategy details in a modal dialog."""
+    st.markdown(f'<h1 style="color: {strategy_color}">{strategy_name}</h1>', unsafe_allow_html=True)
 
-
-@st.dialog("Strategy Details", width="large", dismissible=True)
-def render_strategy_modal(strategy_name: str, strategy_data: dict[str, Any], filters: dict[str, Any], cleaned_data: pl.LazyFrame) -> None:
-    """Render strategy details in a modal dialog.
-    
-    Steps:
-    1. Render header with strategy name and color
-    2. Calculate and display exposure breakdown
-    3. Render strategy badges
-    4. Render tabs (Description and Allocation)
-    5. Render close button
-    """
-    # ============================================================================
-    # STEP 1: Render header with strategy name and color
-    # ============================================================================
-    from styles.branding import PRIMARY
-    
-    # Get strategy color based on Type field (capitalized from get_strategy_table)
-    # Fallback to lowercase "type" for compatibility, then default to raspberry
-    strategy_type = strategy_data.get("Type") or strategy_data.get("type")
-    strategy_color = get_strategy_color(strategy_type) if strategy_type else PRIMARY["raspberry"]
-    
-    # Large header provides visual hierarchy over dialog title
-    st.markdown(
-        f'<h1 style="color: {strategy_color}; margin-top: -8px; margin-bottom: 8px;">{strategy_name}</h1>',
-        unsafe_allow_html=True,
-    )
-    
-    # ============================================================================
-    # STEP 2: Calculate and display exposure breakdown
-    # ============================================================================
     # Private Markets allocation reduces equity allocation by 15%
     has_private = strategy_data.get("Private Markets", False)
     alt_pct = 15 if has_private else 0
@@ -58,20 +26,12 @@ def render_strategy_modal(strategy_name: str, strategy_data: dict[str, Any], fil
     
     st.markdown(f"### {exposure_display_text}")
     
-    # ============================================================================
-    # STEP 3: Render strategy badges
-    # ============================================================================
-    badges = generate_badges(strategy_data)
+    badges: list[str] = generate_badges(strategy_data)
     if badges:
         st.markdown(" &nbsp; ".join(badges) + " &nbsp;")
-    
-    st.space("small")
-    
-    # ============================================================================
-    # STEP 4: Render tabs (Description and Allocation)
-    # ============================================================================
-    tab_names = ["Description", "Allocation"]
-    tabs = st.tabs(tab_names)
+
+    tab_names: list[str] = ["Description", "Allocation"]
+    tabs: list[Any] = st.tabs(tab_names)
     
     for tab, tab_name in zip(tabs, tab_names):
         with tab:
@@ -79,13 +39,3 @@ def render_strategy_modal(strategy_name: str, strategy_data: dict[str, Any], fil
                 render_description_tab(strategy_name, strategy_data, cleaned_data)
             elif tab_name == "Allocation":
                 render_allocation_tab(strategy_name, cleaned_data)
-    
-    # ============================================================================
-    # STEP 5: Render close button
-    # ============================================================================
-    st.divider()
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        if st.button("Close", width="stretch", type="primary"):
-            _clear_modal_state()
-            st.rerun()

@@ -16,6 +16,8 @@ from components.constants import (
 )
 from components.dataframe import filter_and_sort_strategies, _hash_filters
 from utils.core.data import get_strategy_table, load_cleaned_data
+from utils.core.formatting import get_strategy_color
+from styles.branding import PRIMARY
 
 
 def render_page_header() -> None:
@@ -61,5 +63,7 @@ if SELECTED_STRATEGY_MODAL_KEY in st.session_state:
     strategy_row: pl.DataFrame = filtered_strategies.filter(pl.col("Strategy") == strategy_name)
     if strategy_row.height > 0:
         strategy_data_dict: dict[str, Any] = strategy_row.row(0, named=True)
-        render_strategy_modal(strategy_name, strategy_data_dict, filters, cleaned_data)
+        strategy_type: str | None = strategy_data_dict.get("Type") or strategy_data_dict.get("type")
+        strategy_color: str = get_strategy_color(strategy_type) if strategy_type else PRIMARY["raspberry"]
+        render_strategy_modal(strategy_name, strategy_data_dict, strategy_color, cleaned_data)
     del st.session_state[SELECTED_STRATEGY_MODAL_KEY]

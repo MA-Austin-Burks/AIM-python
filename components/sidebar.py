@@ -231,7 +231,7 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
         # STEP 6: Render abbreviations section
         # ============================================================================
         st.divider()
-        with st.expander("**Abbreviations**"):
+        with st.expander("**Abbreviations**", icon=":material/menu_book:"):
             st.caption(f"last updated: {datetime.now().strftime('%Y-%m-%d')}")
             st.markdown(
                 """
@@ -258,7 +258,7 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
         # ============================================================================
         # STEP 7: Render under development expander
         # ============================================================================
-        with st.expander("**Under Development**"):
+        with st.expander("**Under Development**", icon=":material/construction:"):
             st.caption(f"last updated: {datetime.now().strftime('%Y-%m-%d')}")
             st.markdown("### **Risk-Based Strategies**")
             st.markdown("""

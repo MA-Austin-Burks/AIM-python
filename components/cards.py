@@ -6,7 +6,7 @@ import streamlit as st
 from datetime import datetime
 from streamlit_product_card import product_card
 
-from styles.branding import hex_to_rgba, PRIMARY
+from styles.branding import hex_to_rgba
 from utils.core.formatting import get_series_color_from_row
 from components.constants import (
     CARD_GRID_COLUMNS,
@@ -24,7 +24,7 @@ def render_explanation_card() -> None:
     with st.container(border=False):
         st.markdown("### Aspen Investing Menu (AIM 2.0)")
         st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d')}")
-        with st.expander("About the Aspen Investment Menu"):
+        with st.expander("About the Aspen Investment Menu", icon=":material/book:"):
             st.markdown(
                 """
                 The Aspen Investment Menu offers investment strategies organized into three main buckets:
@@ -286,22 +286,7 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             next_load = min(CARDS_PER_LOAD, remaining)
-            # Apply custom CSS for raspberry-colored button
-            st.markdown(
-                f"""
-                <style>
-                div[data-testid="column"]:nth-of-type(2) button {{
-                    background-color: {PRIMARY["raspberry"]} !important;
-                    color: {PRIMARY["white"]} !important;
-                    border: none !important;
-                }}
-                div[data-testid="column"]:nth-of-type(2) button:hover {{
-                    background-color: {PRIMARY["dark_raspberry"]} !important;
-                }}
-                </style>
-                """,
-                unsafe_allow_html=True,
-            )
+
             if st.button(
                 f"Load {next_load} More ({remaining} remaining)",
                 use_container_width=True,
