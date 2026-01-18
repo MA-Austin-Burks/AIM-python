@@ -21,18 +21,6 @@ from components.constants import (
     UNDER_DEVELOPMENT_UPDATE_DATE,
 )
 
-# Session state key for pending clear action
-_PENDING_CLEAR_KEY = "_pending_clear_search"
-
-
-def _clear_search() -> None:
-    """Callback to clear the search input."""
-    st.session_state["strategy_search_input"] = ""
-
-
-def _schedule_clear_search() -> None:
-    """Schedule a clear for the next rerun."""
-    st.session_state[_PENDING_CLEAR_KEY] = True
 
 
 def _render_yes_no_filter(label: str, key: str, disabled: bool) -> str | None:
@@ -49,14 +37,11 @@ def _render_yes_no_filter(label: str, key: str, disabled: bool) -> str | None:
 
 def render_sidebar() -> pl.Expr:
     """Render sidebar filters and return a Polars filter expression."""
-    # ============================================================================
-    # STEP 1: Handle search input and clear functionality
-    # ============================================================================
-    # Check if we need to clear search from a previous shortcut button press
-    if st.session_state.get(_PENDING_CLEAR_KEY, False):
+    # Check if we need to clear search (must be done before any widgets are created)
+    if st.session_state.get("_clear_search_flag", False):
         st.session_state["strategy_search_input"] = ""
-        st.session_state[_PENDING_CLEAR_KEY] = False
-
+        st.session_state["_clear_search_flag"] = False
+    
     # Initialize filter expression list - build incrementally as filters are rendered
     expressions: list[pl.Expr] = []
 
@@ -76,19 +61,13 @@ def render_sidebar() -> pl.Expr:
                 label_visibility="collapsed",
             )
         with col_clear:
-            st.button("✕", help="Clear search and enable filters", key="clear_search_btn", on_click=_clear_search)
+            if st.button("✕", key="clear_search_btn"):
+                st.session_state["_clear_search_flag"] = True
+                st.rerun()
         
         # Search mode disables filters to prevent confusion (search is OR, filters are AND)
         search_active = bool(strategy_search_text and strategy_search_text.strip())
         strategy_search = strategy_search_text.strip() if strategy_search_text else None
-        
-        # Handle search-only mode (returns early if active)
-        if search_active and strategy_search:
-            return (
-                pl.col("Strategy")
-                .str.to_lowercase()
-                .str.contains(strategy_search.lower(), literal=True)
-            )
         
         # Visual separator clarifies that search and filters are mutually exclusive modes
         st.markdown(
@@ -101,10 +80,8 @@ def render_sidebar() -> pl.Expr:
             """,
             unsafe_allow_html=True,
         )
-        st.space("small")
         if search_active:
-            if st.button("Enable Filters", key="enable_filters_btn", type="primary", width="stretch"):
-                _schedule_clear_search()
+            st.warning("Clear search to re-enable filters.", icon=":material/data_alert:")
         
         # ============================================================================
         # STEP 3: Render filter controls (recommended, account value, equity range)
@@ -112,16 +89,13 @@ def render_sidebar() -> pl.Expr:
         recommended_only = st.toggle(
             "Investment Committee Recommended Only",
             value=DEFAULT_RECOMMENDED_ONLY,
-            help="Show only recommended strategies when enabled",
             disabled=search_active,
         )
-        if recommended_only:
+        if not search_active and recommended_only:
             expressions.append(pl.col("Recommended"))
 
         strategy_types: list[str] = STRATEGY_TYPES
         default_type: str = DEFAULT_STRATEGY_TYPE
-
-        selected_types: list[str] = [default_type] if default_type else []
         
         col_min, col_equity = st.columns(2)
         with col_min:
@@ -133,7 +107,8 @@ def render_sidebar() -> pl.Expr:
                 key="min_strategy",
                 disabled=search_active,
             )
-        expressions.append(pl.col("Minimum") <= min_strategy)
+        if not search_active:
+            expressions.append(pl.col("Minimum") <= min_strategy)
         
         with col_equity:
             equity_range = st.slider(
@@ -145,11 +120,12 @@ def render_sidebar() -> pl.Expr:
                 key="equity_range",
                 disabled=search_active,
             )
-        expressions.append(
-            (pl.col("Equity %").is_not_null())
-            & (pl.col("Equity %") >= equity_range[0])
-            & (pl.col("Equity %") <= equity_range[1])
-        )
+        if not search_active:
+            expressions.append(
+                (pl.col("Equity %").is_not_null())
+                & (pl.col("Equity %") >= equity_range[0])
+                & (pl.col("Equity %") <= equity_range[1])
+            )
 
         # ============================================================================
         # STEP 4: Render boolean filters (tax-managed, SMA manager, private markets)
@@ -159,24 +135,25 @@ def render_sidebar() -> pl.Expr:
             tax_managed_selection: str | None = _render_yes_no_filter(
                 label="Tax-Managed (TM)", key="sidebar_tax_managed", disabled=search_active
             )
-        if tax_managed_selection:
+        if not search_active and tax_managed_selection:
             expressions.append(pl.col("Tax-Managed") == (tax_managed_selection == "Yes"))
         
         with col_sma:
             has_sma_manager_selection: str | None = _render_yes_no_filter(
                 label="Has SMA Manager", key="sidebar_sma_manager", disabled=search_active
             )
-        if has_sma_manager_selection:
+        if not search_active and has_sma_manager_selection:
             expressions.append(pl.col("Has SMA Manager") == (has_sma_manager_selection == "Yes"))
         
         with col_private:
             private_markets_selection: str | None = _render_yes_no_filter(
                 label="Private Markets", key="sidebar_private_markets", disabled=search_active
             )
-        if private_markets_selection == "Yes":
-            expressions.append(pl.col("Private Markets"))
-        elif private_markets_selection == "No":
-            expressions.append(~pl.col("Private Markets"))
+        if not search_active:
+            if private_markets_selection == "Yes":
+                expressions.append(pl.col("Private Markets"))
+            elif private_markets_selection == "No":
+                expressions.append(~pl.col("Private Markets"))
 
         # ============================================================================
         # STEP 5: Render type and series filters
@@ -238,18 +215,13 @@ def render_sidebar() -> pl.Expr:
             disabled=search_active,
             key="sidebar_series",
         )
-        if selected_types:
-            expressions.append(pl.col("Strategy Type").is_in(selected_types))
-        if selected_subtypes:
-            expressions.append(pl.col("Type").is_in(selected_subtypes))
-        
-        # Add search filter if provided (in normal mode)
-        if strategy_search:
-            expressions.append(
-                pl.col("Strategy")
-                .str.to_lowercase()
-                .str.contains(strategy_search.lower(), literal=True)
-            )
+        # Only add filter expressions when search is not active
+        # When search is active, filters are disabled and we'll return search-only expression
+        if not search_active:
+            if selected_types:
+                expressions.append(pl.col("Strategy Type").is_in(selected_types))
+            if selected_subtypes:
+                expressions.append(pl.col("Type").is_in(selected_subtypes))
 
         # ============================================================================
         # STEP 6: Render abbreviations section
@@ -294,8 +266,17 @@ def render_sidebar() -> pl.Expr:
                 st.markdown(f.read())
 
     # ============================================================================
-    # STEP 10: Combine all filter expressions with AND logic
+    # STEP 10: Return appropriate filter expression
     # ============================================================================
+    # If search is active, return search-only expression (filters are disabled)
+    if search_active and strategy_search:
+        return (
+            pl.col("Strategy")
+            .str.to_lowercase()
+            .str.contains(strategy_search.lower(), literal=True)
+        )
+    
+    # Otherwise, combine all filter expressions with AND logic
     if not expressions:
         return pl.lit(True)
     
