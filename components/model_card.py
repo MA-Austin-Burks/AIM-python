@@ -48,7 +48,7 @@ export default function(component) {
   const bodyFontFamily = style.bodyFontFamily || "\"IBM Plex Sans\", system-ui, sans-serif";
   const labelSize = style.labelSize || ".875rem";
   const valueSize = style.valueSize || "1rem";
-  const valueWeight = style.valueWeight || "600";
+  const valueWeight = style.valueWeight || "400";
   const labelColor = style.labelColor || "#374151";
   const valueColor = style.valueColor || "#111827";
   const accentColor = style.accentColor || "#188038";
@@ -173,7 +173,7 @@ def model_card(
     body_font_family: str = "\"IBM Plex Sans\", system-ui, sans-serif",
     label_size: str = ".875rem",
     value_size: str = "1rem",
-    value_weight: str = "600",
+    value_weight: str = "400",
     label_color: str = "#374151",
     value_color: str = "#111827",
     accent_color: str = "#188038",
