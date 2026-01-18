@@ -32,6 +32,26 @@ def _get_model_data(cleaned_data: pl.LazyFrame, strategy_model: str) -> pl.DataF
     )
 
 
+def _has_collapsible_smas(all_model_data: pl.DataFrame, strategy_name: str) -> bool:
+    """Check if there are any model aggregates with products exceeding the collapse threshold."""
+    if all_model_data.height == 0:
+        return False
+    
+    selected_strategy_data = all_model_data.filter(pl.col("strategy") == strategy_name)
+    if selected_strategy_data.height == 0:
+        return False
+    
+    # Count products per model_agg
+    product_counts = (
+        selected_strategy_data
+        .group_by("model_agg")
+        .agg(pl.count("product").alias("product_count"))
+    )
+    
+    # Check if any model_agg has more products than the threshold
+    return product_counts.filter(pl.col("product_count") > SMA_COLLAPSE_THRESHOLD).height > 0
+
+
 @st.cache_data(hash_funcs={pl.LazyFrame: hash_lazyframe})
 def _get_equity_matrix_data(
     cleaned_data: pl.LazyFrame,
@@ -623,11 +643,12 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     """)
     
     # ============================================================================
-    # STEP 6: Render collapse SMAs checkbox
+    # STEP 6: Render collapse SMAs toggle (only if there are collapsible SMAs)
     # ============================================================================
-    st.checkbox(
-        "Collapse SMAs",
-        value=st.session_state.get(ALLOCATION_COLLAPSE_SMA_KEY, DEFAULT_COLLAPSE_SMA),
-        key=ALLOCATION_COLLAPSE_SMA_KEY
-    )
+    if _has_collapsible_smas(all_model_data, strategy_name):
+        st.toggle(
+            "Collapse SMAs",
+            value=st.session_state.get(ALLOCATION_COLLAPSE_SMA_KEY, DEFAULT_COLLAPSE_SMA),
+            key=ALLOCATION_COLLAPSE_SMA_KEY
+        )
     
