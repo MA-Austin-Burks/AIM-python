@@ -2,6 +2,7 @@ from typing import Any
 
 import polars as pl
 import streamlit as st
+from datetime import datetime
 
 from components.constants import (
     ACCOUNT_VALUE_STEP,
@@ -42,7 +43,8 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
     4. Render boolean filters (tax-managed, SMA manager, private markets)
     5. Render type and series filters
     6. Render abbreviations section
-    7. Return filter dictionary
+    7. Render under development popover
+    8. Return filter dictionary
     """
     # ============================================================================
     # STEP 1: Handle search input and clear functionality
@@ -190,8 +192,8 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
         # STEP 6: Render abbreviations section
         # ============================================================================
         st.divider()
-        with st.container(border=True):
-            st.markdown("**Abbreviations**")
+        with st.expander("**Abbreviations**"):
+            st.caption(f"last updated: {datetime.now().strftime('%Y-%m-%d')}")
             st.markdown(
                 """
                 - **5YTRYSMA** - MA 5 Year Treasury Ladder (SMA)
@@ -206,9 +208,44 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
                 - **VMQ** - Value, Momentum, Quality
                 """
             )
+        
+        # ============================================================================
+        # STEP 7: Render under development expander
+        # ============================================================================
+        with st.expander("**Under Development**"):
+            st.caption(f"last updated: {datetime.now().strftime('%Y-%m-%d')}")
+            st.markdown("### **Risk-Based Strategies**")
+            st.markdown("""
+            - MA Market Global (SMA)
+            - MA Market Non-US Developed Markets (SMA)
+            - MA Market Non-US Emerging Markets (SMA)
+            - MA Market US All Cap (SMA)
+            - MA Market US Large Cap (SMA)
+            - MA Market US Small Cap (SMA)
+            - MA Multifactor Global (SMA)
+            - MA Multifactor Non-US Developed Markets (SMA)
+            - MA Multifactor Non-US Emerging Markets (SMA)
+            - MA Multifactor US All Cap (SMA)
+            - MA Multifactor US Large Cap (SMA)
+            - MA Multifactor US Small Cap (SMA)
+            - MA Income US Large Cap (SMA)
+            - MA Income US Large Cap (SMA Low Min)
+            - MA Income Non-US Developed Markets (SMA)
+            """)
+            st.markdown("### **Asset Class Strategies**")
+            st.markdown("""
+            - MA Absolute Return
+            - MA Commodities
+            """)
+            st.markdown("### **Special Situation Strategies**")
+            st.markdown("""
+            - Ares Real Estate Exchange Program
+            - Goldman Sachs Tax Aware Fixed Income
+            - DFA Liability Driven Investing
+            """)
 
     # ============================================================================
-    # STEP 7: Return filter dictionary
+    # STEP 8: Return filter dictionary
     # ============================================================================
     tax_managed_filter = tax_managed_selection if tax_managed_selection else "All"
     has_sma_manager_filter = has_sma_manager_selection if has_sma_manager_selection else "All"
