@@ -18,6 +18,7 @@ from components.constants import (
 from components.dataframe import filter_and_sort_strategies, _hash_filter_expression
 from utils.core.data import get_strategy_table, load_cleaned_data
 from utils.core.formatting import get_strategy_color
+from utils.core.session_state import reset_if_changed
 from styles.branding import PRIMARY
 
 
@@ -45,25 +46,20 @@ st.markdown("## Aspen Investing Menu (AIM 2.0)")
 st.caption(f"last updated: {EXPLANATION_CARD_UPDATE_DATE}")
 
 render_explanation_card()
-# Compute filter hash for caching
+# Compute filter hash for caching and reset pagination when filters change
 filter_hash = _hash_filter_expression(filter_expr)
 filtered_strategies: pl.DataFrame = filter_and_sort_strategies(strategy_table, filter_expr, filter_hash)
 
 # Reset pagination when filters change to avoid showing stale results
 # Hash comparison prevents unnecessary resets on unrelated state changes
-filter_hash = _hash_filter_expression(filter_expr)
-if "last_filter_hash" not in st.session_state:
-    st.session_state["last_filter_hash"] = filter_hash
-elif st.session_state["last_filter_hash"] != filter_hash:
-    st.session_state["last_filter_hash"] = filter_hash
-    st.session_state[CARDS_DISPLAYED_KEY] = CARDS_PER_LOAD
+reset_if_changed("last_filter_hash", filter_hash, CARDS_DISPLAYED_KEY, CARDS_PER_LOAD)
 
 selected_strategy, strategy_data = render_card_view(filtered_strategies)
 
 # Modal state persists across reruns via @st.dialog decorator
 # Clearing trigger prevents reopening when other interactions cause reruns
-if SELECTED_STRATEGY_MODAL_KEY in st.session_state:
-    strategy_name: str = st.session_state[SELECTED_STRATEGY_MODAL_KEY]
+strategy_name = st.session_state.get(SELECTED_STRATEGY_MODAL_KEY)
+if strategy_name:
     strategy_row: pl.DataFrame = filtered_strategies.filter(pl.col("Strategy") == strategy_name)
     if strategy_row.height > 0:
         strategy_data_dict: dict[str, Any] = strategy_row.row(0, named=True)

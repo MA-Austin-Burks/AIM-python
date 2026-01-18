@@ -7,6 +7,7 @@ from streamlit_product_card import product_card
 
 from styles.branding import hex_to_rgba, SERIES_COLORS
 from utils.core.formatting import get_series_color_from_row
+from utils.core.session_state import get_or_init
 from components.constants import (
     CARD_GRID_COLUMNS,
     CARD_ORDER_KEY,
@@ -231,11 +232,8 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
     # ============================================================================
     total_count = filtered_strategies.height
     
-    if CARD_ORDER_KEY not in st.session_state:
-        st.session_state[CARD_ORDER_KEY] = DEFAULT_CARD_ORDER
-    
-    if CARDS_DISPLAYED_KEY not in st.session_state:
-        st.session_state[CARDS_DISPLAYED_KEY] = CARDS_PER_LOAD
+    card_order = get_or_init(CARD_ORDER_KEY, DEFAULT_CARD_ORDER)
+    cards_displayed = get_or_init(CARDS_DISPLAYED_KEY, CARDS_PER_LOAD)
     
     # ============================================================================
     # STEP 2: Render sort order selector
@@ -243,7 +241,7 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
     selected_order = st.selectbox(
         "Order By:",
         options=CARD_ORDER_OPTIONS,
-        index=CARD_ORDER_OPTIONS.index(st.session_state[CARD_ORDER_KEY]) if st.session_state[CARD_ORDER_KEY] in CARD_ORDER_OPTIONS else 0,
+        index=CARD_ORDER_OPTIONS.index(card_order) if card_order in CARD_ORDER_OPTIONS else 0,
         key="card_order_by_select",
         on_change=_reset_cards_displayed,
     )
@@ -259,7 +257,7 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
         return None, None
     
     # Pagination: load cards incrementally to improve initial render performance
-    cards_to_show = min(st.session_state[CARDS_DISPLAYED_KEY], total_count)
+    cards_to_show = min(cards_displayed, total_count)
     display_strategies = filtered_strategies.head(cards_to_show)
     
     st.markdown(f"**Showing {cards_to_show} of {total_count} strategies**")

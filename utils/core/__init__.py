@@ -14,6 +14,7 @@ from utils.core.formatting import (
     get_series_color_from_row,
     get_strategy_color,
 )
+from utils.core.session_state import get_or_init, reset_if_changed
 
 __all__ = [
     # Formatting utilities
@@ -30,4 +31,7 @@ __all__ = [
     "get_strategy_table",
     "get_strategy_by_name",
     "get_model_agg_sort_order",
+    # Session state utilities
+    "get_or_init",
+    "reset_if_changed",
 ]

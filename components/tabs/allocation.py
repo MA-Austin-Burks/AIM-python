@@ -8,6 +8,7 @@ from styles.branding import (
     PRIMARY,
     hex_to_rgba,
 )
+from utils.core.session_state import get_or_init
 from styles import (
     get_allocation_table_main_css,
     get_allocation_table_summary_css,
@@ -549,7 +550,7 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
         strategy_equity_pct = int(portfolio_val) if portfolio_val is not None else None
         model_name = strategy_data.get("model")
     
-    collapse_sma: bool = st.session_state.get(ALLOCATION_COLLAPSE_SMA_KEY, DEFAULT_COLLAPSE_SMA)
+    collapse_sma: bool = get_or_init(ALLOCATION_COLLAPSE_SMA_KEY, DEFAULT_COLLAPSE_SMA)
     
     # Get model data for summary table (cached)
     if strategy_data and strategy_data.get("model"):
@@ -648,7 +649,7 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     if _has_collapsible_smas(all_model_data, strategy_name):
         st.toggle(
             "Collapse SMAs",
-            value=st.session_state.get(ALLOCATION_COLLAPSE_SMA_KEY, DEFAULT_COLLAPSE_SMA),
+            value=get_or_init(ALLOCATION_COLLAPSE_SMA_KEY, DEFAULT_COLLAPSE_SMA),
             key=ALLOCATION_COLLAPSE_SMA_KEY
         )
     

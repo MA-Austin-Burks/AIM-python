@@ -214,10 +214,8 @@ def render_sidebar() -> pl.Expr:
         # Handle strategy type changes by clearing invalid selections
         if selected_type != previous_type:
             # Strategy type changed - clear the session state so widget can initialize with new defaults
-            if "sidebar_series" in st.session_state:
-                del st.session_state["sidebar_series"]
+            st.session_state.pop("sidebar_series", None)
             st.session_state[previous_type_key] = selected_type
-            # Use the new defaults
             valid_selections = default_selections
         else:
             # Strategy type hasn't changed - get current selections and filter invalid ones
