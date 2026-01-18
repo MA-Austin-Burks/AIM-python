@@ -295,4 +295,5 @@ def render_description_tab(strategy_name: str, strategy_data: dict[str, Any], cl
         file_name=f"{strategy_name}_factsheet.pdf",
         mime="application/pdf",
         disabled=True,
+        key=f"factsheet_download_{strategy_name}",
     )

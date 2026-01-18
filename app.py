@@ -22,7 +22,7 @@ def render_page_header() -> None:
     st.set_page_config(
         page_title="Aspen Investing Menu",
         layout="wide",
-        initial_sidebar_state=400,
+        initial_sidebar_state=475,
         menu_items={
             "Report a Bug": "mailto:aburks@merceradvisors.com",
         },

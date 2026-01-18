@@ -1,6 +1,3 @@
-[server]
-enableStaticServing = true
-
 [theme]
 # Brand color palette - Raspberry and Iris theme
 primaryColor = "#C00686"            # Raspberry - Primary brand color

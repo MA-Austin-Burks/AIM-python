@@ -22,7 +22,7 @@ from components.constants import (
 def render_explanation_card() -> None:
     """Render an explanation card describing the site's intent and how to use it."""
     with st.container(border=False):
-        st.markdown("### Aspen Investing Menu 2.0")
+        st.markdown("### Aspen Investing Menu (AIM 2.0)")
         st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d')}")
         with st.expander("About this app", expanded=True):
             st.markdown(
