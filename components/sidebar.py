@@ -196,16 +196,23 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
             st.caption(f"last updated: {datetime.now().strftime('%Y-%m-%d')}")
             st.markdown(
                 """
-                - **5YTRYSMA** - MA 5 Year Treasury Ladder (SMA)
-                - **B5YCRP** - BlackRock Corporate 1-5 Year
-                - **MA** - Managed Account
-                - **MUSLGMKTLM** - MA Market US Large (SMA Low Min)
-                - **N7YMUN** - Nuveen Municipal 1-7 Year
-                - **QP** - Quantitative Portfolio
-                - **QUSALMKT** - QP Market US All Cap
+                - **MUSALMKT** - MA Market US All (SMA)
+                - **MUSLGMKT** - MA Market US Large (SMA)
+                - **QUSALVMQ** - QP Factor US All Cap VMQ
                 - **QUSLGVMQ** - QP Factor US Large Cap VMQ
-                - **SMA** - Separately Managed Account
-                - **VMQ** - Value, Momentum, Quality
+                - **QUSLGDIV** - QP Market US Large Div Income
+                - **QIDMVMQ** - QP Factor Int'l Dev ADR VMQ
+                - **MUSLGMKTLM** - MA Market US Large (SMA Low Min)
+                - **MUSLGMFTLM** - MA Multifct US Large (SMA Low Min)
+                - **5YTRYSMA** - MA 5 Year Treasury Ladder (SMA)
+                - **5YCRPETF** - MA 5 Year US Corporate Ladder (ETF)
+                - **5YTRYETF** - MA 5 Year US Treasury Ladder (ETF)
+                - **9YTRYETF** - MA 9 Year US Treasury Ladder (ETF)
+                - **5YMUNETF** - MA 5 Year Municipal Ladder (ETF)
+                - **B5YCRP** - BlackRock Corporate 1-5 Year
+                - **B10YCRP** - BlackRock Corporate 1-10 Year
+                - **N7YMUN** - Nuveen Municipal 1-7 Year
+                - **N15YMUN** - Nuveen Municipal 1-15 Year
                 """
             )
         
@@ -215,6 +222,10 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
         with st.expander("**Under Development**"):
             st.caption(f"last updated: {datetime.now().strftime('%Y-%m-%d')}")
             st.markdown("### **Risk-Based Strategies**")
+            st.markdown("""
+            - Market (ETF, Hedged Equity)
+            """)
+            st.markdown("### **Asset Class Strategies**")
             st.markdown("""
             - MA Market Global (SMA)
             - MA Market Non-US Developed Markets (SMA)
@@ -231,9 +242,6 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
             - MA Income US Large Cap (SMA)
             - MA Income US Large Cap (SMA Low Min)
             - MA Income Non-US Developed Markets (SMA)
-            """)
-            st.markdown("### **Asset Class Strategies**")
-            st.markdown("""
             - MA Absolute Return
             - MA Commodities
             """)

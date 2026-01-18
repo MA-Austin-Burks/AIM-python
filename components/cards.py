@@ -55,7 +55,7 @@ _CARD_STYLES = {
         "box-shadow": "0 4px 12px rgba(0,0,0,0.08)",
         "border": "1px solid rgba(0,0,0,0.06)",
         "cursor": "pointer",
-        "transition": "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        "transition": "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",ca
         "background": "linear-gradient(135deg, #ffffff 0%, #fafafa 100%)",
         "overflow": "hidden",
     },
