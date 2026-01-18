@@ -6,7 +6,7 @@ import streamlit as st
 from datetime import datetime
 from streamlit_product_card import product_card
 
-from styles.branding import hex_to_rgba
+from styles.branding import hex_to_rgba, PRIMARY
 from utils.core.formatting import get_series_color_from_row
 from components.constants import (
     CARD_GRID_COLUMNS,
@@ -24,25 +24,25 @@ def render_explanation_card() -> None:
     with st.container(border=False):
         st.markdown("### Aspen Investing Menu (AIM 2.0)")
         st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d')}")
-        with st.expander("About this platform"):
+        with st.expander("About the Aspen Investment Menu"):
             st.markdown(
                 """
-                The Aspen Investment platform offers investment strategies organized into three main buckets:
+                The Aspen Investment Menu offers investment strategies organized into three main buckets:
                 
-                **Risk-Based Strategies**
+                **Risk-Based Strategies** \n
                 These strategies are designed to match specific risk profiles and include three series:
                 - **Multifactor Series**: Strategies that combine multiple investment factors for enhanced risk-adjusted returns
                 - **Market Series**: Broad market exposure strategies designed for core portfolio allocations
                 - **Income Series**: Strategies focused on generating income while managing risk, tilted towards academically validated income factors
                 
-                **Asset-Class Strategies**
+                **Asset-Class Strategies** \n
                 These strategies target specific asset classes and include:
                 - **Equity Strategies**: Stock-based investment approaches
                 - **Fixed Income Strategies**: Bond and fixed-income security strategies
                 - **Cash Strategies**: Cash and cash-equivalent investment options
                 - **Alternative Strategies**: Non-traditional investment approaches including real estate, commodities, and other alternatives
                 
-                **Special Situation Strategies**
+                **Special Situation Strategies** \n
                 These are specialized strategies designed for unique investment needs and circumstances, including tax-aware approaches, liability-driven investing, and other tailored solutions.
                 """
             )
@@ -286,10 +286,26 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             next_load = min(CARDS_PER_LOAD, remaining)
+            # Apply custom CSS for raspberry-colored button
+            st.markdown(
+                f"""
+                <style>
+                div[data-testid="column"]:nth-of-type(2) button {{
+                    background-color: {PRIMARY["raspberry"]} !important;
+                    color: {PRIMARY["white"]} !important;
+                    border: none !important;
+                }}
+                div[data-testid="column"]:nth-of-type(2) button:hover {{
+                    background-color: {PRIMARY["dark_raspberry"]} !important;
+                }}
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
             if st.button(
                 f"Load {next_load} More ({remaining} remaining)",
-                width="stretch",
-                type="secondary",
+                use_container_width=True,
+                type="primary",
             ):
                 st.session_state[CARDS_DISPLAYED_KEY] += CARDS_PER_LOAD
                 st.rerun()

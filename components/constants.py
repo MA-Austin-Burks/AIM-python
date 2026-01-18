@@ -17,7 +17,7 @@ DEFAULT_RECOMMENDED_ONLY: Final[bool] = False
 DEFAULT_STRATEGY_TYPE: Final[str] = "Risk-Based"
 DEFAULT_MIN_ACCOUNT_VALUE: Final[int] = 50000
 DEFAULT_EQUITY_RANGE: Final[tuple[int, int]] = (0, 100)
-DEFAULT_SERIES_SUBTYPES: Final[list[str]] = ["Multifactor Series", "Market Series"]
+DEFAULT_SERIES_SUBTYPES: Final[list[str]] = ["Multifactor Series"]
 
 # Filter options lists
 STRATEGY_TYPES: Final[list[str]] = ["Risk-Based", "Asset-Class", "Special Situation"]
@@ -31,6 +31,24 @@ SERIES_OPTIONS: Final[list[str]] = [
     "Alternative Strategies",
     "Special Situation Strategies",
 ]
+
+# Mapping of strategy types to their available series options
+STRATEGY_TYPE_TO_SERIES: Final[dict[str, list[str]]] = {
+    "Risk-Based": [
+        "Multifactor Series",
+        "Market Series",
+        "Income Series",
+    ],
+    "Asset-Class": [
+        "Equity Strategies",
+        "Fixed Income Strategies",
+        "Cash Strategies",
+        "Alternative Strategies",
+    ],
+    "Special Situation": [
+        "Special Situation Strategies",
+    ],
+}
 
 # Card view options
 CARD_ORDER_OPTIONS: Final[list[str]] = [

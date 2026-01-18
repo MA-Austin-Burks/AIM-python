@@ -17,6 +17,7 @@ from components.constants import (
     MIN_ACCOUNT_VALUE,
     SERIES_OPTIONS,
     STRATEGY_TYPES,
+    STRATEGY_TYPE_TO_SERIES,
 )
 
 # Session state key for pending clear action
@@ -109,8 +110,7 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
         default_type: str = DEFAULT_STRATEGY_TYPE
 
         selected_types: list[str] = [default_type] if default_type else []
-        type_options: list[str] = SERIES_OPTIONS
-
+        
         col_min, col_equity = st.columns(2)
         with col_min:
             min_strategy = st.number_input(
@@ -177,13 +177,52 @@ def render_sidebar(strats: pl.DataFrame) -> dict[str, Any]:
         )
         selected_types = [selected_type] if selected_type else []
 
+        # Track previous strategy type to detect changes
+        previous_type_key = "_previous_strategy_type"
+        previous_type = st.session_state.get(previous_type_key, default_type)
+        
+        # Dynamically filter series options based on selected strategy type
+        if selected_type and selected_type in STRATEGY_TYPE_TO_SERIES:
+            type_options: list[str] = STRATEGY_TYPE_TO_SERIES[selected_type]
+        else:
+            type_options: list[str] = SERIES_OPTIONS
+
+        # Determine default selections based on strategy type
+        if selected_type == "Risk-Based":
+            default_selections = DEFAULT_SERIES_SUBTYPES  # ["Multifactor Series"]
+        elif selected_type == "Asset-Class":
+            default_selections = []
+        elif selected_type == "Special Situation":
+            default_selections = ["Special Situation Strategies"]
+        else:
+            default_selections = []
+
+        # Handle strategy type changes by clearing invalid selections
+        if selected_type != previous_type:
+            # Strategy type changed - clear the session state so widget can initialize with new defaults
+            if "sidebar_series" in st.session_state:
+                del st.session_state["sidebar_series"]
+            st.session_state[previous_type_key] = selected_type
+            # Use the new defaults
+            valid_selections = default_selections
+        else:
+            # Strategy type hasn't changed - get current selections and filter invalid ones
+            current_selections = st.session_state.get("sidebar_series", default_selections)
+            if isinstance(current_selections, list):
+                # Filter to only include valid options for the current strategy type
+                valid_selections = [s for s in current_selections if s in type_options]
+                # If no valid selections remain, use defaults
+                if not valid_selections:
+                    valid_selections = default_selections
+            else:
+                valid_selections = default_selections
+            st.session_state[previous_type_key] = selected_type
+
         selected_subtypes = st.pills(
             "Series",
             options=type_options,
             selection_mode="multi",
-            default=DEFAULT_SERIES_SUBTYPES
-            if all(subtype in type_options for subtype in DEFAULT_SERIES_SUBTYPES)
-            else [],
+            default=valid_selections,
             disabled=search_active,
             key="sidebar_series",
         )
