@@ -8,7 +8,8 @@ CSS = """
 .mc-card{
   overflow:hidden;
   cursor:pointer;
-  transition:box-shadow .15s,transform .06s
+  transition:box-shadow .15s,transform .06s;
+  margin-bottom:1rem
 }
 .mc-card:hover{
   box-shadow:var(--mc-card-hover-shadow);
@@ -73,14 +74,16 @@ export default function(component) {
                 --mc-card-hover-shadow:${cardHoverShadow};background:#fff;">
       <div style="background:${color};padding:${headerPadding};height:${headerHeight};
                   display:flex;align-items:center;">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;width:100%;">
+        <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;">
           <h3 style="color:#fff;font-weight:${titleWeight};font-size:${titleSize};
-                     font-family:${titleFontFamily};margin:0;">
+                     font-family:${titleFontFamily};margin:0;line-height:1.2;
+                     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+                     overflow:hidden;">
             ${m.name ?? ""}
           </h3>
           ${m.featured
-            ? `<div style="padding:${starBadgePadding};background:${starBadgeBg};
-                          border-radius:${starBadgeRadius};color:${starBadgeColor};">★</div>`
+            ? `<span style="color:${starBadgeColor};font-size:25px;line-height:1;
+                            display:flex;align-items:center;justify-content:center;">★</span>`
             : ""}
         </div>
       </div>
@@ -160,9 +163,9 @@ def model_card(
     card_radius: str = "12px",
     card_shadow: str = "0 1px 2px rgba(0,0,0,.04)",
     card_hover_shadow: str = "0 8px 28px rgba(0,0,0,.12)",
-    header_height: str = "64px",
-    header_padding: str = "12px 16px",
-    body_padding: str = "10px 16px",
+    header_height: str = "60px",
+    header_padding: str = "10px 14px",
+    body_padding: str = "10px 14px",
     row_padding: str = "3px 0",
     title_size: str = "18px",
     title_weight: str = "700",

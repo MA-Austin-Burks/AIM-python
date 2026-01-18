@@ -29,7 +29,11 @@ def _render_strategy_card(strategy_row: dict[str, Any], index: int) -> tuple[boo
     strategy_name = strategy_row["Strategy"]
     series_color = get_series_color_from_row(strategy_row)
     
-    recommended = strategy_row.get("Recommended", False)
+    recommended_raw = strategy_row.get("Recommended", False)
+    if isinstance(recommended_raw, str):
+        recommended = recommended_raw.strip().upper() == "TRUE"
+    else:
+        recommended = bool(recommended_raw)
     equity_pct = strategy_row.get("Equity %", 0)
     yield_val = strategy_row.get("Yield")
     expense_ratio = strategy_row.get("Expense Ratio", 0)
@@ -42,7 +46,7 @@ def _render_strategy_card(strategy_row: dict[str, Any], index: int) -> tuple[boo
     # expense_ratio is stored as decimal (e.g., 0.0045 for 0.45%)
     expense_ratio_display = expense_ratio * 100
     
-    card_key = f"strategy_card_{index}"
+    card_key = f"strategy_card_{index}_{strategy_name}"
     clicked_id = model_card(
         id=strategy_name,
         name=strategy_name,
@@ -113,6 +117,9 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
     3. Apply sorting and check for empty results
     4. Render cards in grid layout
     5. Render "Load More" button if more cards available
+    
+    Args:
+        filtered_strategies: Filtered strategy DataFrame
     """
     # ============================================================================
     # STEP 1: Initialize session state for card ordering and pagination
@@ -152,15 +159,42 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
     # ============================================================================
     # STEP 4: Render cards in grid layout
     # ============================================================================
-    cols = st.columns(CARD_GRID_COLUMNS)
+    # Render cards row by row, with each card in its own container
+    # This isolates each card from layout changes and prevents spacing issues
+    clicked_strategy = None
     
-    for idx, row in enumerate(display_strategies.iter_rows(named=True)):
-        col_idx = idx % CARD_GRID_COLUMNS
-        with cols[col_idx]:
-            clicked, strategy_name = _render_strategy_card(row, idx)
-            if clicked:
-                st.session_state[SELECTED_STRATEGY_MODAL_KEY] = strategy_name
-                st.rerun()
+    # Convert to list for easier row-based rendering
+    strategy_rows = list(display_strategies.iter_rows(named=True))
+    
+    # Render cards in rows of CARD_GRID_COLUMNS
+    for row_start in range(0, len(strategy_rows), CARD_GRID_COLUMNS):
+        # Get cards for this row
+        row_cards = strategy_rows[row_start:row_start + CARD_GRID_COLUMNS]
+        
+        # Create columns for this row only
+        cols = st.columns(CARD_GRID_COLUMNS)
+        
+        # Render each card in this row, wrapped in its own container
+        # Clear any extra columns from previous renders to avoid stale cards
+        for col_idx in range(CARD_GRID_COLUMNS):
+            with cols[col_idx]:
+                placeholder = st.empty()
+                if col_idx < len(row_cards):
+                    card_data = row_cards[col_idx]
+                    # Wrap each card in its own container to isolate it from layout changes
+                    # This prevents Streamlit from getting confused about spacing when filters change
+                    with placeholder.container():
+                        card_idx = row_start + col_idx
+                        clicked, strategy_name = _render_strategy_card(card_data, card_idx)
+                        if clicked:
+                            clicked_strategy = strategy_name
+                else:
+                    placeholder.empty()
+    
+    # Handle click after all cards are rendered to preserve layout
+    if clicked_strategy:
+        st.session_state[SELECTED_STRATEGY_MODAL_KEY] = clicked_strategy
+        st.rerun()
     
     # ============================================================================
     # STEP 5: Render "Load More" button if more cards available

@@ -16,7 +16,7 @@ from components.constants import (
     SELECTED_STRATEGY_MODAL_KEY,
 )
 from components.dataframe import filter_and_sort_strategies, _hash_filter_expression
-from utils.core.data import get_strategy_table, load_cleaned_data
+from utils.core.data import load_strategy_list, load_cleaned_data
 from utils.core.formatting import get_strategy_color
 from utils.core.session_state import reset_if_changed
 from styles.branding import PRIMARY
@@ -31,8 +31,11 @@ st.set_page_config(
     },
 )
 
+# Load pre-generated strategy summary for cards/filtering (fast)
+strats: pl.DataFrame = load_strategy_list()
+
+# Load full dataset for modal tabs (only when needed)
 cleaned_data: pl.LazyFrame = load_cleaned_data()
-strats: pl.DataFrame = get_strategy_table(cleaned_data)
 
 filter_expr: pl.Expr = render_sidebar()
 

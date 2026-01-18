@@ -6,6 +6,7 @@ from utils.core.data import (
     get_strategy_table,
     hash_lazyframe,
     load_cleaned_data,
+    load_strategy_list,
 )
 from utils.core.dates import PERIOD_OPTIONS, get_period_dates
 from utils.core.formatting import (
@@ -28,6 +29,7 @@ __all__ = [
     # Data utilities
     "hash_lazyframe",
     "load_cleaned_data",
+    "load_strategy_list",
     "get_strategy_table",
     "get_strategy_by_name",
     "get_model_agg_sort_order",

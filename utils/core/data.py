@@ -84,23 +84,41 @@ def get_model_agg_sort_order(model_agg: str | None) -> int:
 
 
 def _get_cleaned_data_url() -> str:
-    """Get the cleaned-data parquet URL from environment variable.
+    """Get the cleaned-data parquet URL from Streamlit secrets or environment variable.
+    
+    Checks Streamlit secrets first (for Streamlit Cloud), then falls back to
+    environment variables (for Azure deployments).
     
     Returns:
         str: The Azure Blob Storage URL for cleaned-data.parquet
     
     Raises:
-        ValueError: If environment variable is not set
+        ValueError: If URL is not found in secrets or environment variable
     """
     import os
     
+    # Try Streamlit secrets first (for Streamlit Cloud)
+    try:
+        if hasattr(st, 'secrets'):
+            # Try attribute access first (st.secrets.CLEANED_DATA_PARQUET_URL)
+            url = getattr(st.secrets, 'CLEANED_DATA_PARQUET_URL', None)
+            # If not found, try dict-style access (st.secrets['CLEANED_DATA_PARQUET_URL'])
+            if url is None:
+                url = st.secrets.get('CLEANED_DATA_PARQUET_URL', None) if hasattr(st.secrets, 'get') else None
+            if url:
+                return str(url).strip().strip('"').strip("'")
+    except (AttributeError, KeyError, FileNotFoundError, TypeError):
+        # Secrets not available, fall back to environment variable
+        pass
+    
+    # Fall back to environment variable (for Azure deployments)
     env_url = os.getenv('CLEANED_DATA_PARQUET_URL')
     if env_url:
-        return env_url.strip()
+        return env_url.strip().strip('"').strip("'")
     
     raise ValueError(
         "Azure Blob Storage URL not found. "
-        "Please set the CLEANED_DATA_PARQUET_URL environment variable."
+        "Please set CLEANED_DATA_PARQUET_URL in Streamlit secrets or environment variable."
     )
 
 
@@ -168,6 +186,125 @@ def load_cleaned_data(parquet_url: str | None = None) -> pl.LazyFrame:
     return pl.scan_parquet(tmp_path)
 
 
+def _get_strategy_list_url() -> str | None:
+    """Get the strategy_list parquet URL from Streamlit secrets or environment variable.
+    
+    Checks Streamlit secrets first (for Streamlit Cloud), then falls back to
+    environment variables (for Azure deployments).
+    
+    Returns:
+        str | None: The Azure Blob Storage URL for strategy_list.parquet, or None if not set
+    """
+    import os
+    
+    # Try Streamlit secrets first (for Streamlit Cloud)
+    url = None
+    try:
+        if hasattr(st, 'secrets') and st.secrets is not None:
+            # Try attribute access first (st.secrets.STRATEGY_LIST_PARQUET)
+            try:
+                url = getattr(st.secrets, 'STRATEGY_LIST_PARQUET', None)
+            except (AttributeError, TypeError):
+                pass
+            
+            # If not found, try dict-style access (st.secrets['STRATEGY_LIST_PARQUET'])
+            if url is None:
+                try:
+                    if hasattr(st.secrets, 'get'):
+                        url = st.secrets.get('STRATEGY_LIST_PARQUET', None)
+                    elif hasattr(st.secrets, '__getitem__'):
+                        url = st.secrets['STRATEGY_LIST_PARQUET']
+                except (KeyError, AttributeError, TypeError):
+                    pass
+            
+            if url:
+                return str(url).strip().strip('"').strip("'")
+    except Exception:
+        # Any error accessing secrets, fall through to environment variable
+        pass
+    
+    # Fall back to environment variable (for Azure deployments)
+    env_url = os.getenv('STRATEGY_LIST_PARQUET')
+    if env_url:
+        return str(env_url).strip().strip('"').strip("'")
+    
+    return None
+
+
+@st.cache_data(ttl=3600)
+def load_strategy_list(parquet_url: str | None = None) -> pl.DataFrame:
+    """Load the pre-generated strategy_list.parquet file from Azure Blob Storage.
+    
+    This file contains a summary table for all strategies, pre-aggregated from cleaned-data.
+    Use this for card filtering, sorting, and rendering instead of calling get_strategy_table().
+    
+    Args:
+        parquet_url: Optional URL to override the default Azure Blob Storage URL.
+                     If None, reads from Streamlit secrets or environment variable.
+    
+    Returns:
+        pl.DataFrame: Strategy-level DataFrame with columns matching get_strategy_table() output.
+    
+    Raises:
+        ValueError: If URL is not found in secrets or environment variable
+        RuntimeError: If there's an error downloading or reading the Parquet file
+    """
+    import os
+    import tempfile
+    
+    # Use provided URL or get from secrets/environment
+    url = parquet_url or _get_strategy_list_url()
+    
+    if not url:
+        import os
+        # Provide helpful debug information
+        env_check = os.getenv('STRATEGY_LIST_PARQUET')
+        secrets_check = None
+        try:
+            if hasattr(st, 'secrets') and st.secrets is not None:
+                secrets_check = getattr(st.secrets, 'STRATEGY_LIST_PARQUET', None) or (
+                    st.secrets.get('STRATEGY_LIST_PARQUET', None) if hasattr(st.secrets, 'get') else None
+                )
+        except Exception:
+            pass
+        
+        error_msg = (
+            "Azure Blob Storage URL not found. "
+            "Please set STRATEGY_LIST_PARQUET in Streamlit secrets or environment variable.\n"
+            f"Environment variable check: {'Set' if env_check else 'Not set'}\n"
+            f"Secrets check: {'Set' if secrets_check else 'Not set'}"
+        )
+        raise ValueError(error_msg)
+    
+    url = url.strip().strip('"').strip("'")
+    
+    # Check if URL is a remote HTTP/HTTPS URL
+    is_remote_url = url.lower().startswith(("http://", "https://"))
+    
+    if not is_remote_url:
+        raise ValueError(
+            f"Invalid URL format: {url}. "
+            "STRATEGY_LIST_PARQUET must be a valid HTTP/HTTPS URL to Azure Blob Storage."
+        )
+    
+    # Download from Azure Blob Storage
+    parquet_buffer, _ = download_parquet_from_azure(url)
+    
+    # Write to temp file and read as DataFrame (not LazyFrame since it's small)
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.parquet') as tmp_file:
+        tmp_file.write(parquet_buffer.getvalue())
+        tmp_path = tmp_file.name
+    
+    try:
+        return pl.read_parquet(tmp_path)
+    finally:
+        # Clean up temp file
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+
 @st.cache_data(ttl=3600, hash_funcs={pl.LazyFrame: hash_lazyframe})
 def get_strategy_by_name(cleaned_data: pl.LazyFrame, strategy_name: str) -> dict[str, Any] | None:
     """Get a strategy row as a dict by name (cached).
@@ -198,6 +335,10 @@ def get_strategy_by_name(cleaned_data: pl.LazyFrame, strategy_name: str) -> dict
 @st.cache_data(ttl=3600, hash_funcs={pl.LazyFrame: hash_lazyframe})
 def get_strategy_table(df: pl.LazyFrame) -> pl.DataFrame:
     """Build and cache a strategy-level DataFrame for card filtering, sorting, and rendering.
+    
+    DEPRECATED: Use load_strategy_list() instead for better performance.
+    This function is kept for backward compatibility but should be replaced with
+    the pre-generated strategy_list.parquet file.
     
     Pre-aggregated table improves performance for card/table views. Full cleaned_data
     only loaded when viewing allocation details (product-level data).
