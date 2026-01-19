@@ -33,9 +33,9 @@ def download_parquet_from_azure(parquet_url: str) -> tuple[BytesIO, float]:
     response = requests.get(parquet_url, stream=True, verify=False)
     response.raise_for_status()
     
-    # Read into memory buffer
+    # Read into memory buffer with optimized chunk size (64KB for better network performance)
     parquet_data = BytesIO()
-    for chunk in response.iter_content(chunk_size=8192):
+    for chunk in response.iter_content(chunk_size=65536):  # 64KB chunks
         parquet_data.write(chunk)
     
     parquet_data.seek(0)  # Reset pointer to beginning

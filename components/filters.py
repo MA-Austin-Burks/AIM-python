@@ -310,6 +310,24 @@ def render_filters(search_active: bool) -> pl.Expr:
     return combined_expr
 
 
+@st.cache_data(ttl=3600)
+def _load_abbreviations() -> pl.DataFrame:
+    """Load abbreviations CSV file (cached for 1 hour)."""
+    return pl.read_csv("data/abbreviations.csv")
+
+
+@st.cache_data(ttl=3600)
+def _load_tlh() -> pl.DataFrame:
+    """Load TLH CSV file (cached for 1 hour)."""
+    return pl.read_csv("data/tlh.csv")
+
+
+@st.cache_data(ttl=3600)
+def _load_equivalents() -> pl.DataFrame:
+    """Load equivalents CSV file (cached for 1 hour)."""
+    return pl.read_csv("data/equivalents.csv")
+
+
 def render_reference_data() -> None:
     """Render reference data sections in the main content area."""
     # ============================================================================
@@ -317,7 +335,7 @@ def render_reference_data() -> None:
     # ============================================================================
     with st.expander("Abbreviations", icon=":material/menu_book:"):
         st.caption(f"last updated: {ABBREVIATIONS_UPDATE_DATE}")
-        abbreviations_df = pl.read_csv("data/abbreviations.csv")
+        abbreviations_df: pl.DataFrame = _load_abbreviations()
         st.dataframe(
             abbreviations_df,
             height="content",
@@ -328,7 +346,7 @@ def render_reference_data() -> None:
     # ============================================================================
     with st.expander("Tax-Loss Harvesting (TLH)", icon=":material/money_off:"):
         st.caption(f"last updated: {TLH_UPDATE_DATE}")
-        tlh_df = pl.read_csv("data/tlh.csv")
+        tlh_df: pl.DataFrame = _load_tlh()
         st.dataframe(
             tlh_df,
             height="content",
@@ -339,7 +357,7 @@ def render_reference_data() -> None:
     # ============================================================================
     with st.expander("Equivalents", icon=":material/equal:"):
         st.caption(f"last updated: {EQUIVALENTS_UPDATE_DATE}")
-        equivalents_df = pl.read_csv("data/equivalents.csv")
+        equivalents_df: pl.DataFrame = _load_equivalents()
         st.dataframe(
             equivalents_df,
             height="content",

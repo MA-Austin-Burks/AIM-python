@@ -20,11 +20,20 @@ def _is_local_mode() -> bool:
     """
     return os.getenv("USE_LOCAL_DATA", "").lower() in ("true", "1", "yes")
 
-# Load model aggregate sort order from CSV
-_MODEL_AGG_SORT_DF = pl.read_csv("data/model_agg_sort_order.csv")
-MODEL_AGG_SORT_ORDER: dict[str, int] = dict(
-    zip(_MODEL_AGG_SORT_DF["ModelAggregate"].to_list(), _MODEL_AGG_SORT_DF["SortOrder"].to_list())
-)
+
+@st.cache_data(ttl=3600)
+def _load_model_agg_sort_order() -> dict[str, int]:
+    """Load model aggregate sort order from CSV (cached for 1 hour).
+    
+    Returns:
+        Dictionary mapping model aggregate names to sort order integers
+    """
+    model_agg_sort_df: pl.DataFrame = pl.read_csv("data/model_agg_sort_order.csv")
+    return dict(
+        zip(model_agg_sort_df["ModelAggregate"].to_list(), model_agg_sort_df["SortOrder"].to_list())
+    )
+
+
 MODEL_AGG_SORT_DEFAULT: int = 99
 
 
@@ -61,6 +70,9 @@ def get_model_agg_sort_order(model_agg: str | None) -> int:
     if model_agg is None:
         return MODEL_AGG_SORT_DEFAULT
     
+    # Load sort order dictionary (cached)
+    model_agg_sort_order: dict[str, int] = _load_model_agg_sort_order()
+    
     model_agg_upper = str(model_agg).upper()
     
     # Check each pattern in sort order dictionary
@@ -71,7 +83,7 @@ def get_model_agg_sort_order(model_agg: str | None) -> int:
     
     # Sort patterns by length (longest first) to check more specific patterns first
     # This ensures "SMALL CAP" is checked before "ALL CAP"
-    sorted_patterns = sorted(MODEL_AGG_SORT_ORDER.items(), key=lambda x: len(x[0]), reverse=True)
+    sorted_patterns: list[tuple[str, int]] = sorted(model_agg_sort_order.items(), key=lambda x: len(x[0]), reverse=True)
     
     for pattern, sort_order in sorted_patterns:
         # Escape special regex characters in the pattern

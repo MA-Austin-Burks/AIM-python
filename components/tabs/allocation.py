@@ -900,20 +900,22 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     
     # Generate hash of table data for cache key
     # Hash the matrix DataFrame content and styling parameters
+    # Use a single hash combining all relevant data (HTML is deterministic from data, so no need for separate hash)
     table_data_hash: str = hashlib.md5(
-        str(matrix_df.write_json()).encode() + 
-        str(equity_cols).encode() +
-        str(header_name).encode() +
-        asset_col_width.encode() + 
-        equity_col_width.encode() +
-        str(strategy_color).encode()
+        (
+            str(matrix_df.write_json()) + 
+            str(equity_cols) +
+            str(header_name) +
+            asset_col_width + 
+            equity_col_width +
+            str(strategy_color)
+        ).encode()
     ).hexdigest()
     
-    # Generate complete HTML (cached based on data hash and HTML content)
-    # Cache key includes both the data hash and the actual HTML to ensure cache hits
-    html_hash: str = hashlib.md5(table_html.encode()).hexdigest()
+    # Generate complete HTML (cached based on data hash)
+    # Since HTML is deterministic from the data, we only need the data hash
     complete_html: str = _generate_allocation_table_html_cached(
-        table_html, f"{table_data_hash}_{html_hash}"
+        table_html, table_data_hash
     )
     
     # Render table using Great Tables with fixed column widths
