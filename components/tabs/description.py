@@ -12,28 +12,136 @@ from styles.branding import (
     SECONDARY,
     TERTIARY,
 )
-from components.constants import GROUPING_OPTIONS
+from components.constants import GROUPING_OPTIONS, PIE_CHART_MAX_ITEMS
 from utils.core.data import hash_lazyframe
 from utils.core.formatting import format_currency_compact
 
 
-CATEGORY_COLORS: dict[str, str] = {
-    "Equity": PRIMARY["raspberry"],
-    "Bonds": TERTIARY["azure"],
-    "Alternative": SECONDARY["iris"],
-    "Cash": TERTIARY["spring"],
-    "Other": PRIMARY["charcoal"],
-    "Fixed Income": TERTIARY["azure"],
-}
+@st.cache_data
+def _load_color_mappings() -> tuple[
+    dict[str, str], dict[str, str], dict[str, str],  # colors
+    dict[str, int], dict[str, int], dict[str, int]   # sort orders
+]:
+    """Load color mappings and sort orders from product classification framework CSV.
+    
+    Returns:
+        Tuple of (asset_category_colors, asset_type_colors, asset_class_colors,
+                  asset_category_sort_orders, asset_type_sort_orders, asset_class_sort_orders) dictionaries
+    """
+    try:
+        import os
+        csv_path = "data/product_classification_framework.csv"
+        if not os.path.exists(csv_path):
+            st.error(f"Color mapping CSV not found at: {csv_path}")
+            return {}, {}, {}, {}, {}, {}
+        
+        color_df = pl.read_csv(csv_path)
+        
+        # Create mappings: name -> color
+        # Use unique() to get unique combinations, keeping the first occurrence
+        # Sort by sort_order first to ensure consistent selection when multiple rows exist
+        asset_category_data = (
+            color_df.select(["asset_category", "asset_category_color", "asset_category_sort_order"])
+            .sort("asset_category_sort_order")
+            .unique(subset=["asset_category"], keep="first")
+            .to_dict(as_series=False)
+        )
+        # Normalize keys by stripping whitespace to handle any CSV formatting issues
+        asset_category_map = {
+            key.strip(): value 
+            for key, value in zip(
+                asset_category_data["asset_category"],
+                asset_category_data["asset_category_color"]
+            )
+        }
+        asset_category_sort_map = {
+            key.strip(): value 
+            for key, value in zip(
+                asset_category_data["asset_category"],
+                asset_category_data["asset_category_sort_order"]
+            )
+        }
+        
+        asset_type_data = (
+            color_df.select(["asset_type", "asset_type_color", "asset_type_sort_order"])
+            .sort("asset_type_sort_order")
+            .unique(subset=["asset_type"], keep="first")
+            .to_dict(as_series=False)
+        )
+        # Normalize keys by stripping whitespace
+        asset_type_map = {
+            key.strip(): value 
+            for key, value in zip(
+                asset_type_data["asset_type"],
+                asset_type_data["asset_type_color"]
+            )
+        }
+        asset_type_sort_map = {
+            key.strip(): value 
+            for key, value in zip(
+                asset_type_data["asset_type"],
+                asset_type_data["asset_type_sort_order"]
+            )
+        }
+        
+        asset_class_data = (
+            color_df.select(["asset_class", "asset_class_color", "asset_class_sort_order"])
+            .sort("asset_class_sort_order")
+            .unique(subset=["asset_class"], keep="first")
+            .to_dict(as_series=False)
+        )
+        # Normalize keys by stripping whitespace
+        asset_class_map = {
+            key.strip(): value 
+            for key, value in zip(
+                asset_class_data["asset_class"],
+                asset_class_data["asset_class_color"]
+            )
+        }
+        asset_class_sort_map = {
+            key.strip(): value 
+            for key, value in zip(
+                asset_class_data["asset_class"],
+                asset_class_data["asset_class_sort_order"]
+            )
+        }
+        
+        return (
+            asset_category_map, asset_type_map, asset_class_map,
+            asset_category_sort_map, asset_type_sort_map, asset_class_sort_map
+        )
+    except Exception as e:
+        # Fallback to default colors if CSV can't be loaded
+        st.error(f"Could not load color mappings: {e}")
+        import traceback
+        st.error(traceback.format_exc())
+        return {}, {}, {}, {}, {}, {}
 
 
 def _get_color_for_group(group_name: str, grouping_option: str) -> str:
-    """Get color for a group based on grouping option."""
-    if grouping_option == "Asset Category":
-        return CATEGORY_COLORS.get(group_name, PRIMARY["charcoal"])
+    """Get color for a group based on grouping option.
     
-    # Hash-based assignment ensures same group name always gets same color
-    # Important for consistency when switching between grouping options
+    Uses colors from product_classification_framework.csv when available.
+    Falls back to hash-based assignment for Product grouping or if CSV lookup fails.
+    """
+    # Load color mappings (cached)
+    asset_category_colors, asset_type_colors, asset_class_colors, _, _, _ = _load_color_mappings()
+    
+    # Simple exact match lookup - lightweight since input is controlled
+    if grouping_option == "Asset Category":
+        color = asset_category_colors.get(group_name)
+        if color:
+            return color
+    elif grouping_option == "Asset Type":
+        color = asset_type_colors.get(group_name)
+        if color:
+            return color
+    elif grouping_option == "Asset Class":
+        color = asset_class_colors.get(group_name)
+        if color:
+            return color
+    
+    # Fallback: Hash-based assignment for Product grouping or if CSV lookup fails
     import hashlib
     hash_val = int(hashlib.md5(group_name.encode()).hexdigest()[:6], 16)
     colors = [
@@ -45,6 +153,33 @@ def _get_color_for_group(group_name: str, grouping_option: str) -> str:
         TERTIARY["gold"],
     ]
     return colors[hash_val % len(colors)]
+
+
+def _get_sort_order_for_group(group_name: str, grouping_option: str) -> int:
+    """Get sort order for a group based on grouping option.
+    
+    Uses sort orders from product_classification_framework.csv when available.
+    Falls back to a large number if not found (so unknown items sort last).
+    """
+    # Load sort order mappings (cached)
+    _, _, _, asset_category_sort, asset_type_sort, asset_class_sort = _load_color_mappings()
+    
+    # Simple exact match lookup - lightweight since input is controlled
+    if grouping_option == "Asset Category":
+        sort_order = asset_category_sort.get(group_name)
+        if sort_order is not None:
+            return sort_order
+    elif grouping_option == "Asset Type":
+        sort_order = asset_type_sort.get(group_name)
+        if sort_order is not None:
+            return sort_order
+    elif grouping_option == "Asset Class":
+        sort_order = asset_class_sort.get(group_name)
+        if sort_order is not None:
+            return sort_order
+    
+    # Fallback: Return large number so unknown items sort last
+    return 999999
 
 
 @st.cache_data(hash_funcs={pl.LazyFrame: hash_lazyframe})
@@ -61,7 +196,7 @@ def get_grouped_allocations_for_chart(
     2. Apply product name cleaning if grouping by Product
     3. Group and aggregate allocation data
     4. Convert to chart data format with colors
-    5. Combine excess items into "Others" if more than 15
+    5. Combine excess items into "Others" if more than PIE_CHART_MAX_ITEMS
     """
     # ============================================================================
     # STEP 1: Validate and map grouping option to column name
@@ -101,57 +236,94 @@ def get_grouped_allocations_for_chart(
     # ============================================================================
     # STEP 3: Group and aggregate allocation data
     # ============================================================================
-    grouped = (
-        strategy_data_processed
-        .group_by(group_column)
-        .agg([
-            pl.sum("weight").alias("total_weight"),
-        ])
-        .filter(
-            pl.col(group_column).is_not_null() &
-            (pl.col(group_column) != "")
+    # When grouping by Product, also get asset_class for color/sort order lookup
+    if grouping_option == "Product":
+        grouped = (
+            strategy_data_processed
+            .group_by([group_column, "asset_class"])
+            .agg([
+                pl.sum("weight").alias("total_weight"),
+            ])
+            .group_by(group_column)
+            .agg([
+                pl.sum("total_weight").alias("total_weight"),
+                pl.first("asset_class").alias("asset_class"),  # Take first asset_class for each product
+            ])
+            .filter(
+                pl.col(group_column).is_not_null() &
+                (pl.col(group_column) != "")
+            )
+            .collect()
         )
-        .sort("total_weight", descending=True)
-        .collect()
-    )
+    else:
+        grouped = (
+            strategy_data_processed
+            .group_by(group_column)
+            .agg([
+                pl.sum("weight").alias("total_weight"),
+            ])
+            .filter(
+                pl.col(group_column).is_not_null() &
+                (pl.col(group_column) != "")
+            )
+            .collect()
+        )
     
     # ============================================================================
-    # STEP 4: Convert to chart data format with colors
+    # STEP 4: Convert to chart data format with colors and sort orders
     # ============================================================================
     data = []
     for row in grouped.to_dicts():
         group_name = str(row[group_column])
         # weight is stored as decimal (0-1), convert to percentage
         allocation_pct = float(row["total_weight"]) * 100
-        color = _get_color_for_group(group_name, grouping_option)
+        
+        # For Product grouping, use asset_class for color and sort order
+        if grouping_option == "Product" and "asset_class" in row:
+            asset_class = str(row["asset_class"])
+            color = _get_color_for_group(asset_class, "Asset Class")
+            sort_order = _get_sort_order_for_group(asset_class, "Asset Class")
+        else:
+            color = _get_color_for_group(group_name, grouping_option)
+            sort_order = _get_sort_order_for_group(group_name, grouping_option)
         
         data.append({
             "name": group_name,
             "allocation": allocation_pct,
             "market_value": total_assets * allocation_pct / 100,
             "color": color,
+            "sort_order": sort_order,
         })
     
+    # Sort by sort_order (ascending), then by allocation (descending) as tiebreaker
+    data.sort(key=lambda x: (x["sort_order"], -x["allocation"]))
+    
     # ============================================================================
-    # STEP 5: Combine excess items into "Others" if more than 15
+    # STEP 5: Combine excess items into "Others" if more than PIE_CHART_MAX_ITEMS
     # ============================================================================
-    # If more than 15 items, combine the rest into "Others"
-    if len(data) > 15:
-        top_15 = data[:15]
-        others_allocation = sum(item["allocation"] for item in data[15:])
-        others_market_value = sum(item["market_value"] for item in data[15:])
+    # If more than PIE_CHART_MAX_ITEMS items, combine the rest into "Others"
+    if len(data) > PIE_CHART_MAX_ITEMS:
+        top_items = data[:PIE_CHART_MAX_ITEMS]
+        others_allocation = sum(item["allocation"] for item in data[PIE_CHART_MAX_ITEMS:])
+        others_market_value = sum(item["market_value"] for item in data[PIE_CHART_MAX_ITEMS:])
         
         # Use a neutral color for "Others"
         others_color = PRIMARY["charcoal"]
         
-        top_15.append({
+        # Add "Others" with a high sort_order so it appears at the end
+        others_item = {
             "name": "Others",
             "allocation": others_allocation,
             "market_value": others_market_value,
             "color": others_color,
-        })
+            "sort_order": 999999,  # Ensure "Others" appears last
+        }
+        top_items.append(others_item)
         
-        return top_15
+        # Re-sort to ensure "Others" is in the correct position
+        top_items.sort(key=lambda x: (x["sort_order"], -x["allocation"]))
+        
+        return top_items
     
     return data
 
@@ -203,31 +375,12 @@ def render_description_tab(strategy_name: str, strategy_data: dict[str, Any], cl
             "ACCOUNT MINIMUM", format_currency_compact(float(minimum)) if minimum else "$0.0"
         )
     
-    # Row 2: 3 Year Return, 3 Year Std, Inception
-    row2_col1, row2_col2, row2_col3 = st.columns(3)
-    with row2_col1:
-        three_year_return = strategy_data.get("3 Year Return") or strategy_data.get("3_year_return")
-        _metric_with_date(
-            "3 YEAR RETURN", 
-            f"{three_year_return * 100:.2f}%" if three_year_return else "XX.XX%"
-        )
-    with row2_col2:
-        three_year_std = strategy_data.get("3 Year Std") or strategy_data.get("3_year_std") or strategy_data.get("3 YR STD DEV")
-        _metric_with_date(
-            "3 YR STD DEV",
-            f"{three_year_std * 100:.2f}%" if three_year_std else "XX.XX%"
-        )
-    with row2_col3:
-        inception_date: str = strategy_data.get("Inception Date") or strategy_data.get("inception_date") or "01/01/2010"
-        _metric_with_date(
-            "SINCE INCEPTION",
-            inception_date,
-        )
     st.divider()
 
     # ============================================================================
     # STEP 3: Render allocation chart with grouping options
     # ============================================================================
+    st.markdown("#### Asset Allocation")
     # Allocation chart provides visual breakdown by grouping option
     if cleaned_data is not None:
         grouping_option: Optional[str] = st.segmented_control(
@@ -260,6 +413,7 @@ def render_description_tab(strategy_name: str, strategy_data: dict[str, Any], cl
                     marker_colors=colors,
                     textinfo="none",
                     showlegend=False,
+                    sort=False,  # Prevent Plotly from reordering slices - use our custom sort order
                     hovertemplate="<b>%{label}</b><br>%{percent:.1%}<extra></extra>",
                 ),
                 layout={

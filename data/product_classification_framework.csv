@@ -1,0 +1,90 @@
+﻿asset_category,asset_category_id,asset_category_color,asset_category_sort_order,asset_type,asset_type_id,asset_type_color,asset_type_sort_order,asset_class,asset_class_id,asset_class_color,asset_class_sort_order
+Equity,1,#820361,1,Conservative Allocation,32,#620249,20,Retirement Income,2182,#074880,1
+Equity,1,#820361,1,Conservative Allocation,32,#620249,20,Allocation--0% to 15% Equity,2181,#170F11,5
+Equity,1,#820361,1,Conservative Allocation,32,#620249,20,Allocation--15% to 30% Equity,2180,#170F11,10
+Equity,1,#820361,1,Conservative Allocation,32,#620249,20,Target-Date 2000-2010,2183,#0C5EA6,15
+Equity,1,#820361,1,Conservative Allocation,32,#620249,20,Target-Date 2015,2184,#0E65B3,20
+Equity,1,#820361,1,Conservative Allocation,32,#620249,20,Target-Date 2020,2185,#116CBF,25
+Equity,1,#820361,1,Conservative Allocation,32,#620249,20,Target-Date 2025,2186,#1373CC,30
+Equity,1,#820361,1,Conservative Allocation,32,#620249,20,Target-Date 2030,2187,#167BD9,35
+Equity,1,#820361,1,Moderate Allocation,31,#6F0352,22,Target-Date 2035,2188,#1882E6,40
+Equity,1,#820361,1,Moderate Allocation,31,#6F0352,22,Allocation--30% to 50% Equity,2179,#170F11,45
+Equity,1,#820361,1,Moderate Allocation,31,#6F0352,22,Target-Date 2040,2189,#1E90FF,50
+Equity,1,#820361,1,Moderate Allocation,31,#6F0352,22,Allocation--50% to 70% Equity,2178,#170F11,55
+Equity,1,#820361,1,Moderate Allocation,31,#6F0352,22,Target-Date 2045,2190,#3EA2FF,60
+Equity,1,#820361,1,Aggressive Allocation,30,#7C035C,30,Tactical Allocation,2195,#4FABFF,65
+Equity,1,#820361,1,Aggressive Allocation,30,#7C035C,30,Target-Date 2050,2191,#60B4FF,70
+Equity,1,#820361,1,Aggressive Allocation,30,#7C035C,30,Target-Date 2055,2192,#71BDFF,75
+Equity,1,#820361,1,Aggressive Allocation,30,#7C035C,30,Target-Date 2060,2193,#83C5FF,80
+Equity,1,#820361,1,Aggressive Allocation,30,#7C035C,30,Target-Date 2065+,2194,#95CEFF,85
+Equity,1,#820361,1,Aggressive Allocation,30,#7C035C,30,Allocation--70% to 85% Equity,2177,#170F11,90
+Equity,1,#820361,1,Aggressive Allocation,30,#7C035C,30,Allocation--85%+ Equity,2176,#170F11,95
+Equity,1,#820361,1,US Large Cap Equity,27,#8F1C71,35,US Preferred Stock,2151,#450033,100
+Equity,1,#820361,1,US Large Cap Equity,27,#8F1C71,35,US Large Cap Core,2143,#4F003A,105
+Equity,1,#820361,1,US Large Cap Equity,27,#8F1C71,35,US Large Cap Value,2149,#580040,110
+Equity,1,#820361,1,US Large Cap Equity,27,#8F1C71,35,US Large Cap Dividend,2145,#610047,115
+Equity,1,#820361,1,US Large Cap Equity,27,#8F1C71,35,US Large Cap Dividend Yield,2150,#69004E,120
+Equity,1,#820361,1,US Large Cap Equity,27,#8F1C71,35,US Large Cap Quality,2148,#720054,125
+Equity,1,#820361,1,US Large Cap Equity,27,#8F1C71,35,US Large Cap Low Volatility,2146,#7A025B,130
+Equity,1,#820361,1,US Large Cap Equity,27,#8F1C71,35,US Large Cap Multifactor,2144,#820361,135
+Equity,1,#820361,1,US Large Cap Equity,27,#8F1C71,35,US Large Cap Momentum,2234,#860A66,140
+Equity,1,#820361,1,US Large Cap Equity,27,#8F1C71,35,US Real Estate,2153,#8A116B,145
+Equity,1,#820361,1,US Large Cap Equity,27,#8F1C71,35,US Sector Equity,2152,#8E1870,150
+Equity,1,#820361,1,US Mid Cap Equity,43,#9B3581,40,US Mid Cap Core,2154,#931F75,155
+Equity,1,#820361,1,US Mid Cap Equity,43,#9B3581,40,US Mid Cap Dividend Yield,2155,#972679,160
+Equity,1,#820361,1,US Small Cap Equity,44,#A84F90,45,US Small Cap Core,2156,#9B2E7E,165
+Equity,1,#820361,1,US Small Cap Equity,44,#A84F90,45,US Small Cap Dividend Yield,2158,#9F3583,170
+Equity,1,#820361,1,US Small Cap Equity,44,#A84F90,45,US Small Cap Multifactor,2157,#A33C88,175
+Equity,1,#820361,1,Global Equity,29,#B468A0,50,Global Preferred Stock,2173,#A6448D,180
+Equity,1,#820361,1,Global Equity,29,#B468A0,50,Global Equity,2224,#AA4C91,185
+Equity,1,#820361,1,Global Equity,29,#B468A0,50,Global Real Estate,2175,#AE5396,190
+Equity,1,#820361,1,Global Equity,29,#B468A0,50,Global Sector Equity,2174,#B25B9B,195
+Equity,1,#820361,1,Int'l Developed Equity,28,#C181B0,55,Int'l Developed Preferred Stock,2167,#B662A0,200
+Equity,1,#820361,1,Int'l Developed Equity,28,#C181B0,55,Int'l Developed Core,2159,#BA6AA4,205
+Equity,1,#820361,1,Int'l Developed Equity,28,#C181B0,55,Int'l Developed Dividend Yield,2166,#BE71A9,210
+Equity,1,#820361,1,Int'l Developed Equity,28,#C181B0,55,Int'l Developed Value,2164,#C179AE,215
+Equity,1,#820361,1,Int'l Developed Equity,28,#C181B0,55,Int'l Developed Quality,2163,#C580B3,220
+Equity,1,#820361,1,Int'l Developed Equity,28,#C181B0,55,Int'l Developed Low Volatility,2161,#C988B7,225
+Equity,1,#820361,1,Int'l Developed Equity,28,#C181B0,55,Int'l Developed Multifactor,2160,#CC90BC,230
+Equity,1,#820361,1,Int'l Developed Equity,28,#C181B0,55,Int'l Developed Momentum,2162,#D097C1,235
+Equity,1,#820361,1,Int'l Developed Equity,28,#C181B0,55,Int'l Developed Small/Mid Cap,2165,#D49FC5,240
+Equity,1,#820361,1,Int'l Developed Equity,28,#C181B0,55,Int'l Developed Real Estate,2169,#D7A6CA,245
+Equity,1,#820361,1,Int'l Developed Equity,28,#C181B0,55,Int'l Developed Sector Equity,2168,#DBAECE,250
+Equity,1,#820361,1,Emerging Markets Equity,20,#CD9AC0,60,Emerging Markets Core,2170,#DEB5D3,255
+Equity,1,#820361,1,Emerging Markets Equity,20,#CD9AC0,60,Emerging Markets Dividend Yield,2172,#E2BDD8,260
+Equity,1,#820361,1,Emerging Markets Equity,20,#CD9AC0,60,Emerging Markets Multifactor,2171,#E5C4DC,265
+Equity,1,#820361,1,Other,34,#DAB3D0,65,Other,2220,#E9CCE1,270
+Alternatives,15,#7673DC,5,Annuity,37,#8B88E1,70,Annuity,2208,#232342,275
+Alternatives,15,#7673DC,5,Annuity,37,#8B88E1,70,Fixed Annuity,2233,#2F2E58,280
+Alternatives,15,#7673DC,5,Annuity,37,#8B88E1,70,Fixed Indexed Annuity,2207,#2F2E58,281
+Alternatives,15,#7673DC,5,Private Markets,35,#9F9DE7,75,Private Infrastructure,2198,#474584,290
+Alternatives,15,#7673DC,5,Private Markets,35,#9F9DE7,75,Private Real Assets,2199,#53519A,295
+Alternatives,15,#7673DC,5,Private Markets,35,#9F9DE7,75,Private Real Estate,2196,#5E5CB0,300
+Alternatives,15,#7673DC,5,Private Markets,35,#9F9DE7,75,Private Credit,2197,#6A68C6,305
+Alternatives,15,#7673DC,5,Private Markets,35,#9F9DE7,75,Private Equity,2228,#7D7ADE,310
+Alternatives,15,#7673DC,5,Private Markets,35,#9F9DE7,75,Venture Capital,2225,#8B88E1,315
+Alternatives,15,#7673DC,5,Other Alternatives,36,#B4B2EC,80,Alternative,2205,#9896E5,320
+Alternatives,15,#7673DC,5,Other Alternatives,36,#B4B2EC,80,Commodities,2201,#A6A4E8,325
+Alternatives,15,#7673DC,5,Other Alternatives,36,#B4B2EC,80,Options-Trading,2204,#B4B2EC,330
+Alternatives,15,#7673DC,5,Other Alternatives,36,#B4B2EC,80,Managed Futures,2202,#C1C0EF,335
+Alternatives,15,#7673DC,5,Other Alternatives,36,#B4B2EC,80,Hedge Funds,2200,#CFCEF3,340
+Alternatives,15,#7673DC,5,Other Alternatives,36,#B4B2EC,80,Multi-Strategy,2203,#DDDCF6,345
+Alternatives,15,#7673DC,5,Other Alternatives,36,#B4B2EC,80,Cryptocurrency,2206,#EAEAFA,350
+Fixed Income,2,#454759,10,Municipal Bond,41,#454759,85,National Muni Bond,2215,#454759,355
+Fixed Income,2,#454759,10,Municipal Bond,41,#454759,85,State-Specific Muni Bond,2216,#454759,360
+Fixed Income,2,#454759,10,US Taxable Bond,40,#686A78,90,Treasuries,2212,#686A78,365
+Fixed Income,2,#454759,10,US Taxable Bond,40,#686A78,90,Inflation-Protected Bond,2223,#686A78,370
+Fixed Income,2,#454759,10,US Taxable Bond,40,#686A78,90,Short-Term Bond,2226,#686A78,375
+Fixed Income,2,#454759,10,US Taxable Bond,40,#686A78,90,Intermediate Core Bond,2227,#686A78,380
+Fixed Income,2,#454759,10,US Taxable Bond,40,#686A78,90,Corporate Bond,2231,#686A78,385
+Fixed Income,2,#454759,10,US Taxable Bond,40,#686A78,90,Bank Loan,2230,#686A78,390
+Fixed Income,2,#454759,10,US Taxable Bond,40,#686A78,90,Non-Traditional Bond,2213,#686A78,395
+Fixed Income,2,#454759,10,US Taxable Bond,40,#686A78,90,Certificate of Deposit,2232,#505263,362
+Fixed Income,2,#454759,10,High Yield Municipal Bond,47,#8B8C97,91,High Yield Municipal Bond,2250,#8B8C97,398
+Fixed Income,2,#454759,10,US High Yield Taxable Bond,48,#AEAFB6,92,High Yield Taxable Bond,2214,#AEAFB6,400
+Fixed Income,2,#454759,10,International Taxable Bond,42,#D1D1D6,95,International Bond,2217,#D1D1D6,405
+Fixed Income,2,#454759,10,International Taxable Bond,42,#D1D1D6,95,International Bond - USD Hedged,2218,#D1D1D6,410
+Fixed Income,2,#454759,10,International Taxable Bond,42,#D1D1D6,95,Emerging Markets Bond,2229,#D1D1D6,415
+Cash,3,#00C48C,15,Cash,39,#40D3A9,100,Cash,2142,#40D3A9,420
+Cash,3,#00C48C,15,Cash Equivalents,38,#80E2C6,105,Money Market Tax-Free,2210,#6FF2CD,430
+Cash,3,#00C48C,15,Cash Equivalents,38,#80E2C6,105,Money Market Taxable,2209,#8DFBDC,435

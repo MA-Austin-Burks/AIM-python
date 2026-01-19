@@ -64,6 +64,7 @@ CARD_GRID_COLUMNS: Final[int] = 3
 GROUPING_OPTIONS: Final[list[str]] = ["Asset Category", "Asset Type", "Asset Class", "Product"]
 DEFAULT_COLLAPSE_SMA: Final[bool] = True
 SMA_COLLAPSE_THRESHOLD: Final[int] = 10
+PIE_CHART_MAX_ITEMS: Final[int] = 20  # Maximum items to show in pie chart before combining into "Others"
 
 
 # Input constraints

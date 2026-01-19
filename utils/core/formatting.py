@@ -30,7 +30,7 @@ def generate_badges(strategy_data: dict[str, Any]) -> list[str]:
     badges = []
 
     if strategy_data.get("Recommended"):
-        badges.append(":primary[Recommend]")
+        badges.append(":primary-badge[Recommend]")
 
     strategy_type = strategy_data.get("Strategy Type")
     if strategy_type:
@@ -41,10 +41,10 @@ def generate_badges(strategy_data: dict[str, Any]) -> list[str]:
         badges.append(f":blue-badge[{strategy_type_field}]")
 
     if strategy_data.get("Tax-Managed"):
-        badges.append(":green[Tax-Managed]")
+        badges.append(":green-badge[Tax-Managed]")
 
     if strategy_data.get("Private Markets"):
-        badges.append(":gray[Private Markets]")
+        badges.append(":gray-badge[Private Markets]")
 
     return badges
 
