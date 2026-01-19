@@ -1,6 +1,8 @@
 import polars as pl
 import streamlit as st
 
+from utils.security import validate_search_input, MAX_SEARCH_INPUT_LENGTH
+
 # Filter options lists
 STRATEGY_TYPES: list[str] = ["Risk-Based", "Asset-Class", "Special Situation"]
 
@@ -67,6 +69,7 @@ def render_search_bar() -> tuple[bool, str | None]:
             value="",
             placeholder="Type to filter by strategy name...",
             key="strategy_search_input",
+            max_chars=MAX_SEARCH_INPUT_LENGTH,
         )
     with col_clear:
         st.space()
@@ -75,8 +78,16 @@ def render_search_bar() -> tuple[bool, str | None]:
             st.rerun()
     
     # Search mode disables filters to prevent confusion (search is OR, filters are AND)
-    search_active = bool(strategy_search_text and strategy_search_text.strip())
-    strategy_search = strategy_search_text.strip() if strategy_search_text else None
+    # Validate and sanitize search input
+    try:
+        strategy_search = validate_search_input(strategy_search_text)
+        search_active = bool(strategy_search)
+    except ValueError as e:
+        # If validation fails, show error and reset search
+        st.error(str(e))
+        st.session_state["strategy_search_input"] = ""
+        strategy_search = None
+        search_active = False
     
     return search_active, strategy_search
 
@@ -222,7 +233,12 @@ def render_filters(search_active: bool) -> pl.Expr:
     if search_active:
         # Session state is initialized, so we can access directly
         strategy_search_text = st.session_state["strategy_search_input"]
-        strategy_search = strategy_search_text.strip() if strategy_search_text else None
+        # Validate and sanitize search input
+        try:
+            strategy_search = validate_search_input(strategy_search_text)
+        except ValueError:
+            # If validation fails, return empty filter
+            return pl.lit(True)
         if strategy_search:
             return (
                 pl.col("Strategy")

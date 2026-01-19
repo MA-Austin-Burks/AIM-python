@@ -201,14 +201,34 @@ def load_cleaned_data(parquet_url: str | None = None) -> pl.LazyFrame:
     # Write to temp file since scan_parquet requires a file path
     # The file persists during the session since load_cleaned_data is cached
     import tempfile
+    import atexit
     
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.parquet') as tmp_file:
-        tmp_file.write(parquet_buffer.getvalue())
-        tmp_path = tmp_file.name
-    
-    # Use scan_parquet for true lazy evaluation (doesn't load entire file into memory)
-    # File cleanup handled by OS temp directory cleanup (or can be managed in cache clear)
-    return pl.scan_parquet(tmp_path)
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.parquet') as tmp_file:
+            tmp_file.write(parquet_buffer.getvalue())
+            tmp_path = tmp_file.name
+        
+        # Register cleanup function to ensure temp file is deleted on exit
+        def cleanup_temp_file():
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+        
+        atexit.register(cleanup_temp_file)
+        
+        # Use scan_parquet for true lazy evaluation (doesn't load entire file into memory)
+        return pl.scan_parquet(tmp_path)
+    except Exception:
+        # Ensure cleanup on error
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+        raise
 
 
 def _get_strategy_list_url() -> str | None:
@@ -329,18 +349,21 @@ def load_strategy_list(parquet_url: str | None = None) -> pl.DataFrame:
     parquet_buffer, _ = download_parquet_from_azure(url)
     
     # Write to temp file and read as DataFrame (not LazyFrame since it's small)
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.parquet') as tmp_file:
-        tmp_file.write(parquet_buffer.getvalue())
-        tmp_path = tmp_file.name
-    
+    tmp_path = None
     try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.parquet') as tmp_file:
+            tmp_file.write(parquet_buffer.getvalue())
+            tmp_path = tmp_file.name
+        
         return pl.read_parquet(tmp_path)
     finally:
-        # Clean up temp file
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
+        # Always clean up temp file, even on error
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                # Log error but don't fail - temp file will be cleaned up by OS eventually
+                pass
 
 
 @st.cache_data(ttl=3600, hash_funcs={pl.LazyFrame: hash_lazyframe})
