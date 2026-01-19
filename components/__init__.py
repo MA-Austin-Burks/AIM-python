@@ -18,7 +18,7 @@ from styles.branding import (
 )
 from components.cards import render_card_view, render_explanation_card
 from components.modal import render_strategy_modal
-from components.sidebar import render_sidebar
+from components.filters import render_filters, render_filters_inline, render_reference_data, render_search_bar, render_sidebar
 from components.tabs import (
     render_allocation_tab,
     render_description_tab,
@@ -43,6 +43,10 @@ __all__ = [
     # Components
     "render_card_view",
     "render_explanation_card",
+    "render_filters",
+    "render_filters_inline",
+    "render_reference_data",
+    "render_search_bar",
     "render_sidebar",
     "render_strategy_modal",
     "render_tabs",
