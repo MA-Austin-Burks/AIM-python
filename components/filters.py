@@ -194,87 +194,141 @@ def render_filters_inline(search_active: bool) -> None:
             )
 
 
-def render_filters(search_active: bool) -> pl.Expr:
-    """Build filter expression from session state (filters are rendered inline via render_filters_inline).
+def _build_search_filter(strategy_search: str | None) -> pl.Expr:
+    """Build search filter expression.
     
     Args:
-        search_active: Whether search is currently active (disables filters)
+        strategy_search: Sanitized search text
+        
+    Returns:
+        Polars expression for search filter
     """
-    # Initialize filter expression list
-    expressions: list[pl.Expr] = []
-
-    # If search is active, return search-only expression (filters are disabled)
-    if search_active:
-        # Session state is initialized, so we can access directly
-        strategy_search_text = st.session_state["strategy_search_input"]
-        # Validate and sanitize search input
-        try:
-            strategy_search = validate_search_input(strategy_search_text)
-        except ValueError:
-            # If validation fails, return empty filter
-            return pl.lit(True)
-        if strategy_search:
-            return (
-                pl.col("Strategy")
-                .str.to_lowercase()
-                .str.contains(strategy_search.lower(), literal=True)
-            )
+    if not strategy_search:
         return pl.lit(True)
     
-    # Build filter expressions from session state
-    # Session state is initialized, so we can access directly
-    # Investment Committee Recommended
-    recommended_selection = st.session_state["filter_recommended_only"]
+    return (
+        pl.col("Strategy")
+        .str.to_lowercase()
+        .str.contains(strategy_search.lower(), literal=True)
+    )
+
+
+def _build_recommended_filter(recommended_selection: str | None) -> pl.Expr | None:
+    """Build recommended filter expression.
+    
+    Args:
+        recommended_selection: "Yes", "No", or None
+        
+    Returns:
+        Polars expression or None if no filter needed
+    """
     if recommended_selection == "Yes":
-        expressions.append(pl.col("Recommended"))
-    # If "No" or None, show all strategies (don't filter by Recommended)
+        return pl.col("Recommended")
+    return None
+
+
+def _build_account_value_filter(min_strategy: int | float) -> pl.Expr:
+    """Build account value filter expression.
     
-    # Account Value
-    min_strategy = st.session_state["min_strategy"]
-    expressions.append(pl.col("Minimum") <= min_strategy)
+    Args:
+        min_strategy: Minimum account value
+        
+    Returns:
+        Polars expression for account value filter
+    """
+    return pl.col("Minimum") <= min_strategy
+
+
+def _build_equity_range_filter(equity_range: tuple[int, int]) -> pl.Expr:
+    """Build equity range filter expression.
     
-    # Equity Allocation Range
-    equity_range = st.session_state["equity_range"]
-    expressions.append(
+    Args:
+        equity_range: Tuple of (min, max) equity percentages
+        
+    Returns:
+        Polars expression for equity range filter
+    """
+    return (
         (pl.col("Equity %").is_not_null())
         & (pl.col("Equity %") >= equity_range[0])
         & (pl.col("Equity %") <= equity_range[1])
     )
-    
-    # Tax-Managed
-    tax_managed_selection = st.session_state["filter_tax_managed"]
-    if tax_managed_selection:
-        expressions.append(pl.col("Tax-Managed") == (tax_managed_selection == "Yes"))
-    
-    # Has SMA Manager
-    has_sma_manager_selection = st.session_state["filter_sma_manager"]
-    if has_sma_manager_selection:
-        expressions.append(pl.col("Has SMA Manager") == (has_sma_manager_selection == "Yes"))
-    
-    # Private Markets
-    private_markets_selection = st.session_state["filter_private_markets"]
-    if private_markets_selection:
-        if private_markets_selection == "Yes":
-            expressions.append(pl.col("Private Markets"))
-        elif private_markets_selection == "No":
-            expressions.append(~pl.col("Private Markets"))
-    
-    # Strategy Type
-    selected_type = st.session_state["filter_strategy_type"]
-    if selected_type:
-        expressions.append(pl.col("Strategy Type").is_in([selected_type]))
-    
-    # Series
-    selected_subtypes = st.session_state["filter_series"]
-    # Ensure it's always a list (segmented_control with multi-select returns a list)
-    if selected_subtypes is None:
-        selected_subtypes = []
-    elif not isinstance(selected_subtypes, list):
-        selected_subtypes = [selected_subtypes]
-    if selected_subtypes:
-        expressions.append(pl.col("Type").is_in(selected_subtypes))
 
-    # Combine all filter expressions with AND logic
+
+def _build_boolean_filter(column_name: str, selection: str | None) -> pl.Expr | None:
+    """Build boolean filter expression for Yes/No filters.
+    
+    Args:
+        column_name: Column name to filter on
+        selection: "Yes", "No", or None
+        
+    Returns:
+        Polars expression or None if no filter needed
+    """
+    if not selection:
+        return None
+    return pl.col(column_name) == (selection == "Yes")
+
+
+def _build_private_markets_filter(selection: str | None) -> pl.Expr | None:
+    """Build private markets filter expression.
+    
+    Args:
+        selection: "Yes", "No", or None
+        
+    Returns:
+        Polars expression or None if no filter needed
+    """
+    if not selection:
+        return None
+    if selection == "Yes":
+        return pl.col("Private Markets")
+    elif selection == "No":
+        return ~pl.col("Private Markets")
+    return None
+
+
+def _build_strategy_type_filter(selected_type: str | None) -> pl.Expr | None:
+    """Build strategy type filter expression.
+    
+    Args:
+        selected_type: Strategy type or None
+        
+    Returns:
+        Polars expression or None if no filter needed
+    """
+    if not selected_type:
+        return None
+    return pl.col("Strategy Type").is_in([selected_type])
+
+
+def _build_series_filter(selected_subtypes: list[str] | str | None) -> pl.Expr | None:
+    """Build series filter expression.
+    
+    Args:
+        selected_subtypes: List of series, single series, or None
+        
+    Returns:
+        Polars expression or None if no filter needed
+    """
+    if selected_subtypes is None:
+        return None
+    if not isinstance(selected_subtypes, list):
+        selected_subtypes = [selected_subtypes]
+    if not selected_subtypes:
+        return None
+    return pl.col("Type").is_in(selected_subtypes)
+
+
+def _combine_filter_expressions(expressions: list[pl.Expr]) -> pl.Expr:
+    """Combine filter expressions with AND logic.
+    
+    Args:
+        expressions: List of Polars expressions
+        
+    Returns:
+        Combined expression
+    """
     if not expressions:
         return pl.lit(True)
     
@@ -282,6 +336,64 @@ def render_filters(search_active: bool) -> pl.Expr:
     for expr in expressions[1:]:
         combined_expr = combined_expr & expr
     return combined_expr
+
+
+def render_filters(search_active: bool) -> pl.Expr:
+    """Build filter expression from session state (filters are rendered inline via render_filters_inline).
+    
+    Args:
+        search_active: Whether search is currently active (disables filters)
+    """
+    # If search is active, return search-only expression (filters are disabled)
+    if search_active:
+        strategy_search_text = st.session_state["strategy_search_input"]
+        try:
+            strategy_search = validate_search_input(strategy_search_text)
+        except ValueError:
+            return pl.lit(True)
+        return _build_search_filter(strategy_search)
+    
+    # Build filter expressions from session state
+    expressions: list[pl.Expr] = []
+    
+    # Investment Committee Recommended
+    recommended_expr = _build_recommended_filter(st.session_state["filter_recommended_only"])
+    if recommended_expr is not None:
+        expressions.append(recommended_expr)
+    
+    # Account Value
+    expressions.append(_build_account_value_filter(st.session_state["min_strategy"]))
+    
+    # Equity Allocation Range
+    expressions.append(_build_equity_range_filter(st.session_state["equity_range"]))
+    
+    # Tax-Managed
+    tax_managed_expr = _build_boolean_filter("Tax-Managed", st.session_state["filter_tax_managed"])
+    if tax_managed_expr is not None:
+        expressions.append(tax_managed_expr)
+    
+    # Has SMA Manager
+    sma_expr = _build_boolean_filter("Has SMA Manager", st.session_state["filter_sma_manager"])
+    if sma_expr is not None:
+        expressions.append(sma_expr)
+    
+    # Private Markets
+    private_markets_expr = _build_private_markets_filter(st.session_state["filter_private_markets"])
+    if private_markets_expr is not None:
+        expressions.append(private_markets_expr)
+    
+    # Strategy Type
+    strategy_type_expr = _build_strategy_type_filter(st.session_state["filter_strategy_type"])
+    if strategy_type_expr is not None:
+        expressions.append(strategy_type_expr)
+    
+    # Series
+    series_expr = _build_series_filter(st.session_state["filter_series"])
+    if series_expr is not None:
+        expressions.append(series_expr)
+    
+    # Combine all filter expressions with AND logic
+    return _combine_filter_expressions(expressions)
 
 
 @st.cache_data(ttl=3600)
