@@ -17,6 +17,7 @@ from styles.branding import (
     TERTIARY,
 )
 from components.cards import render_card_view, render_explanation_card
+from components.footer import render_footer
 from components.modal import render_strategy_modal
 from components.filters import render_filters, render_filters_inline, render_reference_data, render_search_bar, render_sidebar
 from components.tabs import (
@@ -45,6 +46,7 @@ __all__ = [
     "render_explanation_card",
     "render_filters",
     "render_filters_inline",
+    "render_footer",
     "render_reference_data",
     "render_search_bar",
     "render_sidebar",

@@ -1,6 +1,6 @@
 import streamlit as st
 
-from components import render_reference_data
+from components import render_footer, render_reference_data
 from components.constants import EXPLANATION_CARD_UPDATE_DATE
 
 st.markdown("# About the Platform")
@@ -13,3 +13,6 @@ with open("data/explanation_card.txt", "r", encoding="utf-8") as f:
 # Render reference data sections (Abbreviations, TLH, Equivalents, Under Development)
 st.markdown("### Additional Information")
 render_reference_data()
+
+# Footer
+render_footer()

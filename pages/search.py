@@ -8,6 +8,7 @@ from components import (
     render_card_view,
     render_filters,
     render_filters_inline,
+    render_footer,
     render_strategy_modal,
 )
 from components.constants import (
@@ -67,3 +68,6 @@ if strategy_name:
         strategy_color: str = get_strategy_color(strategy_type) if strategy_type else PRIMARY["raspberry"]
         render_strategy_modal(strategy_name, strategy_data_dict, strategy_color, cleaned_data)
     del st.session_state[SELECTED_STRATEGY_MODAL_KEY]
+
+# Footer
+render_footer()

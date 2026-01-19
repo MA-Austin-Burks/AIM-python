@@ -205,7 +205,6 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
     # ============================================================================
     remaining = total_count - cards_to_show
     if remaining > 0:
-        st.divider()
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             next_load = min(CARDS_PER_LOAD, remaining)
