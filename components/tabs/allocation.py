@@ -56,22 +56,18 @@ def _has_collapsible_smas(all_model_data: pl.DataFrame, strategy_name: str) -> b
 @st.cache_data
 def _generate_allocation_table_html_cached(
     table_html: str,
-    asset_col_width: str, 
-    equity_col_width: str,
     table_data_hash: str
 ) -> str:
     """Generate cached allocation table HTML.
     
     Args:
         table_html: The HTML string from Great Tables (already generated)
-        asset_col_width: Width for asset column
-        equity_col_width: Width for equity columns
         table_data_hash: Hash of the table data for cache key
         
     Returns:
         Complete HTML string for the table
     """
-    css: str = get_allocation_table_main_css(asset_col_width, equity_col_width)
+    css: str = get_allocation_table_main_css()
     return f"""
     <div style="width: 100%; margin: 0 !important; padding: 0 !important;">
         <style>
@@ -545,7 +541,8 @@ def _build_allocation_tables(
     combined_table = combined_table.tab_style(
         style=[
             style.fill(color=strategy_color),
-            style.text(color="white", weight="bold", size="1.0rem"),
+            style.text(color="white", weight="bold", size="1.1rem"),
+            style.css(rule="font-family: 'Merriweather', serif !important; padding: 12px !important;"),
         ],
         locations=loc.column_labels(),
     )
@@ -575,6 +572,7 @@ def _build_allocation_tables(
                 style=[
                     style.fill(color=rgba_color),
                     style.text(color="black", weight="bold"),
+                    style.css(rule="font-family: 'IBM Plex Sans', sans-serif !important;"),
                 ],
                 locations=loc.body(columns=pl.all(), rows=[idx]),
             )
@@ -583,9 +581,16 @@ def _build_allocation_tables(
     if product_row_indices:
         combined_table = combined_table.tab_style(
             style=[
-                style.css(rule="padding-left: 20px;"),
+                style.css(rule="padding-left: 20px; font-family: 'IBM Plex Sans', sans-serif !important;"),
             ],
             locations=loc.body(columns=["asset_formatted"], rows=product_row_indices),
+        )
+        # Ensure all columns in product rows use IBM Plex Sans
+        combined_table = combined_table.tab_style(
+            style=[
+                style.css(rule="font-family: 'IBM Plex Sans', sans-serif !important;"),
+            ],
+            locations=loc.body(columns=equity_cols, rows=product_row_indices),
         )
     
     # Spacer rows: add height using Great Tables style.css() API
@@ -603,6 +608,7 @@ def _build_allocation_tables(
         combined_table = combined_table.tab_style(
             style=[
                 style.fill(color=rgba_color),
+                style.css(rule="font-family: 'IBM Plex Sans', sans-serif !important;"),
             ],
             locations=loc.body(columns=pl.all(), rows=summary_row_indices),
         )
@@ -616,6 +622,14 @@ def _build_allocation_tables(
             "Segoe UI",
             "sans-serif",
         ]
+    )
+    
+    # Ensure all body cells use IBM Plex Sans (explicit override)
+    combined_table = combined_table.tab_style(
+        style=[
+            style.css(rule="font-family: 'IBM Plex Sans', sans-serif !important;"),
+        ],
+        locations=loc.body(),
     )
     
     # Highlight selected strategy's equity column for quick identification
@@ -715,6 +729,11 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     asset_col_width: str = "40%"  # Combined width for asset+ticker
     equity_col_width: str = f"{(60 / num_equity_cols):.2f}%" if num_equity_cols > 0 else "0%"
     
+    # Set column widths using native Great Tables API instead of CSS
+    width_cases: dict[str, str] = {"asset_formatted": asset_col_width}
+    width_cases.update({col: equity_col_width for col in equity_cols})
+    combined_table = combined_table.cols_width(cases=width_cases)
+    
     # Generate table HTML from GT object
     table_html: str = combined_table.as_raw_html(inline_css=True)
     
@@ -733,12 +752,14 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     # Cache key includes both the data hash and the actual HTML to ensure cache hits
     html_hash: str = hashlib.md5(table_html.encode()).hexdigest()
     complete_html: str = _generate_allocation_table_html_cached(
-        table_html, asset_col_width, equity_col_width, f"{table_data_hash}_{html_hash}"
+        table_html, f"{table_data_hash}_{html_hash}"
     )
     
     # Render table using Great Tables with fixed column widths
     st.html(complete_html)
     
+    st.divider()    
+
     # ============================================================================
     # STEP 6: Render collapse SMAs toggle (only if there are collapsible SMAs)
     # ============================================================================
