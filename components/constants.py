@@ -47,7 +47,6 @@ SERIES_OPTIONS: Final[list[str]] = [
 # Card view options
 CARD_ORDER_OPTIONS: Final[list[str]] = [
     "Recommended (Default)",
-    "Investment Committee Status",
     "Acct Min - Highest to Lowest",
     "Acct Min - Lowest to Highest",
     "Expense Ratio - Highest to Lowest",

@@ -73,8 +73,6 @@ def _apply_sort_order(strategies: pl.DataFrame, sort_order: str) -> pl.DataFrame
             descending=[True, True, True],
             nulls_last=True,
         )
-    elif sort_order == "Investment Committee Status":
-        return strategies.sort("Recommended", descending=True, nulls_last=True)
     elif sort_order == "Acct Min - Highest to Lowest":
         return strategies.sort("Minimum", descending=True, nulls_last=True)
     elif sort_order == "Acct Min - Lowest to Highest":

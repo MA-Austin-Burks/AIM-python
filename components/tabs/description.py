@@ -291,9 +291,7 @@ def render_description_tab(strategy_name: str, strategy_data: dict[str, Any], cl
     # Factsheet
     st.download_button(
         label="📄 Download Fact Sheet",
-        data="Fact sheet content goes here.",
-        file_name=f"{strategy_name}_factsheet.pdf",
-        mime="application/pdf",
+        data="",
         disabled=True,
         key=f"factsheet_download_{strategy_name}",
     )
