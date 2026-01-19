@@ -163,8 +163,7 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
     # ============================================================================
     # STEP 4: Render cards in grid layout
     # ============================================================================
-    # Render cards row by row, with each card in its own container
-    # This isolates each card from layout changes and prevents spacing issues
+    # Render cards row by row for consistent spacing
     clicked_strategy = None
     
     # Convert to list for easier row-based rendering
@@ -178,22 +177,13 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
         # Create columns for this row only
         cols = st.columns(CARD_GRID_COLUMNS)
         
-        # Render each card in this row, wrapped in its own container
-        # Clear any extra columns from previous renders to avoid stale cards
-        for col_idx in range(CARD_GRID_COLUMNS):
+        # Render each card in this row
+        for col_idx in range(len(row_cards)):
             with cols[col_idx]:
-                placeholder = st.empty()
-                if col_idx < len(row_cards):
-                    card_data = row_cards[col_idx]
-                    # Wrap each card in its own container to isolate it from layout changes
-                    # This prevents Streamlit from getting confused about spacing when filters change
-                    with placeholder.container():
-                        card_idx = row_start + col_idx
-                        clicked, strategy_name = _render_strategy_card(card_data, card_idx)
-                        if clicked:
-                            clicked_strategy = strategy_name
-                else:
-                    placeholder.empty()
+                card_idx = row_start + col_idx
+                clicked, strategy_name = _render_strategy_card(row_cards[col_idx], card_idx)
+                if clicked:
+                    clicked_strategy = strategy_name
     
     # Handle click after all cards are rendered to preserve layout
     if clicked_strategy:
