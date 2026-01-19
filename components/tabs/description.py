@@ -12,12 +12,9 @@ from styles.branding import (
     SECONDARY,
     TERTIARY,
 )
+from utils.core.constants import GROUPING_OPTIONS, PIE_CHART_MAX_ITEMS
 from utils.core.data import hash_lazyframe
 from utils.core.formatting import format_currency_compact
-
-# Allocation/grouping options
-GROUPING_OPTIONS: Final[list[str]] = ["Asset Category", "Asset Type", "Asset Class", "Product"]
-PIE_CHART_MAX_ITEMS: Final[int] = 20  # Maximum items to show in pie chart before combining into "Others"
 
 
 @st.cache_data
@@ -421,7 +418,9 @@ def render_description_tab(strategy_name: str, strategy_data: dict[str, Any], cl
             grouping_option = "Asset Class"
         
         # Total assets used for market value calculation (display only)
-        total_assets: float = 100000.0
+        from utils.core.constants import DEFAULT_TOTAL_ASSETS
+        
+        total_assets: float = DEFAULT_TOTAL_ASSETS
         chart_data: list[dict[str, Any]] = get_grouped_allocations_for_chart(
             cleaned_data, strategy_name, grouping_option, total_assets
         )

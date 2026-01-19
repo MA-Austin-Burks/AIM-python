@@ -4,6 +4,13 @@ from typing import TypeVar, Callable, Any
 
 import streamlit as st
 
+from utils.core.constants import (
+    DEFAULT_COLLAPSE_SMA,
+    DEFAULT_EQUITY_RANGE,
+    DEFAULT_MIN_STRATEGY,
+    STRATEGY_TYPES,
+    STRATEGY_TYPE_TO_SERIES,
+)
 from utils.security import validate_session_state_value
 
 T = TypeVar("T")
@@ -107,7 +114,7 @@ def initialize_session_state() -> None:
         st.session_state["filter_private_markets"] = None
     
     if "min_strategy" not in st.session_state:
-        st.session_state["min_strategy"] = 50000
+        st.session_state["min_strategy"] = DEFAULT_MIN_STRATEGY
     elif not validate_session_state_value(
         "min_strategy",
         st.session_state["min_strategy"],
@@ -117,7 +124,7 @@ def initialize_session_state() -> None:
         st.session_state["min_strategy"] = 50000
     
     if "equity_range" not in st.session_state:
-        st.session_state["equity_range"] = (0, 100)
+        st.session_state["equity_range"] = DEFAULT_EQUITY_RANGE
     elif not validate_session_state_value(
         "equity_range",
         st.session_state["equity_range"],
@@ -127,7 +134,7 @@ def initialize_session_state() -> None:
         st.session_state["equity_range"] = (0, 100)
     
     if "filter_strategy_type" not in st.session_state:
-        st.session_state["filter_strategy_type"] = "Risk-Based"
+        st.session_state["filter_strategy_type"] = STRATEGY_TYPES[0]  # "Risk-Based"
     elif not validate_session_state_value(
         "filter_strategy_type",
         st.session_state["filter_strategy_type"],
@@ -137,7 +144,8 @@ def initialize_session_state() -> None:
         st.session_state["filter_strategy_type"] = "Risk-Based"
     
     if "filter_series" not in st.session_state:
-        st.session_state["filter_series"] = ["Multifactor Series", "Market Series", "Income Series"]
+        # Default series for Risk-Based strategy type
+        st.session_state["filter_series"] = STRATEGY_TYPE_TO_SERIES[STRATEGY_TYPES[0]]
     elif not validate_session_state_value(
         "filter_series",
         st.session_state["filter_series"],
@@ -147,7 +155,7 @@ def initialize_session_state() -> None:
         st.session_state["filter_series"] = ["Multifactor Series", "Market Series", "Income Series"]
     
     if "_previous_strategy_type" not in st.session_state:
-        st.session_state["_previous_strategy_type"] = "Risk-Based"
+        st.session_state["_previous_strategy_type"] = STRATEGY_TYPES[0]  # "Risk-Based"
     elif not validate_session_state_value(
         "_previous_strategy_type",
         st.session_state["_previous_strategy_type"],

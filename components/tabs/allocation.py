@@ -14,16 +14,15 @@ from utils.core.session_state import get_or_init
 from styles import (
     get_allocation_table_main_css,
 )
-from utils.core.data import get_model_agg_sort_order, get_strategy_by_name, hash_lazyframe
-from utils.core.formatting import format_currency_compact, get_strategy_color
 import hashlib
 
-# Session state keys
-ALLOCATION_COLLAPSE_SMA_KEY: Final[str] = "allocation_collapse_sma"
-
-# Default values
-DEFAULT_COLLAPSE_SMA: Final[bool] = True
-SMA_COLLAPSE_THRESHOLD: Final[int] = 10
+from utils.core.constants import (
+    ALLOCATION_COLLAPSE_SMA_KEY,
+    DEFAULT_COLLAPSE_SMA,
+    SMA_COLLAPSE_THRESHOLD,
+)
+from utils.core.data import get_model_agg_sort_order, get_strategy_by_name, hash_lazyframe
+from utils.core.formatting import format_currency_compact, get_strategy_color
 
 
 class RowType(str, Enum):

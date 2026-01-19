@@ -5,40 +5,31 @@ import streamlit as st
 from components.model_card import model_card
 
 from components.filters import render_search_bar
+from utils.core.constants import (
+    CARD_GRID_COLUMNS,
+    CARD_ORDER_KEY,
+    CARD_ORDER_OPTIONS,
+    CARDS_DISPLAYED_KEY,
+    CARDS_PER_LOAD,
+    DEFAULT_CARD_ORDER,
+    SELECTED_STRATEGY_MODAL_KEY,
+)
 from utils.core.formatting import get_series_color_from_row
 from utils.core.session_state import get_or_init
 
-# Session state keys
-SELECTED_STRATEGY_MODAL_KEY: Final[str] = "selected_strategy_for_modal"
-CARD_ORDER_KEY: Final[str] = "card_order_by"
-CARDS_DISPLAYED_KEY: Final[str] = "cards_displayed"
 
-# Default values
-DEFAULT_CARD_ORDER: Final[str] = "Recommended (Default)"
-CARDS_PER_LOAD: Final[int] = 20
-
-# Card view options
-CARD_ORDER_OPTIONS: Final[list[str]] = [
-    "Recommended (Default)",
-    "Acct Min - Highest to Lowest",
-    "Acct Min - Lowest to Highest",
-    "Expense Ratio - Highest to Lowest",
-    "Expense Ratio - Lowest to Highest",
-    "Yield - High to Low",
-    "Yield - Low to High",
-    "Equity % - High to Low",
-    "Equity % - Low to High",
-    "Strategy Name - A to Z",
-    "Strategy Name - Z to A",
-]
-CARD_GRID_COLUMNS: Final[int] = 4
+@st.cache_data(ttl=3600)
+def _load_explanation_card() -> str:
+    """Load explanation card text file (cached for 1 hour)."""
+    with open("data/explanation_card.txt", "r", encoding="utf-8") as f:
+        return f.read()
 
 
 def render_explanation_card() -> None:
     """Render an explanation card describing the site's intent and how to use it."""
     with st.expander("About the Aspen Investment Menu", icon=":material/book:"):
-        with open("data/explanation_card.txt", "r", encoding="utf-8") as f:
-            st.markdown(f.read())
+        explanation_text: str = _load_explanation_card()
+        st.markdown(explanation_text)
 
 
 def _render_strategy_card(strategy_row: dict[str, Any], index: int) -> tuple[bool, str]:
@@ -83,39 +74,41 @@ def _render_strategy_card(strategy_row: dict[str, Any], index: int) -> tuple[boo
 
 def _apply_sort_order(strategies: pl.DataFrame, sort_order: str) -> pl.DataFrame:
     """Apply sorting based on the selected order."""
-    if sort_order == "Recommended (Default)":
-        # Investment Committee recommendations prioritized, then by equity allocation
+    # Mapping of sort order options to (column, descending) tuples
+    # Special case for "Recommended (Default)" uses multi-column sort
+    sort_configs: dict[str, tuple[list[str], list[bool]] | tuple[str, bool]] = {
+        "Acct Min - Highest to Lowest": ("Minimum", True),
+        "Acct Min - Lowest to Highest": ("Minimum", False),
+        "Expense Ratio - Highest to Lowest": ("Expense Ratio", True),
+        "Expense Ratio - Lowest to Highest": ("Expense Ratio", False),
+        "Yield - High to Low": ("Yield", True),
+        "Yield - Low to High": ("Yield", False),
+        "Equity % - High to Low": ("Equity %", True),
+        "Equity % - Low to High": ("Equity %", False),
+        "Strategy Name - A to Z": ("Strategy", False),
+        "Strategy Name - Z to A": ("Strategy", True),
+    }
+    
+    # Default sort: Investment Committee recommendations prioritized, then by equity allocation
+    default_sort = (
+        ["Recommended", "Equity %", "Strategy"],
+        [True, True, True]
+    )
+    
+    # Get sort configuration
+    sort_config = sort_configs.get(sort_order)
+    
+    if sort_config is None or sort_order == "Recommended (Default)":
+        # Use default multi-column sort
         return strategies.sort(
-            by=["Recommended", "Equity %", "Strategy"],
-            descending=[True, True, True],
+            by=default_sort[0],
+            descending=default_sort[1],
             nulls_last=True,
         )
-    elif sort_order == "Acct Min - Highest to Lowest":
-        return strategies.sort("Minimum", descending=True, nulls_last=True)
-    elif sort_order == "Acct Min - Lowest to Highest":
-        return strategies.sort("Minimum", descending=False, nulls_last=True)
-    elif sort_order == "Expense Ratio - Highest to Lowest":
-        return strategies.sort("Expense Ratio", descending=True, nulls_last=True)
-    elif sort_order == "Expense Ratio - Lowest to Highest":
-        return strategies.sort("Expense Ratio", descending=False, nulls_last=True)
-    elif sort_order == "Yield - High to Low":
-        return strategies.sort("Yield", descending=True, nulls_last=True)
-    elif sort_order == "Yield - Low to High":
-        return strategies.sort("Yield", descending=False, nulls_last=True)
-    elif sort_order == "Equity % - High to Low":
-        return strategies.sort("Equity %", descending=True, nulls_last=True)
-    elif sort_order == "Equity % - Low to High":
-        return strategies.sort("Equity %", descending=False, nulls_last=True)
-    elif sort_order == "Strategy Name - A to Z":
-        return strategies.sort("Strategy", descending=False, nulls_last=True)
-    elif sort_order == "Strategy Name - Z to A":
-        return strategies.sort("Strategy", descending=True, nulls_last=True)
-    else:
-        return strategies.sort(
-            by=["Recommended", "Equity %", "Strategy"],
-            descending=[True, True, True],
-            nulls_last=True,
-        )
+    
+    # Single column sort
+    column, descending = sort_config
+    return strategies.sort(column, descending=descending, nulls_last=True)
 
 
 def _reset_cards_displayed() -> None:

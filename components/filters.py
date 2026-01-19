@@ -1,38 +1,20 @@
 import polars as pl
 import streamlit as st
 
-from utils.security import validate_search_input, MAX_SEARCH_INPUT_LENGTH
+from utils.core.constants import (
+    ABBREVIATIONS_UPDATE_DATE,
+    EQUIVALENTS_UPDATE_DATE,
+    STRATEGY_TYPE_TO_SERIES,
+    STRATEGY_TYPES,
+    TLH_UPDATE_DATE,
+    UNDER_DEVELOPMENT_UPDATE_DATE,
+)
+from utils.security import MAX_SEARCH_INPUT_LENGTH, validate_search_input
 
-# Filter options lists
-STRATEGY_TYPES: list[str] = ["Risk-Based", "Asset-Class", "Special Situation"]
-
-# Mapping of strategy types to their available series options
-STRATEGY_TYPE_TO_SERIES: dict[str, list[str]] = {
-    "Risk-Based": [
-        "Multifactor Series",
-        "Market Series",
-        "Income Series",
-    ],
-    "Asset-Class": [
-        "Equity Strategies",
-        "Fixed Income Strategies",
-        "Cash Strategies",
-        "Alternative Strategies",
-    ],
-    "Special Situation": [
-        "Special Situation Strategies",
-    ],
-}
-
+# Series options derived from strategy type mapping
 SERIES_OPTIONS: list[str] = [
     series for series_list in STRATEGY_TYPE_TO_SERIES.values() for series in series_list
 ]
-
-# Update dates
-ABBREVIATIONS_UPDATE_DATE: str = "2026-01-17"
-EQUIVALENTS_UPDATE_DATE: str = "2026-01-17"
-TLH_UPDATE_DATE: str = "2026-01-17"
-UNDER_DEVELOPMENT_UPDATE_DATE: str = "2026-01-17"
 
 
 
@@ -133,10 +115,12 @@ def render_filters_inline(search_active: bool) -> None:
             )
         
         with col_min:
+            from utils.core.constants import DEFAULT_MIN_STRATEGY
+            
             st.number_input(
                 "Account Value ($)",
                 min_value=0,
-                value=50000,
+                value=DEFAULT_MIN_STRATEGY,
                 step=10000,
                 key="min_strategy",
                 disabled=search_active,
@@ -154,9 +138,6 @@ def render_filters_inline(search_active: bool) -> None:
             )
         
         # Row 2: Strategy Type, Series
-        strategy_types: list[str] = ["Risk-Based", "Asset-Class", "Special Situation"]
-        default_type: str = "Risk-Based"
-        
         col_type, col_series = st.columns([3, 3])
         
         with col_type:
@@ -164,9 +145,9 @@ def render_filters_inline(search_active: bool) -> None:
             current_selection = st.session_state["filter_strategy_type"]
             st.segmented_control(
                 "Strategy Type",
-                options=strategy_types,
+                options=STRATEGY_TYPES,
                 selection_mode="single",
-                default=current_selection if current_selection in strategy_types else default_type,
+                default=current_selection if current_selection in STRATEGY_TYPES else STRATEGY_TYPES[0],
                 disabled=search_active,
                 key="filter_strategy_type",
             )
@@ -184,14 +165,7 @@ def render_filters_inline(search_active: bool) -> None:
                 type_options: list[str] = SERIES_OPTIONS
 
             # Determine default selections based on strategy type
-            if selected_type == "Risk-Based":
-                default_selections = ["Multifactor Series", "Market Series", "Income Series"]
-            elif selected_type == "Asset-Class":
-                default_selections = []
-            elif selected_type == "Special Situation":
-                default_selections = ["Special Situation Strategies"]
-            else:
-                default_selections = []
+            default_selections = STRATEGY_TYPE_TO_SERIES.get(selected_type, [])
 
             # Handle strategy type changes by clearing invalid selections
             if selected_type != previous_type:
@@ -328,6 +302,20 @@ def _load_equivalents() -> pl.DataFrame:
     return pl.read_csv("data/equivalents.csv")
 
 
+@st.cache_data(ttl=3600)
+def _load_explanation_card() -> str:
+    """Load explanation card text file (cached for 1 hour)."""
+    with open("data/explanation_card.txt", "r", encoding="utf-8") as f:
+        return f.read()
+
+
+@st.cache_data(ttl=3600)
+def _load_under_development() -> str:
+    """Load under development text file (cached for 1 hour)."""
+    with open("data/under_development.txt", "r", encoding="utf-8") as f:
+        return f.read()
+
+
 def render_reference_data() -> None:
     """Render reference data sections in the main content area."""
     # ============================================================================
@@ -368,10 +356,5 @@ def render_reference_data() -> None:
     # ============================================================================
     with st.expander("Under Development", icon=":material/construction:"):
         st.caption(f"last updated: {UNDER_DEVELOPMENT_UPDATE_DATE}")
-        with open("data/under_development.txt", "r", encoding="utf-8") as f:
-            st.markdown(f.read())
-
-
-def render_sidebar() -> None:
-    """Render sidebar content (currently empty, kept for future use)."""
-    pass
+        under_development_text: str = _load_under_development()
+        st.markdown(under_development_text)
