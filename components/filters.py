@@ -34,34 +34,20 @@ UNDER_DEVELOPMENT_UPDATE_DATE: str = "2026-01-17"
 
 
 
-def _migrate_filter_keys() -> None:
-    """Migrate old sidebar filter keys to new filter keys (one-time migration)."""
-    key_migrations = {
-        "sidebar_tax_managed": "filter_tax_managed",
-        "sidebar_sma_manager": "filter_sma_manager",
-        "sidebar_private_markets": "filter_private_markets",
-        "sidebar_strategy_type": "filter_strategy_type",
-        "sidebar_series": "filter_series",
-    }
+def _render_yes_no_filter(label: str, key: str, disabled: bool, default: str | None = None) -> str | None:
+    """Render a boolean filter segmented control with Yes/No options.
     
-    for old_key, new_key in key_migrations.items():
-        if old_key in st.session_state and new_key not in st.session_state:
-            st.session_state[new_key] = st.session_state[old_key]
-    
-    # Migrate boolean filter_recommended_only to string format
-    if "filter_recommended_only" in st.session_state:
-        current_value = st.session_state["filter_recommended_only"]
-        if isinstance(current_value, bool):
-            st.session_state["filter_recommended_only"] = "Yes" if current_value else "No"
-
-
-def _render_yes_no_filter(label: str, key: str, disabled: bool) -> str | None:
-    """Render a boolean filter segmented control with Yes/No options."""
+    Args:
+        label: Label for the filter control
+        key: Session state key for the filter
+        disabled: Whether the filter is disabled
+        default: Default selection ("Yes", "No", or None)
+    """
     return st.segmented_control(
         label,
         options=["Yes", "No"],
         selection_mode="single",
-        default=None,
+        default=default,
         disabled=disabled,
         key=key,
     )
@@ -70,7 +56,7 @@ def _render_yes_no_filter(label: str, key: str, disabled: bool) -> str | None:
 def render_search_bar() -> tuple[bool, str | None]:
     """Render search bar UI and return (search_active, strategy_search)."""
     # Check if we need to clear search (must be done before any widgets are created)
-    if st.session_state.get("_clear_search_flag", False):
+    if st.session_state["_clear_search_flag"]:
         st.session_state["strategy_search_input"] = ""
         st.session_state["_clear_search_flag"] = False
     
@@ -101,9 +87,6 @@ def render_filters_inline(search_active: bool) -> None:
     Args:
         search_active: Whether search is currently active (disables filters)
     """
-    # Migrate old sidebar filter keys to new filter keys (one-time migration)
-    _migrate_filter_keys()
-    
     # Change expander label when search is active
     expander_label = "Filters (Clear search to enable)" if search_active else "Filters"
     
@@ -112,13 +95,12 @@ def render_filters_inline(search_active: bool) -> None:
         col_rec, col_tax, col_sma, col_private, col_min, col_equity = st.columns([1, 1, 1, 1, 2, 2])
         
         with col_rec:
-            # Get current selection or use default "Yes"
-            current_selection = st.session_state.get("filter_recommended_only", "Yes")
+            # Session state is initialized, so the value is already set
+            # Don't set default to avoid conflict with session state
             st.segmented_control(
                 "IC Recommended",
                 options=["Yes", "No"],
                 selection_mode="single",
-                default=current_selection if current_selection in ["Yes", "No"] else "Yes",
                 disabled=search_active,
                 key="filter_recommended_only",
             )
@@ -134,6 +116,7 @@ def render_filters_inline(search_active: bool) -> None:
             )
         
         with col_private:
+            # Session state is initialized to "No", so no need for default parameter
             _render_yes_no_filter(
                 label="Private Markets", key="filter_private_markets", disabled=search_active
             )
@@ -166,8 +149,8 @@ def render_filters_inline(search_active: bool) -> None:
         col_type, col_series = st.columns([3, 3])
         
         with col_type:
-            # Get current selection or use default
-            current_selection = st.session_state.get("filter_strategy_type", default_type)
+            # Session state is initialized, so we can access directly
+            current_selection = st.session_state["filter_strategy_type"]
             st.segmented_control(
                 "Strategy Type",
                 options=strategy_types,
@@ -178,10 +161,10 @@ def render_filters_inline(search_active: bool) -> None:
             )
         
         with col_series:
-            # Get current strategy type to determine series options
-            selected_type = st.session_state.get("filter_strategy_type", default_type)
+            # Session state is initialized, so we can access directly
+            selected_type = st.session_state["filter_strategy_type"]
             previous_type_key = "_previous_strategy_type"
-            previous_type = st.session_state.get(previous_type_key, default_type)
+            previous_type = st.session_state[previous_type_key]
             
             # Dynamically filter series options based on selected strategy type
             if selected_type and selected_type in STRATEGY_TYPE_TO_SERIES:
@@ -205,7 +188,8 @@ def render_filters_inline(search_active: bool) -> None:
                 st.session_state[previous_type_key] = selected_type
                 valid_selections = default_selections
             else:
-                current_selections = st.session_state.get("filter_series", default_selections)
+                # Session state is initialized, so we can access directly
+                current_selections = st.session_state["filter_series"]
                 if isinstance(current_selections, list):
                     valid_selections = [s for s in current_selections if s in type_options]
                     if not valid_selections:
@@ -236,7 +220,8 @@ def render_filters(search_active: bool) -> pl.Expr:
 
     # If search is active, return search-only expression (filters are disabled)
     if search_active:
-        strategy_search_text = st.session_state.get("strategy_search_input", "")
+        # Session state is initialized, so we can access directly
+        strategy_search_text = st.session_state["strategy_search_input"]
         strategy_search = strategy_search_text.strip() if strategy_search_text else None
         if strategy_search:
             return (
@@ -247,18 +232,19 @@ def render_filters(search_active: bool) -> pl.Expr:
         return pl.lit(True)
     
     # Build filter expressions from session state
+    # Session state is initialized, so we can access directly
     # Investment Committee Recommended
-    recommended_selection = st.session_state.get("filter_recommended_only", "Yes")
+    recommended_selection = st.session_state["filter_recommended_only"]
     if recommended_selection == "Yes":
         expressions.append(pl.col("Recommended"))
     # If "No" or None, show all strategies (don't filter by Recommended)
     
     # Account Value
-    min_strategy = st.session_state.get("min_strategy", 50000)
+    min_strategy = st.session_state["min_strategy"]
     expressions.append(pl.col("Minimum") <= min_strategy)
     
     # Equity Allocation Range
-    equity_range = st.session_state.get("equity_range", (0, 100))
+    equity_range = st.session_state["equity_range"]
     expressions.append(
         (pl.col("Equity %").is_not_null())
         & (pl.col("Equity %") >= equity_range[0])
@@ -266,17 +252,17 @@ def render_filters(search_active: bool) -> pl.Expr:
     )
     
     # Tax-Managed
-    tax_managed_selection = st.session_state.get("filter_tax_managed")
+    tax_managed_selection = st.session_state["filter_tax_managed"]
     if tax_managed_selection:
         expressions.append(pl.col("Tax-Managed") == (tax_managed_selection == "Yes"))
     
     # Has SMA Manager
-    has_sma_manager_selection = st.session_state.get("filter_sma_manager")
+    has_sma_manager_selection = st.session_state["filter_sma_manager"]
     if has_sma_manager_selection:
         expressions.append(pl.col("Has SMA Manager") == (has_sma_manager_selection == "Yes"))
     
     # Private Markets
-    private_markets_selection = st.session_state.get("filter_private_markets")
+    private_markets_selection = st.session_state["filter_private_markets"]
     if private_markets_selection:
         if private_markets_selection == "Yes":
             expressions.append(pl.col("Private Markets"))
@@ -284,12 +270,12 @@ def render_filters(search_active: bool) -> pl.Expr:
             expressions.append(~pl.col("Private Markets"))
     
     # Strategy Type
-    selected_type = st.session_state.get("filter_strategy_type", "Risk-Based")
+    selected_type = st.session_state["filter_strategy_type"]
     if selected_type:
         expressions.append(pl.col("Strategy Type").is_in([selected_type]))
     
     # Series
-    selected_subtypes = st.session_state.get("filter_series", [])
+    selected_subtypes = st.session_state["filter_series"]
     # Ensure it's always a list (segmented_control with multi-select returns a list)
     if selected_subtypes is None:
         selected_subtypes = []

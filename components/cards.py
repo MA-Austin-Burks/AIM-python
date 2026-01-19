@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, Final
 
 import polars as pl
 import streamlit as st
@@ -7,15 +7,31 @@ from components.model_card import model_card
 from components.filters import render_search_bar
 from utils.core.formatting import get_series_color_from_row
 from utils.core.session_state import get_or_init
-from components.constants import (
-    CARD_GRID_COLUMNS,
-    CARD_ORDER_KEY,
-    CARD_ORDER_OPTIONS,
-    CARDS_DISPLAYED_KEY,
-    CARDS_PER_LOAD,
-    DEFAULT_CARD_ORDER,
-    SELECTED_STRATEGY_MODAL_KEY,
-)
+
+# Session state keys
+SELECTED_STRATEGY_MODAL_KEY: Final[str] = "selected_strategy_for_modal"
+CARD_ORDER_KEY: Final[str] = "card_order_by"
+CARDS_DISPLAYED_KEY: Final[str] = "cards_displayed"
+
+# Default values
+DEFAULT_CARD_ORDER: Final[str] = "Recommended (Default)"
+CARDS_PER_LOAD: Final[int] = 20
+
+# Card view options
+CARD_ORDER_OPTIONS: Final[list[str]] = [
+    "Recommended (Default)",
+    "Acct Min - Highest to Lowest",
+    "Acct Min - Lowest to Highest",
+    "Expense Ratio - Highest to Lowest",
+    "Expense Ratio - Lowest to Highest",
+    "Yield - High to Low",
+    "Yield - Low to High",
+    "Equity % - High to Low",
+    "Equity % - Low to High",
+    "Strategy Name - A to Z",
+    "Strategy Name - Z to A",
+]
+CARD_GRID_COLUMNS: Final[int] = 4
 
 
 def render_explanation_card() -> None:

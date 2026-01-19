@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Final
 from enum import Enum
 from dataclasses import dataclass
 
@@ -14,14 +14,16 @@ from utils.core.session_state import get_or_init
 from styles import (
     get_allocation_table_main_css,
 )
-from components.constants import (
-    ALLOCATION_COLLAPSE_SMA_KEY,
-    DEFAULT_COLLAPSE_SMA,
-    SMA_COLLAPSE_THRESHOLD,
-)
 from utils.core.data import get_model_agg_sort_order, get_strategy_by_name, hash_lazyframe
 from utils.core.formatting import format_currency_compact, get_strategy_color
 import hashlib
+
+# Session state keys
+ALLOCATION_COLLAPSE_SMA_KEY: Final[str] = "allocation_collapse_sma"
+
+# Default values
+DEFAULT_COLLAPSE_SMA: Final[bool] = True
+SMA_COLLAPSE_THRESHOLD: Final[int] = 10
 
 
 class RowType(str, Enum):
@@ -678,13 +680,33 @@ def _build_allocation_tables(
     
     # Create formatter function for Account Minimum
     def format_account_min(x: Any) -> str:
-        """Format Account Minimum value as compact currency."""
-        if x is None or x == "":
-            return "$0.0"
-        try:
-            return format_currency_compact(float(x))
-        except (ValueError, TypeError):
-            return "$0.0"
+        """Format Account Minimum value as compact currency.
+        
+        ETL should ensure all account minimum values are valid numeric values.
+        This function will fail if the value cannot be converted to float.
+        
+        Args:
+            x: Account minimum value (should be numeric from ETL)
+        
+        Returns:
+            Formatted currency string
+        
+        Raises:
+            ValueError: If x cannot be converted to float
+            TypeError: If x is not a numeric type
+        """
+        if x is None:
+            raise ValueError(
+                "Account minimum value is None. "
+                "ETL pipeline must ensure all account minimum values are non-null."
+            )
+        if x == "":
+            raise ValueError(
+                "Account minimum value is empty string. "
+                "ETL pipeline must ensure all account minimum values are numeric."
+            )
+        # ETL should ensure this is always a valid numeric value
+        return format_currency_compact(float(x))
     
     # Format each equity column for Account Minimum row
     for col in equity_cols:

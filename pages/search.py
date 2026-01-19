@@ -1,5 +1,5 @@
 import os
-from typing import Any
+from typing import Any, Final
 
 import polars as pl
 import streamlit as st
@@ -11,17 +11,21 @@ from components import (
     render_footer,
     render_strategy_modal,
 )
-from components.constants import (
+from components.cards import (
     CARDS_DISPLAYED_KEY,
     CARDS_PER_LOAD,
-    EXPLANATION_CARD_UPDATE_DATE,
     SELECTED_STRATEGY_MODAL_KEY,
 )
 from components.dataframe import filter_and_sort_strategies, _hash_filter_expression
 from utils.core.data import load_strategy_list, load_cleaned_data
 from utils.core.formatting import get_strategy_color
-from utils.core.session_state import reset_if_changed
-from styles.branding import PRIMARY
+from utils.core.session_state import initialize_session_state, reset_if_changed
+
+# Update dates
+EXPLANATION_CARD_UPDATE_DATE: Final[str] = "2026-01-17"
+
+# Initialize session state explicitly at app start
+initialize_session_state()
 
 # Load pre-generated strategy summary for cards/filtering (fast)
 strats: pl.DataFrame = load_strategy_list()
@@ -39,11 +43,11 @@ if is_local_mode:
 st.caption(caption_text)
 
 # Check if we need to clear search (must be done before any widgets are created)
-if st.session_state.get("_clear_search_flag", False):
+if st.session_state["_clear_search_flag"]:
     st.session_state["strategy_search_input"] = ""
     st.session_state["_clear_search_flag"] = False
 
-strategy_search_text = st.session_state.get("strategy_search_input", "")
+strategy_search_text = st.session_state["strategy_search_input"]
 search_active = bool(strategy_search_text and strategy_search_text.strip())
 
 # Render filters inline in two rows
@@ -64,8 +68,9 @@ if strategy_name:
     strategy_row: pl.DataFrame = filtered_strategies.filter(pl.col("Strategy") == strategy_name)
     if strategy_row.height > 0:
         strategy_data_dict: dict[str, Any] = strategy_row.row(0, named=True)
-        strategy_type: str | None = strategy_data_dict.get("Type") or strategy_data_dict.get("type")
-        strategy_color: str = get_strategy_color(strategy_type) if strategy_type else PRIMARY["raspberry"]
+        # ETL should ensure "Type" field exists and is consistent
+        strategy_type: str = strategy_data_dict["Type"]
+        strategy_color: str = get_strategy_color(strategy_type)
         render_strategy_modal(strategy_name, strategy_data_dict, strategy_color, cleaned_data)
     del st.session_state[SELECTED_STRATEGY_MODAL_KEY]
 

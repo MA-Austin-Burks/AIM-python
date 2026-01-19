@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Optional, Final
 
 import plotly.graph_objects as go
 import polars as pl
@@ -12,9 +12,12 @@ from styles.branding import (
     SECONDARY,
     TERTIARY,
 )
-from components.constants import GROUPING_OPTIONS, PIE_CHART_MAX_ITEMS
 from utils.core.data import hash_lazyframe
 from utils.core.formatting import format_currency_compact
+
+# Allocation/grouping options
+GROUPING_OPTIONS: Final[list[str]] = ["Asset Category", "Asset Type", "Asset Class", "Product"]
+PIE_CHART_MAX_ITEMS: Final[int] = 20  # Maximum items to show in pie chart before combining into "Others"
 
 
 @st.cache_data
@@ -24,135 +27,152 @@ def _load_color_mappings() -> tuple[
 ]:
     """Load color mappings and sort orders from product classification framework CSV.
     
+    ETL should ensure this CSV exists and is properly formatted.
+    This function will fail fast if the CSV is missing or malformed.
+    
     Returns:
         Tuple of (asset_category_colors, asset_type_colors, asset_class_colors,
                   asset_category_sort_orders, asset_type_sort_orders, asset_class_sort_orders) dictionaries
+    
+    Raises:
+        FileNotFoundError: If CSV file is missing
+        Exception: If CSV cannot be read or is malformed
     """
-    try:
-        import os
-        csv_path = "data/product_classification_framework.csv"
-        if not os.path.exists(csv_path):
-            st.error(f"Color mapping CSV not found at: {csv_path}")
-            return {}, {}, {}, {}, {}, {}
-        
-        color_df = pl.read_csv(csv_path)
-        
-        # Create mappings: name -> color
-        # Use unique() to get unique combinations, keeping the first occurrence
-        # Sort by sort_order first to ensure consistent selection when multiple rows exist
-        asset_category_data = (
-            color_df.select(["asset_category", "asset_category_color", "asset_category_sort_order"])
-            .sort("asset_category_sort_order")
-            .unique(subset=["asset_category"], keep="first")
-            .to_dict(as_series=False)
+    import os
+    csv_path = "data/product_classification_framework.csv"
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(
+            f"Color mapping CSV not found at: {csv_path}. "
+            "ETL pipeline must generate this file."
         )
-        # Normalize keys by stripping whitespace to handle any CSV formatting issues
-        asset_category_map = {
-            key.strip(): value 
-            for key, value in zip(
-                asset_category_data["asset_category"],
-                asset_category_data["asset_category_color"]
-            )
-        }
-        asset_category_sort_map = {
-            key.strip(): value 
-            for key, value in zip(
-                asset_category_data["asset_category"],
-                asset_category_data["asset_category_sort_order"]
-            )
-        }
-        
-        asset_type_data = (
-            color_df.select(["asset_type", "asset_type_color", "asset_type_sort_order"])
-            .sort("asset_type_sort_order")
-            .unique(subset=["asset_type"], keep="first")
-            .to_dict(as_series=False)
+    
+    color_df = pl.read_csv(csv_path)
+    
+    # Create mappings: name -> color
+    # Use unique() to get unique combinations, keeping the first occurrence
+    # Sort by sort_order first to ensure consistent selection when multiple rows exist
+    asset_category_data = (
+        color_df.select(["asset_category", "asset_category_color", "asset_category_sort_order"])
+        .sort("asset_category_sort_order")
+        .unique(subset=["asset_category"], keep="first")
+        .to_dict(as_series=False)
+    )
+    # Normalize keys by stripping whitespace to handle any CSV formatting issues
+    asset_category_map = {
+        key.strip(): value 
+        for key, value in zip(
+            asset_category_data["asset_category"],
+            asset_category_data["asset_category_color"]
         )
-        # Normalize keys by stripping whitespace
-        asset_type_map = {
-            key.strip(): value 
-            for key, value in zip(
-                asset_type_data["asset_type"],
-                asset_type_data["asset_type_color"]
-            )
-        }
-        asset_type_sort_map = {
-            key.strip(): value 
-            for key, value in zip(
-                asset_type_data["asset_type"],
-                asset_type_data["asset_type_sort_order"]
-            )
-        }
-        
-        asset_class_data = (
-            color_df.select(["asset_class", "asset_class_color", "asset_class_sort_order"])
-            .sort("asset_class_sort_order")
-            .unique(subset=["asset_class"], keep="first")
-            .to_dict(as_series=False)
+    }
+    asset_category_sort_map = {
+        key.strip(): value 
+        for key, value in zip(
+            asset_category_data["asset_category"],
+            asset_category_data["asset_category_sort_order"]
         )
-        # Normalize keys by stripping whitespace
-        asset_class_map = {
-            key.strip(): value 
-            for key, value in zip(
-                asset_class_data["asset_class"],
-                asset_class_data["asset_class_color"]
-            )
-        }
-        asset_class_sort_map = {
-            key.strip(): value 
-            for key, value in zip(
-                asset_class_data["asset_class"],
-                asset_class_data["asset_class_sort_order"]
-            )
-        }
-        
-        return (
-            asset_category_map, asset_type_map, asset_class_map,
-            asset_category_sort_map, asset_type_sort_map, asset_class_sort_map
+    }
+    
+    asset_type_data = (
+        color_df.select(["asset_type", "asset_type_color", "asset_type_sort_order"])
+        .sort("asset_type_sort_order")
+        .unique(subset=["asset_type"], keep="first")
+        .to_dict(as_series=False)
+    )
+    # Normalize keys by stripping whitespace
+    asset_type_map = {
+        key.strip(): value 
+        for key, value in zip(
+            asset_type_data["asset_type"],
+            asset_type_data["asset_type_color"]
         )
-    except Exception as e:
-        # Fallback to default colors if CSV can't be loaded
-        st.error(f"Could not load color mappings: {e}")
-        import traceback
-        st.error(traceback.format_exc())
-        return {}, {}, {}, {}, {}, {}
+    }
+    asset_type_sort_map = {
+        key.strip(): value 
+        for key, value in zip(
+            asset_type_data["asset_type"],
+            asset_type_data["asset_type_sort_order"]
+        )
+    }
+    
+    asset_class_data = (
+        color_df.select(["asset_class", "asset_class_color", "asset_class_sort_order"])
+        .sort("asset_class_sort_order")
+        .unique(subset=["asset_class"], keep="first")
+        .to_dict(as_series=False)
+    )
+    # Normalize keys by stripping whitespace
+    asset_class_map = {
+        key.strip(): value 
+        for key, value in zip(
+            asset_class_data["asset_class"],
+            asset_class_data["asset_class_color"]
+        )
+    }
+    asset_class_sort_map = {
+        key.strip(): value 
+        for key, value in zip(
+            asset_class_data["asset_class"],
+            asset_class_data["asset_class_sort_order"]
+        )
+    }
+    
+    return (
+        asset_category_map, asset_type_map, asset_class_map,
+        asset_category_sort_map, asset_type_sort_map, asset_class_sort_map
+    )
 
 
 def _get_color_for_group(group_name: str, grouping_option: str) -> str:
     """Get color for a group based on grouping option.
     
-    Uses colors from product_classification_framework.csv when available.
-    Falls back to hash-based assignment for Product grouping or if CSV lookup fails.
+    ETL should ensure all groups have colors defined in product_classification_framework.csv.
+    This function will fail if a color is missing.
+    
+    Args:
+        group_name: Name of the group to get color for
+        grouping_option: One of "Asset Category", "Asset Type", "Asset Class", or "Product"
+    
+    Returns:
+        Color hex string for the group
+    
+    Raises:
+        KeyError: If group_name is not found in the color mappings
     """
     # Load color mappings (cached)
     asset_category_colors, asset_type_colors, asset_class_colors, _, _, _ = _load_color_mappings()
     
-    # Simple exact match lookup - lightweight since input is controlled
+    # Simple exact match lookup - ETL should ensure all groups have colors
     if grouping_option == "Asset Category":
-        color = asset_category_colors.get(group_name)
-        if color:
-            return color
+        if group_name not in asset_category_colors:
+            raise KeyError(
+                f"Color not found for Asset Category '{group_name}'. "
+                "ETL pipeline must include all asset categories in product_classification_framework.csv"
+            )
+        return asset_category_colors[group_name]
     elif grouping_option == "Asset Type":
-        color = asset_type_colors.get(group_name)
-        if color:
-            return color
+        if group_name not in asset_type_colors:
+            raise KeyError(
+                f"Color not found for Asset Type '{group_name}'. "
+                "ETL pipeline must include all asset types in product_classification_framework.csv"
+            )
+        return asset_type_colors[group_name]
     elif grouping_option == "Asset Class":
-        color = asset_class_colors.get(group_name)
-        if color:
-            return color
-    
-    # Fallback: Hash-based assignment for Product grouping or if CSV lookup fails
-    import hashlib
-    hash_val = int(hashlib.md5(group_name.encode()).hexdigest()[:6], 16)
-    colors = [
-        PRIMARY["raspberry"],
-        TERTIARY["azure"],
-        SECONDARY["iris"],
-        TERTIARY["spring"],
-        PRIMARY["charcoal"],
-        TERTIARY["gold"],
-    ]
-    return colors[hash_val % len(colors)]
+        if group_name not in asset_class_colors:
+            raise KeyError(
+                f"Color not found for Asset Class '{group_name}'. "
+                "ETL pipeline must include all asset classes in product_classification_framework.csv"
+            )
+        return asset_class_colors[group_name]
+    elif grouping_option == "Product":
+        # For Product grouping, use the asset_class color (products inherit from their asset class)
+        # This should be handled by the caller, but if we get here, fail explicitly
+        raise ValueError(
+            f"Product grouping should use asset_class for color lookup. "
+            "ETL pipeline must ensure products have associated asset_class values."
+        )
+    else:
+        raise ValueError(f"Unknown grouping option: {grouping_option}")
 
 
 def _get_sort_order_for_group(group_name: str, grouping_option: str) -> int:
@@ -279,7 +299,13 @@ def get_grouped_allocations_for_chart(
         allocation_pct = float(row["total_weight"]) * 100
         
         # For Product grouping, use asset_class for color and sort order
-        if grouping_option == "Product" and "asset_class" in row:
+        # ETL should ensure products have asset_class values
+        if grouping_option == "Product":
+            if "asset_class" not in row or not row["asset_class"]:
+                raise ValueError(
+                    f"Product '{group_name}' is missing asset_class. "
+                    "ETL pipeline must ensure all products have asset_class values."
+                )
             asset_class = str(row["asset_class"])
             color = _get_color_for_group(asset_class, "Asset Class")
             sort_order = _get_sort_order_for_group(asset_class, "Asset Class")

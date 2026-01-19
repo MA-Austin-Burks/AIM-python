@@ -1,7 +1,7 @@
 import streamlit as st
 
 from components import render_footer, render_reference_data
-from components.constants import EXPLANATION_CARD_UPDATE_DATE
+from pages.search import EXPLANATION_CARD_UPDATE_DATE
 
 st.markdown("# About the Platform")
 st.caption(f"last updated: {EXPLANATION_CARD_UPDATE_DATE}")

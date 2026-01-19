@@ -1,6 +1,5 @@
 """Component modules for the Aspen Investing Menu app."""
 
-from components import constants  # noqa: F401
 from styles.branding import (
     CHART_COLORS_ALLOCATION,
     CHART_COLORS_EXTENDED,
