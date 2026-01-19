@@ -18,7 +18,10 @@ st.logo("styles/Mercer_Advisors_Logo_blk.png", size="large")
 pages = {
     "Aspen Investing Menu": [
         st.Page("pages/search.py", title="Search", icon=":material/dashboard:", url_path="search", default=True),
-        st.Page("pages/about.py", title="About", icon=":material/info:", url_path="about"),
+        st.Page("pages/about.py", title="About", icon=":material/description:", url_path="about"),
+    ],
+    "Mission Control": [
+        st.Page("pages/mission_control.py", title="Mission Control", icon=":material/rocket_launch:", url_path="mission_control"),
     ],
 }
 

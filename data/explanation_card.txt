@@ -1,17 +1,24 @@
-The Aspen Investment Menu offers investment strategies organized into three main buckets:
+The Aspen Investment Menu offers investment strategies organized into three main categories:
 
-**Risk-Based Strategies** 
+### Risk-Based Strategies
+
 These strategies are designed to match specific risk profiles and include three series:
+
 - **Multifactor Series**: Strategies that combine multiple investment factors for enhanced risk-adjusted returns
 - **Market Series**: Broad market exposure strategies designed for core portfolio allocations
 - **Income Series**: Strategies focused on generating income while managing risk, tilted towards academically validated income factors
 
-**Asset-Class Strategies** 
+### Asset-Class Strategies
+
 These strategies target specific asset classes and include:
+
 - **Equity Strategies**: Stock-based investment approaches
 - **Fixed Income Strategies**: Bond and fixed-income security strategies
 - **Cash Strategies**: Cash and cash-equivalent investment options
 - **Alternative Strategies**: Non-traditional investment approaches including real estate, commodities, and other alternatives
 
-**Special Situation Strategies** 
+### Special Situation Strategies
+
 These are specialized strategies designed for unique investment needs and circumstances, including tax-aware approaches, liability-driven investing, and other tailored solutions.
+
+---
