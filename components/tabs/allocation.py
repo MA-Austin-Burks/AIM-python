@@ -11,7 +11,6 @@ from styles.branding import (
 from utils.core.session_state import get_or_init
 from styles import (
     get_allocation_table_main_css,
-    get_allocation_table_summary_css,
 )
 from components.constants import (
     ALLOCATION_COLLAPSE_SMA_KEY,
@@ -20,6 +19,7 @@ from components.constants import (
 )
 from utils.core.data import get_model_agg_sort_order, get_strategy_by_name, hash_lazyframe
 from utils.core.formatting import format_currency_compact, get_strategy_color
+import hashlib
 
 @st.cache_data(hash_funcs={pl.LazyFrame: hash_lazyframe})
 def _get_model_data(cleaned_data: pl.LazyFrame, strategy_model: str) -> pl.DataFrame:
@@ -51,6 +51,37 @@ def _has_collapsible_smas(all_model_data: pl.DataFrame, strategy_name: str) -> b
     
     # Check if any model_agg has more products than the threshold
     return product_counts.filter(pl.col("product_count") > SMA_COLLAPSE_THRESHOLD).height > 0
+
+
+@st.cache_data
+def _generate_allocation_table_html_cached(
+    table_html: str,
+    asset_col_width: str, 
+    equity_col_width: str,
+    table_data_hash: str
+) -> str:
+    """Generate cached allocation table HTML.
+    
+    Args:
+        table_html: The HTML string from Great Tables (already generated)
+        asset_col_width: Width for asset column
+        equity_col_width: Width for equity columns
+        table_data_hash: Hash of the table data for cache key
+        
+    Returns:
+        Complete HTML string for the table
+    """
+    css: str = get_allocation_table_main_css(asset_col_width, equity_col_width)
+    return f"""
+    <div style="width: 100%; margin: 0 !important; padding: 0 !important;">
+        <style>
+            {css}
+        </style>
+        <div id="allocation-table-main">
+            {table_html}
+        </div>
+    </div>
+    """
 
 
 @st.cache_data(hash_funcs={pl.LazyFrame: hash_lazyframe})
@@ -258,18 +289,18 @@ def _build_allocation_tables(
     all_model_data: pl.DataFrame,
     equity_to_strategy: dict[int, str],
     strategy_color: str,
-) -> tuple[GT, GT]:
-    """Build both main allocation table and summary metrics table with Great Tables.
+) -> GT:
+    """Build combined allocation table with summary metrics included.
     
     Steps:
     1. Format asset names (combine with tickers)
     2. Prepare matrix data with formatted columns
-    3. Build and style main allocation table
-    4. Pre-compute summary metrics lookup
-    5. Build and style summary metrics table
+    3. Pre-compute summary metrics lookup
+    4. Add spacer row and summary metric rows to DataFrame
+    5. Build and style combined table
     
     Returns:
-        Tuple of (main_table, summary_table) GT objects
+        Single GT table object containing both allocation and summary rows
     """
     strategy_color: str = row_metadata[0]["color"] if row_metadata else PRIMARY["raspberry"]
     
@@ -312,95 +343,7 @@ def _build_allocation_tables(
     formatted_matrix_df = formatted_matrix_df.select(column_order)
     
     # ============================================================================
-    # STEP 3: Build and style main allocation table
-    # ============================================================================
-    main_table: GT = (
-        GT(formatted_matrix_df)
-        .cols_hide(["is_category", "asset", "row_color"])
-        .cols_label(asset_formatted=header_name)
-        .fmt_percent(columns=equity_cols, decimals=2)
-        .sub_missing(columns=equity_cols, missing_text="")
-        .cols_align(columns=equity_cols, align="center")
-        .cols_align(columns=["asset_formatted"], align="left")
-    )
-    
-    # Header uses strategy color for brand consistency
-    main_table = main_table.tab_style(
-        style=[
-            style.fill(color=strategy_color),
-            style.text(color="white", weight="bold", size="1.0rem"),
-        ],
-        locations=loc.column_labels(),
-    )
-    
-    # Collect row indices for batch styling
-    category_row_indices: list[int] = []
-    product_row_indices: list[int] = []
-    spacer_row_indices: list[int] = []
-    
-    for idx, meta in enumerate(row_metadata):
-        if meta["is_category"]:
-            category_row_indices.append(idx)
-        elif meta.get("is_spacer", False):
-            spacer_row_indices.append(idx)
-        else:
-            product_row_indices.append(idx)
-    
-    # Category rows: pastel background to visually group products underneath
-    # Note: Each category row may have different colors, so we style them individually
-    if category_row_indices:
-        for idx in category_row_indices:
-            row_color: str = row_metadata[idx]["color"]
-            rgba_color: str = hex_to_rgba(row_color, alpha=0.15)
-            main_table = main_table.tab_style(
-                style=[
-                    style.fill(color=rgba_color),
-                    style.text(color="black", weight="bold"),
-                ],
-                locations=loc.body(columns=pl.all(), rows=[idx]),
-            )
-    
-    # Product rows: add indentation using Great Tables style.css() API
-    if product_row_indices:
-        main_table = main_table.tab_style(
-            style=[
-                style.css(rule="padding-left: 20px;"),
-            ],
-            locations=loc.body(columns=["asset_formatted"], rows=product_row_indices),
-        )
-    
-    # Spacer rows: add height using Great Tables style.css() API
-    if spacer_row_indices:
-        main_table = main_table.tab_style(
-            style=[
-                style.css(rule="height: 4px; line-height: 4px;"),
-            ],
-            locations=loc.body(columns=["asset_formatted"], rows=spacer_row_indices),
-        )
-    
-    main_table = main_table.tab_options(
-        table_font_size="0.875rem",
-        table_font_names=[
-            "IBM Plex Sans",
-            "-apple-system",
-            "BlinkMacSystemFont",
-            "Segoe UI",
-            "sans-serif",
-        ]
-    )
-    
-    # Highlight selected strategy's equity column for quick identification
-    if highlighted_col_idx >= 1 and highlighted_col_idx - 1 < len(equity_cols):
-        highlighted_col: str = equity_cols[highlighted_col_idx - 1]
-        main_table = main_table.tab_style(
-            style=[
-                style.fill(color="#fff3cd"),
-            ],
-            locations=loc.body(columns=[highlighted_col]),
-        )
-    
-    # ============================================================================
-    # STEP 4: Pre-compute summary metrics lookup
+    # STEP 3: Pre-compute summary metrics lookup
     # ============================================================================
     # Pre-filter and group data once instead of filtering in loop
     summary_strategies_data: pl.DataFrame = (
@@ -439,15 +382,15 @@ def _build_allocation_tables(
         }
     
     # ============================================================================
-    # STEP 5: Build and style summary metrics table
+    # STEP 4: Add spacer row and summary metric rows to DataFrame
     # ============================================================================
-    summary_metrics: dict[str, dict[str, Any]] = {
-        "Weighted Expense Ratio": {"Metric": "Weighted Expense Ratio"},
-        "Weighted Indicated Yield": {"Metric": "Weighted Indicated Yield"},
-        "Account Minimum": {"Metric": "Account Minimum"}
+    # Calculate summary metrics for each equity level (store as numeric values)
+    summary_metrics_raw: dict[str, dict[str, float]] = {
+        "Weighted Expense Ratio": {},
+        "Weighted Indicated Yield": {},
+        "Account Minimum": {}
     }
     
-    # Calculate metrics for each equity level using lookup (O(1) instead of O(n) filtering)
     for equity_col_name in equity_cols:
         try:
             equity_pct: int = int(equity_col_name)
@@ -467,77 +410,236 @@ def _build_allocation_tables(
         weighted_yield: float = metrics["weighted_yield"]
         account_min: float = metrics["account_min"]
         
-        summary_metrics["Weighted Expense Ratio"][str(equity_pct)] = f"{weighted_expense * 100:.2f}%" if weighted_expense else "0.00%"
-        summary_metrics["Weighted Indicated Yield"][str(equity_pct)] = f"{weighted_yield * 100:.2f}%" if weighted_yield else "0.00%"
-        summary_metrics["Account Minimum"][str(equity_pct)] = format_currency_compact(float(account_min)) if account_min else "$0.0"
+        # Store as percentages (0.0052 for 0.52%)
+        summary_metrics_raw["Weighted Expense Ratio"][equity_col_name] = weighted_expense if weighted_expense else 0.0
+        summary_metrics_raw["Weighted Indicated Yield"][equity_col_name] = weighted_yield if weighted_yield else 0.0
+        # Store account minimum as raw number
+        summary_metrics_raw["Account Minimum"][equity_col_name] = float(account_min) if account_min else 0.0
     
-    # Build summary table DataFrame
-    summary_table_data: list[dict[str, Any]] = [
-        summary_metrics["Weighted Expense Ratio"],
-        summary_metrics["Weighted Indicated Yield"],
-        summary_metrics["Account Minimum"]
-    ]
-    
-    summary_df: pl.DataFrame = pl.DataFrame(summary_table_data)
-    
-    # Column alignment critical for visual comparison between main and summary tables
+    # Add spacer row after last allocation row
+    spacer_row: dict[str, Any] = {"asset_formatted": ""}
     for col in equity_cols:
-        if col not in summary_df.columns:
-            summary_df = summary_df.with_columns(pl.lit(None).alias(col))
+        spacer_row[col] = None
+    spacer_row["is_category"] = False
+    spacer_row["asset"] = ""
+    spacer_row["row_color"] = strategy_color
     
-    summary_column_order: list[str] = ["Metric"] + equity_cols
-    summary_df = summary_df.select([col for col in summary_column_order if col in summary_df.columns])
-    summary_equity_cols: list[str] = [col for col in equity_cols if col in summary_df.columns]
+    # Add second spacer row before summary section
+    spacer_row_2: dict[str, Any] = {"asset_formatted": ""}
+    for col in equity_cols:
+        spacer_row_2[col] = None
+    spacer_row_2["is_category"] = False
+    spacer_row_2["asset"] = ""
+    spacer_row_2["row_color"] = strategy_color
     
-    # Build summary table with aligned columns
-    summary_table: GT = (
-        GT(summary_df)
-        .cols_label({col: col for col in summary_equity_cols})
-        .cols_align(columns=summary_equity_cols, align="center")
-        .cols_align(columns=["Metric"], align="left")
-        .tab_style(
-            style=[
-                style.fill(color=strategy_color),
-                style.text(color="white", weight="bold", size="1.0rem"),
-            ],
-            locations=loc.column_labels(),
-        )
-        .tab_options(
-            table_font_size="0.875rem",
-            table_font_names=[
-                "IBM Plex Sans",
-                "-apple-system",
-                "BlinkMacSystemFont",
-                "Segoe UI",
-                "sans-serif",
-            ],
-            column_labels_hidden=True  # Hide the header row
-        )
+    # Add summary metric rows (all numeric for compatible concatenation)
+    summary_rows: list[dict[str, Any]] = []
+    summary_row_names: list[str] = ["Weighted Expense Ratio", "Weighted Indicated Yield", "Account Minimum"]
+    
+    for summary_name in summary_row_names:
+        summary_row: dict[str, Any] = {"asset_formatted": summary_name}
+        for col in equity_cols:
+            # Keep all values numeric for compatible concatenation
+            summary_row[col] = summary_metrics_raw[summary_name].get(col, 0.0)
+        summary_row["is_category"] = False
+        summary_row["asset"] = summary_name
+        summary_row["row_color"] = strategy_color
+        summary_rows.append(summary_row)
+    
+    # Create spacer row DataFrames
+    spacer_df: pl.DataFrame = pl.DataFrame([spacer_row])
+    spacer_df_2: pl.DataFrame = pl.DataFrame([spacer_row_2])
+    
+    # Create summary rows DataFrame (all numeric)
+    summary_df_data: pl.DataFrame = pl.DataFrame(summary_rows)
+    
+    # Combine DataFrames: allocation + spacer1 + spacer2 + summary (all numeric, compatible types)
+    combined_df: pl.DataFrame = pl.concat([
+        formatted_matrix_df,
+        spacer_df,
+        spacer_df_2,
+        summary_df_data
+    ])
+    
+    num_allocation_rows: int = formatted_matrix_df.height
+    
+    # Update row_metadata for styling
+    combined_row_metadata: list[dict[str, Any]] = row_metadata.copy()
+    combined_row_metadata.append({
+        "is_category": False,
+        "is_spacer": True,
+        "name": "",
+        "color": strategy_color
+    })
+    combined_row_metadata.append({
+        "is_category": False,
+        "is_spacer": True,
+        "name": "",
+        "color": strategy_color
+    })
+    for summary_name in summary_row_names:
+        combined_row_metadata.append({
+            "is_category": False,
+            "is_summary": True,
+            "name": summary_name,
+            "color": strategy_color
+        })
+    
+    # ============================================================================
+    # STEP 5: Build and style combined table
+    # ============================================================================
+    combined_table: GT = (
+        GT(combined_df)
+        .cols_hide(["is_category", "asset", "row_color"])
+        .cols_label(asset_formatted=header_name)
+        .sub_missing(columns=equity_cols, missing_text="")
+        .cols_align(columns=equity_cols, align="center")
+        .cols_align(columns=["asset_formatted"], align="left")
     )
     
-    # Match highlight from main table for consistency
-    if highlighted_col_idx >= 1 and highlighted_col_idx - 1 < len(summary_equity_cols):
-        highlighted_col: str = summary_equity_cols[highlighted_col_idx - 1]
-        summary_table = summary_table.tab_style(
+    # Apply percent formatting to allocation rows only (not summary rows)
+    if num_allocation_rows > 0:
+        combined_table = combined_table.fmt_percent(
+            columns=equity_cols,
+            decimals=2,
+            rows=list(range(num_allocation_rows))
+        )
+    
+    # Format summary rows: percent for expense/yield, currency for account minimum
+    num_spacer_rows: int = 2
+    summary_start_idx: int = num_allocation_rows + num_spacer_rows
+    
+    # Find indices for expense ratio and yield rows (Account Minimum is already formatted as strings)
+    expense_ratio_idx: int = summary_start_idx
+    indicated_yield_idx: int = summary_start_idx + 1
+    
+    # Format "Weighted Expense Ratio" and "Weighted Indicated Yield" as percentages
+    combined_table = combined_table.fmt_percent(
+        columns=equity_cols,
+        decimals=2,
+        rows=[expense_ratio_idx, indicated_yield_idx]
+    )
+    
+    # Format "Account Minimum" as compact currency (K/M suffixes)
+    account_min_idx: int = summary_start_idx + 2
+    
+    # Create formatter function for Account Minimum
+    def format_account_min(x: Any) -> str:
+        """Format Account Minimum value as compact currency."""
+        if x is None or x == "":
+            return "$0.0"
+        try:
+            return format_currency_compact(float(x))
+        except (ValueError, TypeError):
+            return "$0.0"
+    
+    # Format each equity column for Account Minimum row
+    for col in equity_cols:
+        combined_table = combined_table.fmt(
+            columns=[col],
+            rows=[account_min_idx],
+            fns=format_account_min
+        )
+    
+    # Header uses strategy color for brand consistency
+    combined_table = combined_table.tab_style(
+        style=[
+            style.fill(color=strategy_color),
+            style.text(color="white", weight="bold", size="1.0rem"),
+        ],
+        locations=loc.column_labels(),
+    )
+    
+    # Collect row indices for batch styling
+    category_row_indices: list[int] = []
+    product_row_indices: list[int] = []
+    spacer_row_indices: list[int] = []
+    summary_row_indices: list[int] = []
+    
+    for idx, meta in enumerate(combined_row_metadata):
+        if meta.get("is_summary", False):
+            summary_row_indices.append(idx)
+        elif meta["is_category"]:
+            category_row_indices.append(idx)
+        elif meta.get("is_spacer", False):
+            spacer_row_indices.append(idx)
+        else:
+            product_row_indices.append(idx)
+    
+    # Category rows: pastel background to visually group products underneath
+    if category_row_indices:
+        for idx in category_row_indices:
+            row_color: str = combined_row_metadata[idx]["color"]
+            rgba_color: str = hex_to_rgba(row_color, alpha=0.15)
+            combined_table = combined_table.tab_style(
+                style=[
+                    style.fill(color=rgba_color),
+                    style.text(color="black", weight="bold"),
+                ],
+                locations=loc.body(columns=pl.all(), rows=[idx]),
+            )
+    
+    # Product rows: add indentation using Great Tables style.css() API
+    if product_row_indices:
+        combined_table = combined_table.tab_style(
+            style=[
+                style.css(rule="padding-left: 20px;"),
+            ],
+            locations=loc.body(columns=["asset_formatted"], rows=product_row_indices),
+        )
+    
+    # Spacer rows: add height using Great Tables style.css() API
+    if spacer_row_indices:
+        combined_table = combined_table.tab_style(
+            style=[
+                style.css(rule="height: 4px; line-height: 4px;"),
+            ],
+            locations=loc.body(columns=["asset_formatted"], rows=spacer_row_indices),
+        )
+    
+    # Summary rows: pastel background and text formatting (already formatted as strings)
+    if summary_row_indices:
+        rgba_color: str = hex_to_rgba(strategy_color, alpha=0.15)
+        combined_table = combined_table.tab_style(
+            style=[
+                style.fill(color=rgba_color),
+            ],
+            locations=loc.body(columns=pl.all(), rows=summary_row_indices),
+        )
+    
+    combined_table = combined_table.tab_options(
+        table_font_size="0.875rem",
+        table_font_names=[
+            "IBM Plex Sans",
+            "-apple-system",
+            "BlinkMacSystemFont",
+            "Segoe UI",
+            "sans-serif",
+        ]
+    )
+    
+    # Highlight selected strategy's equity column for quick identification
+    if highlighted_col_idx >= 1 and highlighted_col_idx - 1 < len(equity_cols):
+        highlighted_col: str = equity_cols[highlighted_col_idx - 1]
+        combined_table = combined_table.tab_style(
             style=[
                 style.fill(color="#fff3cd"),
             ],
             locations=loc.body(columns=[highlighted_col]),
         )
     
-    return main_table, summary_table
+    return combined_table
 
 
 def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> None:
-    """Render allocation tab with matrix table showing allocations across equity percentages.
+    """Render allocation tab with combined matrix table showing allocations and summary metrics.
     
     Steps:
     1. Load strategy data and prepare model data
     2. Build equity matrix data (product allocations across equity levels)
     3. Format matrix data (combine asset names with tickers)
-    4. Build and render main allocation table
-    5. Build and render summary metrics table
-    6. Render collapse SMAs checkbox
+    4. Build and render combined allocation table (includes summary metrics)
+    5. Render collapse SMAs checkbox
     """
     # ============================================================================
     # STEP 1: Load strategy data and prepare model data
@@ -593,8 +695,8 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     
     strategy_color: str = row_metadata[0]["color"] if row_metadata else PRIMARY["raspberry"]
     
-    # Build both tables using Great Tables API (formatting and styling handled inside)
-    main_table, summary_table = _build_allocation_tables(
+    # Build combined table using Great Tables API (formatting and styling handled inside)
+    combined_table = _build_allocation_tables(
         matrix_df=matrix_df,
         equity_cols=equity_cols,
         row_metadata=row_metadata,
@@ -606,42 +708,36 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     )
     
     # ============================================================================
-    # STEP 4: Render main allocation table
+    # STEP 4: Render combined allocation table
     # ============================================================================
     # Calculate column widths for consistent layout
     num_equity_cols: int = len(equity_cols)
     asset_col_width: str = "40%"  # Combined width for asset+ticker
     equity_col_width: str = f"{(60 / num_equity_cols):.2f}%" if num_equity_cols > 0 else "0%"
     
+    # Generate table HTML from GT object
+    table_html: str = combined_table.as_raw_html(inline_css=True)
+    
+    # Generate hash of table data for cache key
+    # Hash the matrix DataFrame content and styling parameters
+    table_data_hash: str = hashlib.md5(
+        str(matrix_df.write_json()).encode() + 
+        str(equity_cols).encode() +
+        str(header_name).encode() +
+        asset_col_width.encode() + 
+        equity_col_width.encode() +
+        str(strategy_color).encode()
+    ).hexdigest()
+    
+    # Generate complete HTML (cached based on data hash and HTML content)
+    # Cache key includes both the data hash and the actual HTML to ensure cache hits
+    html_hash: str = hashlib.md5(table_html.encode()).hexdigest()
+    complete_html: str = _generate_allocation_table_html_cached(
+        table_html, asset_col_width, equity_col_width, f"{table_data_hash}_{html_hash}"
+    )
+    
     # Render table using Great Tables with fixed column widths
-    st.html(f"""
-    <div style="width: 100%; margin: 0 !important; padding: 0 !important;">
-        <style>
-            {get_allocation_table_main_css(asset_col_width, equity_col_width)}
-        </style>
-        <div id="allocation-table-main">
-            {main_table.as_raw_html(inline_css=True)}
-        </div>
-    </div>
-    """)
-    
-    # ============================================================================
-    # STEP 5: Render summary metrics table
-    # ============================================================================
-    
-    # Metric column width matches asset column width for perfect alignment
-    summary_metric_col_width: str = asset_col_width
-    
-    st.html(f"""
-    <div style="width: 100%; margin-top: 4px;">
-        <style>
-            {get_allocation_table_summary_css(summary_metric_col_width, equity_col_width)}
-        </style>
-        <div id="allocation-table-summary">
-            {summary_table.as_raw_html(inline_css=True)}
-        </div>
-    </div>
-    """)
+    st.html(complete_html)
     
     # ============================================================================
     # STEP 6: Render collapse SMAs toggle (only if there are collapsible SMAs)
