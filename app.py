@@ -1,3 +1,4 @@
+import os
 from typing import Any
 
 import polars as pl
@@ -21,7 +22,6 @@ from utils.core.formatting import get_strategy_color
 from utils.core.session_state import reset_if_changed
 from styles.branding import PRIMARY
 
-
 st.set_page_config(
     page_title="Aspen Investing Menu",
     layout="wide",
@@ -30,6 +30,10 @@ st.set_page_config(
         "Report a Bug": "mailto:aburks@merceradvisors.com",
     },
 )
+
+# Show local mode indicator
+if os.getenv("USE_LOCAL_DATA", "").lower() in ("true", "1", "yes"):
+    st.sidebar.info("🔵 **Local Mode**: Using local parquet files (no API calls)")
 
 # Load pre-generated strategy summary for cards/filtering (fast)
 strats: pl.DataFrame = load_strategy_list()

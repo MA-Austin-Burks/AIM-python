@@ -1,5 +1,6 @@
 """Data processing utilities for Polars."""
 
+import os
 import re
 from typing import Any
 
@@ -7,6 +8,17 @@ import polars as pl
 import streamlit as st
 
 from utils.download_parquet_from_azure import download_parquet_from_azure
+
+
+def _is_local_mode() -> bool:
+    """Check if running in local mode (using local parquet files).
+    
+    Checks for USE_LOCAL_DATA environment variable.
+    
+    Returns:
+        bool: True if local mode is enabled
+    """
+    return os.getenv("USE_LOCAL_DATA", "").lower() in ("true", "1", "yes")
 
 # Load model aggregate sort order from CSV
 _MODEL_AGG_SORT_DF = pl.read_csv("data/model_agg_sort_order.csv")
@@ -124,11 +136,14 @@ def _get_cleaned_data_url() -> str:
 
 @st.cache_resource
 def load_cleaned_data(parquet_url: str | None = None) -> pl.LazyFrame:
-    """Load the full cleaned-data file as a Parquet LazyFrame from Azure Blob Storage.
+    """Load the full cleaned-data file as a Parquet LazyFrame from Azure Blob Storage or local file.
     
     Downloads Parquet file from Azure Blob Storage and loads into Polars as a LazyFrame.
     Uses @st.cache_resource to keep the DataFrame in memory without serialization overhead.
     The download is cached per user session to avoid repeated downloads.
+    
+    If USE_LOCAL_DATA environment variable is set or --local flag is used, loads from
+    local file: utils/archive/data/cleaned-data.parquet
     
     Parquet format provides faster loading and better compression than CSV.
     Schema is preserved from the original conversion, ensuring type consistency.
@@ -136,14 +151,24 @@ def load_cleaned_data(parquet_url: str | None = None) -> pl.LazyFrame:
     Args:
         parquet_url: Optional URL to override the default Azure Blob Storage URL.
                      If None, reads from Streamlit secrets or environment variable.
+                     Ignored if local mode is enabled.
     
     Returns:
         pl.LazyFrame: A lazy Polars DataFrame ready for querying.
     
     Raises:
         RuntimeError: If there's an error downloading or reading the Parquet file.
+        FileNotFoundError: If local mode is enabled but file doesn't exist.
     """
-    import os
+    # Check for local mode first
+    if _is_local_mode():
+        local_path = "utils/archive/data/cleaned-data.parquet"
+        if os.path.exists(local_path):
+            return pl.scan_parquet(local_path)
+        
+        raise FileNotFoundError(
+            f"Local mode enabled but cleaned-data.parquet not found at: {local_path}"
+        )
     
     # Use provided URL or get from secrets/environment
     url = (parquet_url or _get_cleaned_data_url()).strip().strip('"').strip("'")
@@ -233,30 +258,43 @@ def _get_strategy_list_url() -> str | None:
 
 @st.cache_data(ttl=3600)
 def load_strategy_list(parquet_url: str | None = None) -> pl.DataFrame:
-    """Load the pre-generated strategy_list.parquet file from Azure Blob Storage.
+    """Load the pre-generated strategy_list.parquet file from Azure Blob Storage or local file.
     
     This file contains a summary table for all strategies, pre-aggregated from cleaned-data.
     Use this for card filtering, sorting, and rendering instead of calling get_strategy_table().
     
+    If USE_LOCAL_DATA environment variable is set or --local flag is used, loads from
+    local file: utils/archive/data/strategy_list.parquet or data/strategy_list.parquet
+    
     Args:
         parquet_url: Optional URL to override the default Azure Blob Storage URL.
                      If None, reads from Streamlit secrets or environment variable.
+                     Ignored if local mode is enabled.
     
     Returns:
         pl.DataFrame: Strategy-level DataFrame with columns matching get_strategy_table() output.
     
     Raises:
-        ValueError: If URL is not found in secrets or environment variable
+        ValueError: If URL is not found in secrets or environment variable (when not in local mode)
+        FileNotFoundError: If local mode is enabled but file doesn't exist
         RuntimeError: If there's an error downloading or reading the Parquet file
     """
-    import os
     import tempfile
+    
+    # Check for local mode first
+    if _is_local_mode():
+        local_path = "utils/archive/data/strategy_list.parquet"
+        if os.path.exists(local_path):
+            return pl.read_parquet(local_path)
+        
+        raise FileNotFoundError(
+            f"Local mode enabled but strategy_list.parquet not found at: {local_path}"
+        )
     
     # Use provided URL or get from secrets/environment
     url = parquet_url or _get_strategy_list_url()
     
     if not url:
-        import os
         # Provide helpful debug information
         env_check = os.getenv('STRATEGY_LIST_PARQUET')
         secrets_check = None

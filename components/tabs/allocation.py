@@ -1,4 +1,6 @@
 from typing import Any
+from enum import Enum
+from dataclasses import dataclass
 
 import polars as pl
 import streamlit as st
@@ -20,6 +22,153 @@ from components.constants import (
 from utils.core.data import get_model_agg_sort_order, get_strategy_by_name, hash_lazyframe
 from utils.core.formatting import format_currency_compact, get_strategy_color
 import hashlib
+
+
+class RowType(str, Enum):
+    """Row type identifiers for styling."""
+    CATEGORY = "category"
+    PRODUCT = "product"
+    SPACER = "spacer"
+    SUMMARY = "summary"
+
+
+@dataclass
+class TableStyleConfig:
+    """Configuration for table styling."""
+    header_font: str = "Merriweather"
+    body_font: str = "IBM Plex Sans"
+    header_font_size: str = "1.1rem"
+    body_font_size: str = "0.875rem"
+    header_padding: str = "12px"
+    product_indent: str = "20px"
+    spacer_height: str = "4px"
+    highlight_color: str = "#fff3cd"
+
+def _group_rows_by_type(metadata: list[dict[str, Any]]) -> dict[RowType, list[int]]:
+    """Group row indices by their type for batch styling.
+    
+    Args:
+        metadata: List of row metadata dictionaries
+        
+    Returns:
+        Dictionary mapping RowType to list of row indices
+    """
+    groups: dict[RowType, list[int]] = {
+        RowType.CATEGORY: [],
+        RowType.PRODUCT: [],
+        RowType.SPACER: [],
+        RowType.SUMMARY: [],
+    }
+    
+    for idx, meta in enumerate(metadata):
+        # Check for row_type first (new approach)
+        row_type_str = meta.get("row_type")
+        if row_type_str:
+            try:
+                row_type = RowType(row_type_str)
+                groups[row_type].append(idx)
+                continue
+            except ValueError:
+                pass
+        
+        # Fallback to old boolean flags for backward compatibility
+        if meta.get("is_summary", False):
+            groups[RowType.SUMMARY].append(idx)
+        elif meta.get("is_category", False):
+            groups[RowType.CATEGORY].append(idx)
+        elif meta.get("is_spacer", False):
+            groups[RowType.SPACER].append(idx)
+        else:
+            groups[RowType.PRODUCT].append(idx)
+    
+    return groups
+
+
+def _apply_row_styling(
+    table: GT,
+    row_indices: list[int],
+    row_type: RowType,
+    config: TableStyleConfig,
+    row_colors: dict[int, str] | None = None,
+    strategy_color: str | None = None,
+    equity_cols: list[str] | None = None,
+) -> GT:
+    """Apply styling to rows based on their type.
+    
+    Args:
+        table: Great Tables GT object
+        row_indices: List of row indices to style
+        row_type: Type of rows to style
+        config: Styling configuration
+        row_colors: Optional dict mapping row index to color
+        strategy_color: Optional strategy color for summary rows
+        equity_cols: Optional list of equity column names
+        
+    Returns:
+        Styled GT table object
+    """
+    if not row_indices:
+        return table
+    
+    if row_type == RowType.CATEGORY:
+        # Category rows: pastel background, bold text
+        for idx in row_indices:
+            row_color = row_colors.get(idx) if row_colors else None
+            rgba_color = hex_to_rgba(row_color, alpha=0.15) if row_color else None
+            style_list = [
+                style.text(color="black", weight="bold"),
+                style.css(rule=f"font-family: '{config.body_font}', sans-serif !important;"),
+            ]
+            if rgba_color:
+                style_list.insert(0, style.fill(color=rgba_color))
+            
+            table = table.tab_style(
+                style=style_list,
+                locations=loc.body(columns=pl.all(), rows=[idx]),
+            )
+    
+    elif row_type == RowType.PRODUCT:
+        # Product rows: indentation on asset column, font on all columns
+        table = table.tab_style(
+            style=[
+                style.css(rule=f"padding-left: {config.product_indent}; font-family: '{config.body_font}', sans-serif !important;"),
+            ],
+            locations=loc.body(columns=["asset_formatted"], rows=row_indices),
+        )
+        # Apply font to equity columns
+        if equity_cols:
+            table = table.tab_style(
+                style=[
+                    style.css(rule=f"font-family: '{config.body_font}', sans-serif !important;"),
+                ],
+                locations=loc.body(columns=equity_cols, rows=row_indices),
+            )
+    
+    elif row_type == RowType.SPACER:
+        # Spacer rows: minimal height
+        table = table.tab_style(
+            style=[
+                style.css(rule=f"height: {config.spacer_height}; line-height: {config.spacer_height};"),
+            ],
+            locations=loc.body(columns=["asset_formatted"], rows=row_indices),
+        )
+    
+    elif row_type == RowType.SUMMARY:
+        # Summary rows: pastel background
+        rgba_color = hex_to_rgba(strategy_color, alpha=0.15) if strategy_color else None
+        style_list = [
+            style.css(rule=f"font-family: '{config.body_font}', sans-serif !important;"),
+        ]
+        if rgba_color:
+            style_list.insert(0, style.fill(color=rgba_color))
+        
+        table = table.tab_style(
+            style=style_list,
+            locations=loc.body(columns=pl.all(), rows=row_indices),
+        )
+    
+    return table
+
 
 @st.cache_data(hash_funcs={pl.LazyFrame: hash_lazyframe})
 def _get_model_data(cleaned_data: pl.LazyFrame, strategy_model: str) -> pl.DataFrame:
@@ -202,7 +351,8 @@ def _get_equity_matrix_data(
         model_agg_name: str = model_agg_names[model_agg]
         row_data: dict[str, Any] = {"asset": model_agg_name}
         row_metadata.append({
-            "is_category": True, 
+            "row_type": RowType.CATEGORY.value,
+            "is_category": True,  # Keep for backward compatibility
             "name": model_agg_name,
             "color": strategy_color
         })
@@ -234,7 +384,8 @@ def _get_equity_matrix_data(
                 
                 product_row_data: dict[str, Any] = {"asset": product_name}
                 row_metadata.append({
-                    "is_category": False, 
+                    "row_type": RowType.PRODUCT.value,
+                    "is_category": False,  # Keep for backward compatibility
                     "name": product_name,
                     "ticker": ticker,
                     "color": strategy_color
@@ -259,8 +410,9 @@ def _get_equity_matrix_data(
                 spacer_row[str(int(eq_pct))] = None
             data.append(spacer_row)
             row_metadata.append({
-                "is_category": False,
-                "is_spacer": True,
+                "row_type": RowType.SPACER.value,
+                "is_category": False,  # Keep for backward compatibility
+                "is_spacer": True,  # Keep for backward compatibility
                 "name": "",
                 "color": strategy_color
             })
@@ -461,22 +613,27 @@ def _build_allocation_tables(
     
     # Update row_metadata for styling
     combined_row_metadata: list[dict[str, Any]] = row_metadata.copy()
+    # Add spacer rows metadata
     combined_row_metadata.append({
-        "is_category": False,
-        "is_spacer": True,
+        "row_type": RowType.SPACER.value,
+        "is_category": False,  # Keep for backward compatibility
+        "is_spacer": True,  # Keep for backward compatibility
         "name": "",
         "color": strategy_color
     })
     combined_row_metadata.append({
-        "is_category": False,
-        "is_spacer": True,
+        "row_type": RowType.SPACER.value,
+        "is_category": False,  # Keep for backward compatibility
+        "is_spacer": True,  # Keep for backward compatibility
         "name": "",
         "color": strategy_color
     })
+    # Add summary rows metadata
     for summary_name in summary_row_names:
         combined_row_metadata.append({
-            "is_category": False,
-            "is_summary": True,
+            "row_type": RowType.SUMMARY.value,
+            "is_category": False,  # Keep for backward compatibility
+            "is_summary": True,  # Keep for backward compatibility
             "name": summary_name,
             "color": strategy_color
         })
@@ -537,86 +694,68 @@ def _build_allocation_tables(
             fns=format_account_min
         )
     
+    # Initialize styling configuration
+    style_config = TableStyleConfig()
+    
     # Header uses strategy color for brand consistency
     combined_table = combined_table.tab_style(
         style=[
             style.fill(color=strategy_color),
-            style.text(color="white", weight="bold", size="1.1rem"),
-            style.css(rule="font-family: 'Merriweather', serif !important; padding: 12px !important;"),
+            style.text(color="white", weight="bold", size=style_config.header_font_size),
+            style.css(rule=f"font-family: '{style_config.header_font}', serif !important; padding: {style_config.header_padding} !important;"),
         ],
         locations=loc.column_labels(),
     )
     
-    # Collect row indices for batch styling
-    category_row_indices: list[int] = []
-    product_row_indices: list[int] = []
-    spacer_row_indices: list[int] = []
-    summary_row_indices: list[int] = []
+    # Group rows by type for batch styling
+    row_groups = _group_rows_by_type(combined_row_metadata)
     
-    for idx, meta in enumerate(combined_row_metadata):
-        if meta.get("is_summary", False):
-            summary_row_indices.append(idx)
-        elif meta["is_category"]:
-            category_row_indices.append(idx)
-        elif meta.get("is_spacer", False):
-            spacer_row_indices.append(idx)
-        else:
-            product_row_indices.append(idx)
+    # Build row colors dict for category rows
+    row_colors: dict[int, str] = {
+        idx: combined_row_metadata[idx]["color"]
+        for idx in row_groups[RowType.CATEGORY]
+        if idx < len(combined_row_metadata)
+    }
     
-    # Category rows: pastel background to visually group products underneath
-    if category_row_indices:
-        for idx in category_row_indices:
-            row_color: str = combined_row_metadata[idx]["color"]
-            rgba_color: str = hex_to_rgba(row_color, alpha=0.15)
-            combined_table = combined_table.tab_style(
-                style=[
-                    style.fill(color=rgba_color),
-                    style.text(color="black", weight="bold"),
-                    style.css(rule="font-family: 'IBM Plex Sans', sans-serif !important;"),
-                ],
-                locations=loc.body(columns=pl.all(), rows=[idx]),
-            )
+    # Apply styling by row type
+    combined_table = _apply_row_styling(
+        combined_table,
+        row_groups[RowType.CATEGORY],
+        RowType.CATEGORY,
+        style_config,
+        row_colors=row_colors,
+        equity_cols=equity_cols,
+    )
     
-    # Product rows: add indentation using Great Tables style.css() API
-    if product_row_indices:
-        combined_table = combined_table.tab_style(
-            style=[
-                style.css(rule="padding-left: 20px; font-family: 'IBM Plex Sans', sans-serif !important;"),
-            ],
-            locations=loc.body(columns=["asset_formatted"], rows=product_row_indices),
-        )
-        # Ensure all columns in product rows use IBM Plex Sans
-        combined_table = combined_table.tab_style(
-            style=[
-                style.css(rule="font-family: 'IBM Plex Sans', sans-serif !important;"),
-            ],
-            locations=loc.body(columns=equity_cols, rows=product_row_indices),
-        )
+    combined_table = _apply_row_styling(
+        combined_table,
+        row_groups[RowType.PRODUCT],
+        RowType.PRODUCT,
+        style_config,
+        equity_cols=equity_cols,
+    )
     
-    # Spacer rows: add height using Great Tables style.css() API
-    if spacer_row_indices:
-        combined_table = combined_table.tab_style(
-            style=[
-                style.css(rule="height: 4px; line-height: 4px;"),
-            ],
-            locations=loc.body(columns=["asset_formatted"], rows=spacer_row_indices),
-        )
+    combined_table = _apply_row_styling(
+        combined_table,
+        row_groups[RowType.SPACER],
+        RowType.SPACER,
+        style_config,
+    )
     
-    # Summary rows: pastel background and text formatting (already formatted as strings)
-    if summary_row_indices:
-        rgba_color: str = hex_to_rgba(strategy_color, alpha=0.15)
-        combined_table = combined_table.tab_style(
-            style=[
-                style.fill(color=rgba_color),
-                style.css(rule="font-family: 'IBM Plex Sans', sans-serif !important;"),
-            ],
-            locations=loc.body(columns=pl.all(), rows=summary_row_indices),
-        )
+    combined_table = _apply_row_styling(
+        combined_table,
+        row_groups[RowType.SUMMARY],
+        RowType.SUMMARY,
+        style_config,
+        strategy_color=strategy_color,
+        equity_cols=equity_cols,
+    )
     
+    # Apply table-wide options
     combined_table = combined_table.tab_options(
-        table_font_size="0.875rem",
+        table_font_size=style_config.body_font_size,
         table_font_names=[
-            "IBM Plex Sans",
+            style_config.body_font,
             "-apple-system",
             "BlinkMacSystemFont",
             "Segoe UI",
@@ -627,7 +766,7 @@ def _build_allocation_tables(
     # Ensure all body cells use IBM Plex Sans (explicit override)
     combined_table = combined_table.tab_style(
         style=[
-            style.css(rule="font-family: 'IBM Plex Sans', sans-serif !important;"),
+            style.css(rule=f"font-family: '{style_config.body_font}', sans-serif !important;"),
         ],
         locations=loc.body(),
     )
@@ -637,7 +776,7 @@ def _build_allocation_tables(
         highlighted_col: str = equity_cols[highlighted_col_idx - 1]
         combined_table = combined_table.tab_style(
             style=[
-                style.fill(color="#fff3cd"),
+                style.fill(color=style_config.highlight_color),
             ],
             locations=loc.body(columns=[highlighted_col]),
         )
