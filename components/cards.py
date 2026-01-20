@@ -56,7 +56,6 @@ def _render_strategy_card(strategy_row: dict[str, Any], index: int) -> tuple[boo
     clicked_id = model_card(
         id=strategy_name,
         name=strategy_name,
-        equity=equity_pct,
         yield_pct=yield_pct_display,
         expense_ratio=expense_ratio_display,
         minimum=minimum,

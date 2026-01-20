@@ -92,13 +92,6 @@ export default function(component) {
       <div style="background:${pastel};padding:${bodyPadding};font-family:${bodyFontFamily};">
         <div style="display:flex;justify-content:space-between;align-items:center;
                     padding:${rowPadding};border-bottom:1px solid rgba(0,0,0,.08);">
-          <span style="font-size:${labelSize};color:${labelColor};">Equity</span>
-          <span style="font-size:${valueSize};font-weight:${valueWeight};color:${valueColor};">
-            ${Number(m.equity ?? 0)}%
-          </span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;
-                    padding:${rowPadding};border-bottom:1px solid rgba(0,0,0,.08);">
           <span style="font-size:${labelSize};color:${labelColor};">Yield</span>
           <span style="font-size:${valueSize};font-weight:${valueWeight};color:${valueColor};">
             ${Number(m.yield ?? 0).toFixed(2)}%
@@ -158,7 +151,6 @@ def model_card(
     *,
     id: str,
     name: str,
-    equity: float,
     yield_pct: float,
     expense_ratio: float,
     minimum: float,
@@ -192,7 +184,6 @@ def model_card(
         data={
             "id": id,
             "name": name,
-            "equity": equity,
             "yield": yield_pct,
             "expenseRatio": expense_ratio,
             "minimum": minimum,
