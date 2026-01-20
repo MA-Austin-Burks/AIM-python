@@ -89,12 +89,10 @@ def render_filters_inline(search_active: bool) -> None:
         
         with col_ic:
             # IC Status: Recommended / All
-            current_ic_status = st.session_state.get("filter_recommended_only", "Recommended")
             st.segmented_control(
                 "IC Status",
                 options=["Recommended", "All"],
                 selection_mode="single",
-                default=current_ic_status if current_ic_status in ["Recommended", "All"] else "Recommended",
                 disabled=search_active,
                 key="filter_recommended_only",
             )
