@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 from enum import Enum
 from dataclasses import dataclass
 
@@ -1245,9 +1245,10 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     
     Steps:
     1. Load strategy data and prepare model data
-    2. Build equity matrix data (product allocations across equity levels)
-    3. Build and render combined allocation table (includes summary metrics)
-    4. Render collapse SMAs checkbox
+    2. Render summary statistics metrics
+    3. Build equity matrix data (product allocations across equity levels)
+    4. Build and render combined allocation table (includes summary metrics)
+    5. Render collapse SMAs checkbox
     """
     # ============================================================================
     # STEP 1: Load strategy data and prepare model data
@@ -1256,10 +1257,54 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
         cleaned_data, strategy_name
     )
     
+    # ============================================================================
+    # STEP 2: Render summary statistics metrics
+    # ============================================================================
+    from datetime import datetime
+    
+    st.markdown("#### Summary Statistics")
+    st.caption(f"as of {datetime.now().strftime('%m-%d-%Y')}")
+    
+    # Row 1: Expense Ratio, Yield, Minimum
+    # Note: cleaned_data uses lowercase column names
+    row1_col1, row1_col2, row1_col3 = st.columns(3)
+    with row1_col1:
+        # Get expense ratio from strategy data (cleaned_data has lowercase column names)
+        expense_ratio = strategy_data.get("expense_ratio", 0) if strategy_data else 0
+        # If not found, calculate weighted expense ratio from model data
+        if expense_ratio == 0 and all_model_data.height > 0:
+            strategy_model_data = all_model_data.filter(pl.col("strategy") == strategy_name)
+            if strategy_model_data.height > 0:
+                total_target = strategy_model_data["target"].sum()
+                weighted_fee_sum = (strategy_model_data["target"] * strategy_model_data["fee"]).sum()
+                if total_target > 0:
+                    expense_ratio = weighted_fee_sum / total_target
+        st.metric("WEIGHTED AVG EXP RATIO", f"{expense_ratio * 100:.2f}%")
+    with row1_col2:
+        # Get yield from strategy data
+        y: Optional[float] = strategy_data.get("yield") if strategy_data else None
+        # If not found, calculate weighted yield from model data
+        if y is None and all_model_data.height > 0:
+            strategy_model_data = all_model_data.filter(pl.col("strategy") == strategy_name)
+            if strategy_model_data.height > 0:
+                total_target = strategy_model_data["target"].sum()
+                weighted_yield_sum = (strategy_model_data["target"] * strategy_model_data["yield"]).sum()
+                if total_target > 0:
+                    y = weighted_yield_sum / total_target
+        st.metric("12-MONTH YIELD", f"{y * 100:.2f}%" if y else "0.00%")
+    with row1_col3:
+        # Get minimum from strategy data
+        minimum = strategy_data.get("minimum", 0) if strategy_data else 0
+        st.metric(
+            "ACCOUNT MINIMUM", format_currency_compact(float(minimum)) if minimum else "$0.0"
+        )
+    
+    st.divider()
+    
     collapse_sma: bool = get_or_init(ALLOCATION_COLLAPSE_SMA_KEY, DEFAULT_COLLAPSE_SMA)
     
     # ============================================================================
-    # STEP 2: Build equity matrix data
+    # STEP 3: Build equity matrix data
     # ============================================================================
     matrix_df, highlighted_col_idx, row_metadata, equity_to_strategy, equity_cols = _prepare_allocation_matrix(
         cleaned_data, strategy_name, strategy_equity_pct, collapse_sma
@@ -1278,8 +1323,9 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     strategy_color: str = row_metadata[0]["color"] if row_metadata else PRIMARY["raspberry"]
     
     # ============================================================================
-    # STEP 3: Render combined allocation table
+    # STEP 4: Render combined allocation table
     # ============================================================================
+    st.markdown("#### Asset Allocation")
     _render_allocation_table(
         matrix_df, equity_cols, row_metadata, header_name,
         highlighted_col_idx, all_model_data, equity_to_strategy, strategy_color
@@ -1288,7 +1334,7 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     st.divider()
     
     # ============================================================================
-    # STEP 4: Render collapse SMAs toggle
+    # STEP 5: Render collapse SMAs toggle
     # ============================================================================
     _render_collapse_toggle(all_model_data, strategy_name)
     

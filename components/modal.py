@@ -30,10 +30,10 @@ def render_strategy_modal(strategy_name: str, strategy_data: dict[str, Any], str
     if badges:
         st.markdown(" &nbsp; ".join(badges) + " &nbsp;")
 
-    tab_names: list[str] = ["Allocation", "Description"]
+    tab_names: list[str] = ["Overview", "Description"]
     tabs: list[Any] = st.tabs(tab_names)
     
-    with tabs[0]:  # Allocation tab
+    with tabs[0]:  # Overview tab
         render_allocation_tab(strategy_name, cleaned_data)
     with tabs[1]:  # Description tab
         render_description_tab(strategy_name, strategy_data, cleaned_data)

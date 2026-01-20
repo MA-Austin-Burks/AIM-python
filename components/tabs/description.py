@@ -474,30 +474,6 @@ def render_description_tab(strategy_name: str, strategy_data: dict[str, Any], cl
     st.divider()
 
     # ============================================================================
-    # STEP 2: Render summary statistics metrics
-    # ============================================================================
-    # Summary Statistics - 2 rows x 3 columns
-    st.markdown("#### Summary Statistics")
-    
-    # Row 1: Expense Ratio, Yield, Minimum
-    row1_col1, row1_col2, row1_col3 = st.columns(3)
-    with row1_col1:
-        expense_ratio = strategy_data.get("Expense Ratio", 0)
-        _metric_with_date(
-            "WEIGHTED AVG EXP RATIO", f"{expense_ratio * 100:.2f}%"
-        )
-    with row1_col2:
-        y: Optional[float] = strategy_data.get("Yield")
-        _metric_with_date("12-MONTH YIELD", f"{y * 100:.2f}%" if y else "0.00%")
-    with row1_col3:
-        minimum = strategy_data.get("Minimum", 0)
-        _metric_with_date(
-            "ACCOUNT MINIMUM", format_currency_compact(float(minimum)) if minimum else "$0.0"
-        )
-    
-    st.divider()
-
-    # ============================================================================
     # STEP 3: Render allocation chart with grouping options
     # ============================================================================
     st.markdown("#### Asset Allocation")

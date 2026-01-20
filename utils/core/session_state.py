@@ -18,7 +18,7 @@ T = TypeVar("T")
 
 def _validate_filter_recommended(value: Any) -> bool:
     """Validate filter_recommended_only value."""
-    return value in ("Yes", "No", None)
+    return value in ("Recommended", "All", None)
 
 
 def _validate_filter_yes_no(value: Any) -> bool:
@@ -74,14 +74,14 @@ def initialize_session_state() -> None:
     """
     # Filter state - initialize with defaults, validate existing values
     if "filter_recommended_only" not in st.session_state:
-        st.session_state["filter_recommended_only"] = "Yes"
+        st.session_state["filter_recommended_only"] = "Recommended"
     elif not validate_session_state_value(
         "filter_recommended_only", 
         st.session_state["filter_recommended_only"],
         (str, type(None)),
         _validate_filter_recommended
     ):
-        st.session_state["filter_recommended_only"] = "Yes"
+        st.session_state["filter_recommended_only"] = "Recommended"
     
     if "filter_tax_managed" not in st.session_state:
         st.session_state["filter_tax_managed"] = None
@@ -123,25 +123,25 @@ def initialize_session_state() -> None:
     ):
         st.session_state["min_strategy"] = 50000
     
-    if "equity_range" not in st.session_state:
-        st.session_state["equity_range"] = DEFAULT_EQUITY_RANGE
+    if "equity_allocation" not in st.session_state:
+        st.session_state["equity_allocation"] = 60
     elif not validate_session_state_value(
-        "equity_range",
-        st.session_state["equity_range"],
-        tuple,
-        _validate_equity_range
+        "equity_allocation",
+        st.session_state["equity_allocation"],
+        (int, float),
+        lambda v: isinstance(v, (int, float)) and 0 <= v <= 100
     ):
-        st.session_state["equity_range"] = (0, 100)
+        st.session_state["equity_allocation"] = 60
     
     if "filter_strategy_type" not in st.session_state:
-        st.session_state["filter_strategy_type"] = STRATEGY_TYPES[0]  # "Risk-Based"
+        st.session_state["filter_strategy_type"] = [STRATEGY_TYPES[0]]  # ["Risk-Based"]
     elif not validate_session_state_value(
         "filter_strategy_type",
         st.session_state["filter_strategy_type"],
-        str,
-        _validate_strategy_type
+        (list, str),
+        lambda v: (isinstance(v, list) and all(_validate_strategy_type(t) for t in v)) or _validate_strategy_type(v)
     ):
-        st.session_state["filter_strategy_type"] = "Risk-Based"
+        st.session_state["filter_strategy_type"] = [STRATEGY_TYPES[0]]
     
     if "filter_series" not in st.session_state:
         # Default series for Risk-Based strategy type

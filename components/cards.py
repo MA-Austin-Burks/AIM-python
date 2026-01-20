@@ -4,11 +4,9 @@ import polars as pl
 import streamlit as st
 from components.model_card import model_card
 
-from components.filters import render_search_bar
 from utils.core.constants import (
     CARD_GRID_COLUMNS,
     CARD_ORDER_KEY,
-    CARD_ORDER_OPTIONS,
     CARDS_DISPLAYED_KEY,
     CARDS_PER_LOAD,
     DEFAULT_CARD_ORDER,
@@ -138,21 +136,9 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
     cards_displayed = get_or_init(CARDS_DISPLAYED_KEY, CARDS_PER_LOAD)
     
     # ============================================================================
-    # STEP 2: Render sort order selector and search bar (filters are rendered above this)
+    # STEP 2: Get sort order from session state (rendered above filters in search.py)
     # ============================================================================
-    col_order, col_search = st.columns([1, 2])
-    with col_order:
-        selected_order = st.selectbox(
-            "Order By:",
-            options=CARD_ORDER_OPTIONS,
-            index=CARD_ORDER_OPTIONS.index(card_order) if card_order in CARD_ORDER_OPTIONS else 0,
-            key="card_order_by_select",
-            on_change=_reset_cards_displayed,
-        )
-        st.session_state[CARD_ORDER_KEY] = selected_order
-    
-    with col_search:
-        search_active, strategy_search = render_search_bar()
+    selected_order = st.session_state.get(CARD_ORDER_KEY, DEFAULT_CARD_ORDER)
     
     # ============================================================================
     # STEP 3: Apply sorting and check for empty results

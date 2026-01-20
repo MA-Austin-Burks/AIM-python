@@ -84,16 +84,17 @@ def render_filters_inline(search_active: bool) -> None:
     expander_label = "Filters (Clear search to enable)" if search_active else "Filters"
     
     with st.expander(expander_label, expanded=False, icon=":material/feature_search:"):
-        # Row 1: Yes/No filters, then Account Value and Equity Allocation at the end
-        col_rec, col_tax, col_sma, col_private, col_min, col_equity = st.columns([1, 1, 1, 1, 2, 2])
+        # Row 1: IC Status, Yes/No filters, Account Value
+        col_ic, col_tax, col_sma, col_private, col_min = st.columns([1, 1, 1, 1, 2])
         
-        with col_rec:
-            # Session state is initialized, so the value is already set
-            # Don't set default to avoid conflict with session state
+        with col_ic:
+            # IC Status: Recommended / All
+            current_ic_status = st.session_state.get("filter_recommended_only", "Recommended")
             st.segmented_control(
-                "IC Recommended",
-                options=["Yes", "No"],
+                "IC Status",
+                options=["Recommended", "All"],
                 selection_mode="single",
+                default=current_ic_status if current_ic_status in ["Recommended", "All"] else "Recommended",
                 disabled=search_active,
                 key="filter_recommended_only",
             )
@@ -109,7 +110,6 @@ def render_filters_inline(search_active: bool) -> None:
             )
         
         with col_private:
-            # Session state is initialized to "No", so no need for default parameter
             _render_yes_no_filter(
                 label="Private Markets", key="filter_private_markets", disabled=search_active
             )
@@ -126,55 +126,69 @@ def render_filters_inline(search_active: bool) -> None:
                 disabled=search_active,
             )
         
-        with col_equity:
-            st.slider(
-                "Equity Allocation Range",
-                min_value=0,
-                max_value=100,
-                value=(0, 100),
-                step=10,
-                key="equity_range",
-                disabled=search_active,
-            )
+        # Row 2: Strategy Type (multi-select), Series, Equity Allocation (always visible, disabled when Risk-Based not selected)
+        selected_type = st.session_state.get("filter_strategy_type", STRATEGY_TYPES[0])
+        if not isinstance(selected_type, list):
+            selected_type = [selected_type] if selected_type else STRATEGY_TYPES
         
-        # Row 2: Strategy Type, Series
-        col_type, col_series = st.columns([3, 3])
+        is_risk_based = "Risk-Based" in selected_type
+        
+        # Always show equity allocation column
+        col_type, col_series, col_equity = st.columns([2, 2, 2])
         
         with col_type:
-            # Session state is initialized, so we can access directly
-            current_selection = st.session_state["filter_strategy_type"]
+            # Strategy Type: multi-select
+            current_selections = st.session_state.get("filter_strategy_type", STRATEGY_TYPES)
+            if not isinstance(current_selections, list):
+                current_selections = [current_selections] if current_selections else STRATEGY_TYPES
+            
             st.segmented_control(
                 "Strategy Type",
                 options=STRATEGY_TYPES,
-                selection_mode="single",
-                default=current_selection if current_selection in STRATEGY_TYPES else STRATEGY_TYPES[0],
+                selection_mode="multi",
+                default=current_selections,
                 disabled=search_active,
                 key="filter_strategy_type",
             )
         
         with col_series:
             # Session state is initialized, so we can access directly
-            selected_type = st.session_state["filter_strategy_type"]
-            previous_type_key = "_previous_strategy_type"
-            previous_type = st.session_state[previous_type_key]
+            selected_type = st.session_state.get("filter_strategy_type", STRATEGY_TYPES[0])
+            if not isinstance(selected_type, list):
+                selected_type = [selected_type] if selected_type else STRATEGY_TYPES
             
-            # Dynamically filter series options based on selected strategy type
-            if selected_type and selected_type in STRATEGY_TYPE_TO_SERIES:
-                type_options: list[str] = STRATEGY_TYPE_TO_SERIES[selected_type]
-            else:
-                type_options: list[str] = SERIES_OPTIONS
+            previous_type_key = "_previous_strategy_type"
+            previous_type = st.session_state.get(previous_type_key, STRATEGY_TYPES[0])
+            if not isinstance(previous_type, list):
+                previous_type = [previous_type] if previous_type else []
+            
+            # Get all series options for selected strategy types
+            type_options: list[str] = []
+            for st_type in selected_type:
+                if st_type in STRATEGY_TYPE_TO_SERIES:
+                    type_options.extend(STRATEGY_TYPE_TO_SERIES[st_type])
+            
+            # Remove duplicates while preserving order
+            type_options = list(dict.fromkeys(type_options))
+            
+            if not type_options:
+                type_options = SERIES_OPTIONS
 
-            # Determine default selections based on strategy type
-            default_selections = STRATEGY_TYPE_TO_SERIES.get(selected_type, [])
+            # Determine default selections based on strategy types
+            default_selections = []
+            for st_type in selected_type:
+                if st_type in STRATEGY_TYPE_TO_SERIES:
+                    default_selections.extend(STRATEGY_TYPE_TO_SERIES[st_type])
+            default_selections = list(dict.fromkeys(default_selections))
 
             # Handle strategy type changes by clearing invalid selections
-            if selected_type != previous_type:
+            if set(selected_type) != set(previous_type):
                 st.session_state.pop("filter_series", None)
                 st.session_state[previous_type_key] = selected_type
                 valid_selections = default_selections
             else:
                 # Session state is initialized, so we can access directly
-                current_selections = st.session_state["filter_series"]
+                current_selections = st.session_state.get("filter_series", default_selections)
                 if isinstance(current_selections, list):
                     valid_selections = [s for s in current_selections if s in type_options]
                     if not valid_selections:
@@ -191,6 +205,19 @@ def render_filters_inline(search_active: bool) -> None:
                 default=valid_selections,
                 disabled=search_active,
                 key="filter_series",
+            )
+        
+        # Equity Allocation slider (disabled when Risk-Based is not selected)
+        with col_equity:
+            equity_value = st.session_state.get("equity_allocation", 60)
+            st.slider(
+                "Equity Allocation (%)",
+                min_value=0,
+                max_value=100,
+                value=equity_value,
+                step=10,
+                key="equity_allocation",
+                disabled=search_active or not is_risk_based,
             )
 
 
@@ -217,12 +244,12 @@ def _build_recommended_filter(recommended_selection: str | None) -> pl.Expr | No
     """Build recommended filter expression.
     
     Args:
-        recommended_selection: "Yes", "No", or None
+        recommended_selection: "Recommended", "All", or None
         
     Returns:
         Polars expression or None if no filter needed
     """
-    if recommended_selection == "Yes":
+    if recommended_selection == "Recommended":
         return pl.col("Recommended")
     return None
 
@@ -239,19 +266,22 @@ def _build_account_value_filter(min_strategy: int | float) -> pl.Expr:
     return pl.col("Minimum") <= min_strategy
 
 
-def _build_equity_range_filter(equity_range: tuple[int, int]) -> pl.Expr:
-    """Build equity range filter expression.
+def _build_equity_allocation_filter(equity_allocation: int | None) -> pl.Expr | None:
+    """Build equity allocation filter expression.
     
     Args:
-        equity_range: Tuple of (min, max) equity percentages
+        equity_allocation: Single equity percentage value or None
         
     Returns:
-        Polars expression for equity range filter
+        Polars expression for equity allocation filter or None if not filtering
     """
+    if equity_allocation is None:
+        return None
+    # Filter within ±5% of the selected value
     return (
         (pl.col("Equity %").is_not_null())
-        & (pl.col("Equity %") >= equity_range[0])
-        & (pl.col("Equity %") <= equity_range[1])
+        & (pl.col("Equity %") >= equity_allocation - 5)
+        & (pl.col("Equity %") <= equity_allocation + 5)
     )
 
 
@@ -288,18 +318,22 @@ def _build_private_markets_filter(selection: str | None) -> pl.Expr | None:
     return None
 
 
-def _build_strategy_type_filter(selected_type: str | None) -> pl.Expr | None:
+def _build_strategy_type_filter(selected_types: list[str] | str | None) -> pl.Expr | None:
     """Build strategy type filter expression.
     
     Args:
-        selected_type: Strategy type or None
+        selected_types: List of strategy types, single strategy type, or None
         
     Returns:
         Polars expression or None if no filter needed
     """
-    if not selected_type:
+    if not selected_types:
         return None
-    return pl.col("Strategy Type").is_in([selected_type])
+    if isinstance(selected_types, str):
+        selected_types = [selected_types]
+    if not selected_types:
+        return None
+    return pl.col("Strategy Type").is_in(selected_types)
 
 
 def _build_series_filter(selected_subtypes: list[str] | str | None) -> pl.Expr | None:
@@ -364,8 +398,18 @@ def render_filters(search_active: bool) -> pl.Expr:
     # Account Value
     expressions.append(_build_account_value_filter(st.session_state["min_strategy"]))
     
-    # Equity Allocation Range
-    expressions.append(_build_equity_range_filter(st.session_state["equity_range"]))
+    # Equity Allocation (only if Risk-Based is selected and equity_allocation is set)
+    selected_type = st.session_state.get("filter_strategy_type", STRATEGY_TYPES[0])
+    if isinstance(selected_type, list):
+        is_risk_based = "Risk-Based" in selected_type
+    else:
+        is_risk_based = selected_type == "Risk-Based"
+    
+    if is_risk_based:
+        equity_allocation = st.session_state.get("equity_allocation")
+        equity_expr = _build_equity_allocation_filter(equity_allocation)
+        if equity_expr is not None:
+            expressions.append(equity_expr)
     
     # Tax-Managed
     tax_managed_expr = _build_boolean_filter("Tax-Managed", st.session_state["filter_tax_managed"])
@@ -382,8 +426,11 @@ def render_filters(search_active: bool) -> pl.Expr:
     if private_markets_expr is not None:
         expressions.append(private_markets_expr)
     
-    # Strategy Type
-    strategy_type_expr = _build_strategy_type_filter(st.session_state["filter_strategy_type"])
+    # Strategy Type (multi-select)
+    strategy_type_value = st.session_state.get("filter_strategy_type", STRATEGY_TYPES)
+    if not isinstance(strategy_type_value, list):
+        strategy_type_value = [strategy_type_value] if strategy_type_value else STRATEGY_TYPES
+    strategy_type_expr = _build_strategy_type_filter(strategy_type_value)
     if strategy_type_expr is not None:
         expressions.append(strategy_type_expr)
     
@@ -426,47 +473,6 @@ def _load_under_development() -> str:
     """Load under development text file (cached for 1 hour)."""
     with open("data/under_development.txt", "r", encoding="utf-8") as f:
         return f.read()
-
-
-def render_aggregate_stats(strats: pl.DataFrame) -> None:
-    """Render aggregate platform statistics at the top of the search page.
-    
-    Args:
-        strats: Full strategy DataFrame (before filtering) to calculate platform-wide stats
-    """
-    with st.expander("Platform Statistics", expanded=True, icon=":material/analytics:"):
-        # Calculate aggregate statistics
-        total_strategies = strats.height
-        
-        # Count IC Recommended strategies
-        recommended_count = strats.filter(pl.col("Recommended") == True).height
-        
-        # Count tax-managed strategies
-        tax_managed_count = strats.filter(pl.col("Tax-Managed") == True).height
-        
-        # Count strategies with SMA managers
-        sma_count = strats.filter(pl.col("Has SMA Manager") == True).height
-        
-        # Count private markets strategies
-        private_markets_count = strats.filter(pl.col("Private Markets") == True).height
-        
-        # Display stats in one row with 5 columns
-        col1, col2, col3, col4, col5 = st.columns(5)
-        
-        with col1:
-            st.metric("Total Strategies", f"{total_strategies:,}")
-        
-        with col2:
-            st.metric("IC Recommended", f"{recommended_count:,}")
-        
-        with col3:
-            st.metric("Tax-Managed", f"{tax_managed_count:,}")
-        
-        with col4:
-            st.metric("SMA Managers", f"{sma_count:,}")
-        
-        with col5:
-            st.metric("Private Markets", f"{private_markets_count:,}")
 
 
 def render_reference_data() -> None:

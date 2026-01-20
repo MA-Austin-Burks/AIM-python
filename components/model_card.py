@@ -28,6 +28,9 @@ export default function(component) {
   // Grab the host element, data payload, and trigger callback
   const { parentElement, data, setTriggerValue } = component;
   const m = data || {};
+  
+  // Ensure featured is a boolean
+  const isFeatured = Boolean(m.featured);
 
   // Base colors
   const color = m.color || "#3B82F6";
@@ -81,10 +84,8 @@ export default function(component) {
                      overflow:hidden;">
             ${m.name ?? ""}
           </h3>
-          ${m.featured
-            ? `<span style="color:${starBadgeColor};font-size:25px;line-height:1;
-                            display:flex;align-items:center;justify-content:center;">★</span>`
-            : ""}
+          <span style="color:${isFeatured ? starBadgeColor : 'rgba(255,255,255,0.5)'};font-size:25px;line-height:1;
+                            display:flex;align-items:center;justify-content:center;min-width:25px;">${isFeatured ? '★' : '☆'}</span>
         </div>
       </div>
 
