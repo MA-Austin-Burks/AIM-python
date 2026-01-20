@@ -5,7 +5,7 @@ from components import render_footer
 
 st.set_page_config(page_title="Roadmap", layout="wide")
 
-st.markdown("# 🗺️ AIM Roadmap")
+st.markdown("# :material/map: AIM Roadmap")
 st.markdown("Upcoming features and enhancements planned for the Aspen Investing Menu platform.")
 
 st.divider()
