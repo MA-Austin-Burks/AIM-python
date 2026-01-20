@@ -6,14 +6,14 @@ import polars as pl
 import streamlit as st
 from great_tables import GT, loc, style
 
-from styles.branding import (
+from utils.styles.branding import (
     PRIMARY,
     hex_to_rgba,
+    get_allocation_table_main_css,
+    format_currency_compact,
+    get_strategy_color,
 )
 from utils.core.session_state import get_or_init
-from styles import (
-    get_allocation_table_main_css,
-)
 import hashlib
 
 from utils.core.constants import (
@@ -22,7 +22,6 @@ from utils.core.constants import (
     SMA_COLLAPSE_THRESHOLD,
 )
 from utils.core.data import get_model_agg_sort_order, get_strategy_by_name, hash_lazyframe
-from utils.core.formatting import format_currency_compact, get_strategy_color
 
 
 class RowType(str, Enum):

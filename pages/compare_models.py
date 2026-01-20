@@ -10,14 +10,15 @@ from components import render_footer
 from components.dataframe import filter_and_sort_strategies, _hash_filter_expression
 from components.filters import render_filters, render_filters_inline
 from components.tabs.description import get_grouped_allocations_for_chart
-from styles.branding import (
+from utils.styles.branding import (
     CHART_COLORS_PRIMARY,
     FONTS,
     PRIMARY,
+    format_currency_compact,
+    get_strategy_color,
 )
 from utils.core.constants import DEFAULT_TOTAL_ASSETS, GROUPING_OPTIONS
 from utils.core.data import load_cleaned_data, load_strategy_list
-from utils.core.formatting import format_currency_compact, get_strategy_color
 from utils.core.session_state import initialize_session_state
 from utils.core.chart_tooltips import (
     format_tooltip_bar_chart,

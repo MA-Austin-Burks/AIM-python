@@ -1,6 +1,6 @@
 """Component modules for the Aspen Investing Menu app."""
 
-from styles.branding import (
+from utils.styles.branding import (
     CHART_COLORS_ALLOCATION,
     CHART_COLORS_EXTENDED,
     CHART_COLORS_PRIMARY,

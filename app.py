@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 # Add Mercer Advisors logo
-st.logo("styles/Mercer_Advisors_Logo_blk.png", size="large")
+st.logo("utils/styles/Mercer_Advisors_Logo_blk.png", size="large")
 
 # Set up navigation with pages
 pages = {

@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from styles.branding import PRIMARY
+from utils.styles.branding import PRIMARY
 
 
 def format_tooltip_bar_chart(

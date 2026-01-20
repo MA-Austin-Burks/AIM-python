@@ -20,7 +20,7 @@ from components.cards import (
 from components.dataframe import filter_and_sort_strategies, _hash_filter_expression
 from utils.core.constants import EXPLANATION_CARD_UPDATE_DATE
 from utils.core.data import load_strategy_list, load_cleaned_data
-from utils.core.formatting import get_strategy_color
+from utils.styles.branding import get_strategy_color
 from utils.core.session_state import initialize_session_state, reset_if_changed
 
 # Initialize session state explicitly at app start

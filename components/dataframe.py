@@ -4,7 +4,7 @@ import hashlib
 import polars as pl
 import streamlit as st
 
-from styles.branding import SERIES_COLORS
+from utils.styles.branding import SERIES_COLORS
 
 
 def _hash_filter_expression(filter_expr: pl.Expr) -> str:

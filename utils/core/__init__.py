@@ -32,7 +32,7 @@ from utils.core.data import (
     load_strategy_list,
 )
 from utils.core.dates import PERIOD_OPTIONS, get_period_dates
-from utils.core.formatting import (
+from utils.styles.branding import (
     format_currency_compact,
     generate_badges,
     get_series_color_from_row,

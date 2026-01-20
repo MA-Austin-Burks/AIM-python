@@ -1,6 +1,6 @@
 """Styling utilities and branding configuration."""
 
-from styles.branding import (
+from utils.styles.branding import (
     CHART_COLORS_ALLOCATION,
     CHART_COLORS_EXTENDED,
     CHART_COLORS_PRIMARY,
@@ -15,11 +15,13 @@ from styles.branding import (
     SPECIAL,
     STREAMLIT_CUSTOM_CSS,
     TERTIARY,
-    hex_to_rgba,
-)
-from styles.table import (
+    format_currency_compact,
+    generate_badges,
     get_allocation_table_main_css,
     get_allocation_table_summary_css,
+    get_series_color_from_row,
+    get_strategy_color,
+    hex_to_rgba,
 )
 
 __all__ = [
@@ -39,6 +41,11 @@ __all__ = [
     "STREAMLIT_CUSTOM_CSS",
     "TERTIARY",
     "hex_to_rgba",
+    # Formatting utilities
+    "format_currency_compact",
+    "generate_badges",
+    "get_strategy_color",
+    "get_series_color_from_row",
     # Table styling exports
     "get_allocation_table_main_css",
     "get_allocation_table_summary_css",

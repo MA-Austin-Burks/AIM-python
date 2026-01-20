@@ -5,7 +5,7 @@ import streamlit as st
 
 from components.tabs.allocation import render_allocation_tab
 from components.tabs.description import render_description_tab
-from utils.core.formatting import generate_badges
+from utils.styles.branding import generate_badges
 
 
 @st.dialog("Details", width="large", icon=":material/strategy:")

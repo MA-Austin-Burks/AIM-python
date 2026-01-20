@@ -5,10 +5,11 @@ import easychart
 import polars as pl
 import streamlit as st
 
-from styles.branding import (
+from utils.styles.branding import (
     CHART_COLORS_PRIMARY,
     FONTS,
     PRIMARY,
+    format_currency_compact,
 )
 from utils.core.chart_tooltips import (
     format_tooltip_pie_chart,
@@ -17,7 +18,6 @@ from utils.core.chart_tooltips import (
 from utils.core.constants import DEFAULT_TOTAL_ASSETS
 from utils.core.constants import GROUPING_OPTIONS, PIE_CHART_MAX_ITEMS
 from utils.core.data import hash_lazyframe
-from utils.core.formatting import format_currency_compact
 
 
 @st.cache_data

@@ -14,7 +14,7 @@ from utils.core.constants import (
     DEFAULT_CARD_ORDER,
     SELECTED_STRATEGY_MODAL_KEY,
 )
-from utils.core.formatting import get_series_color_from_row
+from utils.styles.branding import get_series_color_from_row
 from utils.core.session_state import get_or_init
 
 
