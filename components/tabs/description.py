@@ -1,16 +1,14 @@
 from datetime import datetime
-from typing import Any, Optional, Final
+from typing import Any, Optional
 
-import plotly.graph_objects as go
+import easychart
 import polars as pl
 import streamlit as st
 
 from styles.branding import (
-    CHART_CONFIG,
+    CHART_COLORS_PRIMARY,
     FONTS,
     PRIMARY,
-    SECONDARY,
-    TERTIARY,
 )
 from utils.core.constants import GROUPING_OPTIONS, PIE_CHART_MAX_ITEMS
 from utils.core.data import hash_lazyframe
@@ -165,7 +163,7 @@ def _get_color_for_group(group_name: str, grouping_option: str) -> str:
         # For Product grouping, use the asset_class color (products inherit from their asset class)
         # This should be handled by the caller, but if we get here, fail explicitly
         raise ValueError(
-            f"Product grouping should use asset_class for color lookup. "
+            "Product grouping should use asset_class for color lookup. "
             "ETL pipeline must ensure products have associated asset_class values."
         )
     else:
@@ -358,6 +356,100 @@ def _metric_with_date(label: str, value: str, as_of: Optional[str] = None, help:
     st.caption(f"as of {as_of}")
 
 
+def apply_brand_theme(chart):
+    """Apply branding and theming to easychart."""
+    # Set colors
+    chart.colors = CHART_COLORS_PRIMARY
+    
+    # Background styling
+    chart.backgroundColor = PRIMARY["white"]
+    chart.plotBackgroundColor = PRIMARY["white"]
+    
+    # Set fonts - handle title as string or object
+    if hasattr(chart, "title") and chart.title:
+        if isinstance(chart.title, str):
+            chart.title = {
+                "text": chart.title,
+                "style": {
+                    "fontFamily": FONTS["headline"],
+                    "fontSize": "18px",
+                    "color": PRIMARY["charcoal"],
+                    "fontWeight": "700"
+                }
+            }
+        elif isinstance(chart.title, dict):
+            chart.title.setdefault("style", {})
+            chart.title["style"].update({
+                "fontFamily": FONTS["headline"],
+                "fontSize": "18px",
+                "color": PRIMARY["charcoal"],
+                "fontWeight": "700"
+            })
+    
+    # Axis styling
+    if hasattr(chart, "yAxis"):
+        if hasattr(chart.yAxis, "title"):
+            if isinstance(chart.yAxis.title, str):
+                chart.yAxis.title = {
+                    "text": chart.yAxis.title,
+                    "style": {
+                        "fontFamily": FONTS["body"],
+                        "color": PRIMARY["charcoal"],
+                        "fontSize": "14px"
+                    }
+                }
+            elif isinstance(chart.yAxis.title, dict):
+                chart.yAxis.title.setdefault("style", {})
+                chart.yAxis.title["style"].update({
+                    "fontFamily": FONTS["body"],
+                    "color": PRIMARY["charcoal"],
+                    "fontSize": "14px"
+                })
+        
+        try:
+            chart.yAxis.lineColor = PRIMARY["charcoal"]
+            chart.yAxis.tickColor = PRIMARY["charcoal"]
+            chart.yAxis.gridLineColor = PRIMARY["light_gray"]
+        except (AttributeError, TypeError):
+            pass
+    
+    if hasattr(chart, "xAxis"):
+        if hasattr(chart.xAxis, "title"):
+            if isinstance(chart.xAxis.title, str):
+                chart.xAxis.title = {
+                    "text": chart.xAxis.title,
+                    "style": {
+                        "fontFamily": FONTS["body"],
+                        "color": PRIMARY["charcoal"],
+                        "fontSize": "14px"
+                    }
+                }
+            elif isinstance(chart.xAxis.title, dict):
+                chart.xAxis.title.setdefault("style", {})
+                chart.xAxis.title["style"].update({
+                    "fontFamily": FONTS["body"],
+                    "color": PRIMARY["charcoal"],
+                    "fontSize": "14px"
+                })
+        
+        try:
+            chart.xAxis.lineColor = PRIMARY["charcoal"]
+            chart.xAxis.tickColor = PRIMARY["charcoal"]
+            chart.xAxis.gridLineColor = PRIMARY["light_gray"]
+        except (AttributeError, TypeError):
+            pass
+    
+    return chart
+
+
+def render_easychart(chart, height=400):
+    """Helper function to render easychart charts in Streamlit with brand theming."""
+    easychart.config.rendering.responsive = True
+    chart = apply_brand_theme(chart)
+    chart_html = easychart.rendering.render(chart)
+    st.components.v1.html(chart_html, height=height, width="stretch")
+
+
 def render_description_tab(strategy_name: str, strategy_data: dict[str, Any], cleaned_data: Optional[pl.LazyFrame] = None) -> None:
     """Render description tab with summary statistics and allocation chart.
     
@@ -426,32 +518,44 @@ def render_description_tab(strategy_name: str, strategy_data: dict[str, Any], cl
         )
         
         if chart_data:
-            labels: list[str] = [item["name"] for item in chart_data]
-            values: list[float] = [item["allocation"] for item in chart_data]
-            colors: list[str] = [item["color"] for item in chart_data]
-
-            fig: go.Figure = go.Figure(
-                go.Pie(
-                    labels=labels,
-                    values=values,
-                    hole=0.5,
-                    marker_colors=colors,
-                    textinfo="none",
-                    showlegend=False,
-                    sort=False,  # Prevent Plotly from reordering slices - use our custom sort order
-                    hovertemplate="<b>%{label}</b><br>%{percent:.1%}<extra></extra>",
-                ),
-                layout={
-                    "font": {"family": FONTS["body"], "color": PRIMARY["charcoal"]},
-                    "height": 500,
-                    "margin": {"l": 40, "r": 20, "t": 0, "b": 40},
-                },
-            )
+            # Prepare data for easychart pie chart
+            pie_data = [
+                {
+                    "name": item["name"],
+                    "y": item["allocation"],
+                    "color": item["color"]
+                }
+                for item in chart_data
+            ]
+            
+            chart = easychart.new("pie", legend=False)
+            chart.plot(pie_data)
+            chart.title = None
+            # Custom tooltip format - show only asset name and value (no series name repetition)
+            try:
+                chart.tooltip.shared = False
+                chart.tooltip.headerFormat = ""
+                chart.tooltip.pointFormat = "<b>{point.name}</b><br>{point.y:.2f}%"
+            except (AttributeError, TypeError):
+                # Fallback: set via dict if direct assignment doesn't work
+                if not hasattr(chart, "tooltip"):
+                    chart.tooltip = {}
+                chart.tooltip["shared"] = False
+                chart.tooltip["headerFormat"] = ""
+                chart.tooltip["pointFormat"] = "<b>{point.name}</b><br>{point.y:.2f}%"
+            # Create donut chart (innerSize creates the hole in the center)
+            try:
+                chart.plotOptions.pie.innerSize = "50%"
+            except (AttributeError, TypeError):
+                # Fallback: set via dict if direct assignment doesn't work
+                if not hasattr(chart, "plotOptions"):
+                    chart.plotOptions = {}
+                chart.plotOptions["pie"] = {"innerSize": "50%"}
             
             # Layout chart and legend side by side
             col_chart, col_legend = st.columns([2, 1])
             with col_chart:
-                st.plotly_chart(fig, width="stretch", config=CHART_CONFIG)
+                render_easychart(chart, height=500)
                 st.caption(f"as of {datetime.now().strftime('%m-%d-%Y')}")
             
             with col_legend:
