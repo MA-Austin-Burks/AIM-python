@@ -263,6 +263,23 @@ st.divider()
 # ============================================================================
 # Side-by-side Metrics Visualization
 # ============================================================================
+# Calculate averages across all filtered strategies (Polars mean() automatically ignores nulls)
+avg_expense_ratio = (
+    filtered_strategies["Expense Ratio"].mean() * 100 
+    if filtered_strategies.height > 0 and filtered_strategies["Expense Ratio"].null_count() < filtered_strategies.height 
+    else 0
+)
+avg_yield = (
+    filtered_strategies["Yield"].mean() * 100 
+    if filtered_strategies.height > 0 and filtered_strategies["Yield"].null_count() < filtered_strategies.height 
+    else 0
+)
+avg_minimum = (
+    filtered_strategies["Minimum"].mean() 
+    if filtered_strategies.height > 0 and filtered_strategies["Minimum"].null_count() < filtered_strategies.height 
+    else 0
+)
+
 # Create bar charts comparing key metrics
 metrics_to_compare = ["Expense Ratio", "Yield", "Account Minimum"]
 metric_cols = st.columns(len(metrics_to_compare))
@@ -271,20 +288,28 @@ for metric_idx, (metric_col, metric_name) in enumerate(zip(metric_cols, metrics_
     with metric_col:
         st.markdown(f"**{metric_name}**")
         
-        # Extract values
+        # Extract values for selected models
         model_names = [m["Strategy"] for m in models_data]
         if metric_name == "Expense Ratio":
             values = [m.get("Expense Ratio", 0) * 100 for m in models_data]
+            avg_value = avg_expense_ratio
             y_label = "Percentage (%)"
         elif metric_name == "Yield":
             values = [m.get("Yield", 0) * 100 if m.get("Yield") else 0 for m in models_data]
+            avg_value = avg_yield
             y_label = "Percentage (%)"
         else:  # Account Minimum
             values = [m.get("Minimum", 0) for m in models_data]
+            avg_value = avg_minimum
             y_label = "Amount ($)"
         
         # Get colors for each model
         colors = [get_strategy_color(m.get("Type", "")) for m in models_data]
+        
+        # Add average column with distinct color (average of all filtered strategies)
+        model_names.append("Average (All Strategies)")
+        values.append(avg_value)
+        colors.append(PRIMARY["charcoal"])  # Use charcoal for average bar
         
         # Create bar chart data with colors
         bar_data = [
