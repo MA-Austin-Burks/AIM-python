@@ -19,6 +19,11 @@ from utils.core.constants import DEFAULT_TOTAL_ASSETS, GROUPING_OPTIONS
 from utils.core.data import load_cleaned_data, load_strategy_list
 from utils.core.formatting import format_currency_compact, get_strategy_color
 from utils.core.session_state import initialize_session_state
+from utils.core.chart_tooltips import (
+    format_tooltip_bar_chart,
+    format_tooltip_pie_chart,
+    apply_tooltip_styling,
+)
 
 st.set_page_config(page_title="Compare Models", layout="wide")
 
@@ -321,31 +326,21 @@ for metric_idx, (metric_col, metric_name) in enumerate(zip(metric_cols, metrics_
         if metric_name == "Account Minimum":
             # Format as currency for Account Minimum
             labels_format = "{point.y:,.0f}"
-            tooltip_format = "<b>{point.category}</b><br>${point.y:,.0f}"
+            tooltip_format = format_tooltip_bar_chart(value_format="currency")
         else:
             # Format as percentage for Expense Ratio and Yield
             labels_format = "{point.y:.2f}%"
-            tooltip_format = "<b>{point.category}</b><br>{point.y:.2f}%"
+            tooltip_format = format_tooltip_bar_chart(value_format="percentage")
         
         chart = easychart.new("column", legend=False)
         chart.categories = model_names
         chart.plot(bar_data, name=metric_name, labels=labels_format)
         chart.title = None
         chart.yAxis.title = y_label
-        # Custom tooltip format - show only model name and value (no series name repetition)
-        chart.tooltip = tooltip_format
-        # Disable shared tooltip and hide series name to avoid repetition
-        try:
-            chart.tooltip.shared = False
-            chart.tooltip.headerFormat = ""
-            chart.tooltip.pointFormat = tooltip_format
-        except (AttributeError, TypeError):
-            # Fallback: set via dict if direct assignment doesn't work
-            if not hasattr(chart, "tooltip"):
-                chart.tooltip = {}
-            chart.tooltip["shared"] = False
-            chart.tooltip["headerFormat"] = ""
-            chart.tooltip["pointFormat"] = tooltip_format
+        
+        # Apply tooltip formatting and styling
+        chart.tooltip.pointFormat = tooltip_format
+        apply_tooltip_styling(chart)
         # Set bottom margin to prevent x-axis labels from being cut off
         try:
             chart.chart.marginBottom = 80
@@ -392,30 +387,26 @@ for idx, (col, model_dict) in enumerate(zip(chart_cols, models_data)):
         
         if chart_data:
             # Prepare data for easychart pie chart
-            pie_data = [
-                {
+            # Calculate and format dollar amount for each item
+            pie_data = []
+            for item in chart_data:
+                dollar_amount = (item["allocation"] * DEFAULT_TOTAL_ASSETS) / 100
+                dollar_formatted = f"${dollar_amount:,.0f}"
+                pie_data.append({
                     "name": item["name"],
                     "y": item["allocation"],
-                    "color": item["color"]
-                }
-                for item in chart_data
-            ]
+                    "color": item["color"],
+                    "dollarFormatted": dollar_formatted
+                })
             
             chart = easychart.new("pie", legend=False)
             chart.plot(pie_data)
             chart.title = None
-            # Custom tooltip format - show only asset name and value (no series name repetition)
-            try:
-                chart.tooltip.shared = False
-                chart.tooltip.headerFormat = ""
-                chart.tooltip.pointFormat = "<b>{point.name}</b><br>{point.y:.2f}%"
-            except (AttributeError, TypeError):
-                # Fallback: set via dict if direct assignment doesn't work
-                if not hasattr(chart, "tooltip"):
-                    chart.tooltip = {}
-                chart.tooltip["shared"] = False
-                chart.tooltip["headerFormat"] = ""
-                chart.tooltip["pointFormat"] = "<b>{point.name}</b><br>{point.y:.2f}%"
+            
+            # Apply tooltip formatting and styling
+            tooltip_format = format_tooltip_pie_chart()
+            chart.tooltip.pointFormat = tooltip_format
+            apply_tooltip_styling(chart)
             # Create donut chart (innerSize creates the hole in the center)
             try:
                 chart.plotOptions.pie.innerSize = "50%"
