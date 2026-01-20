@@ -13,29 +13,22 @@ __all__ = [
 ]
 
 
-def _get_tab_names() -> list[str]:
-    """Get tab names - Description first, then Allocation."""
-    return ["Description", "Allocation"]
-
-
 def render_tabs(
     strategy_name: Optional[str],
     strategy_data: Optional[dict[str, Any]],
     cleaned_data: pl.LazyFrame,
 ) -> None:
     """Render tabs for table view (below selected strategy)."""
-    tab_names = _get_tab_names()
+    tab_names = ["Allocation", "Description"]
     tabs = st.tabs(tab_names)
 
     if strategy_name and strategy_data is not None:
         # Type narrowing: strategy_data is guaranteed to be dict[str, Any] here
         strategy_data_dict: dict[str, Any] = strategy_data
-        for tab, tab_name in zip(tabs, tab_names):
-            with tab:
-                if tab_name == "Description":
-                    render_description_tab(strategy_name, strategy_data_dict, cleaned_data)
-                elif tab_name == "Allocation":
-                    render_allocation_tab(strategy_name, cleaned_data)
+        with tabs[0]:  # Allocation tab
+            render_allocation_tab(strategy_name, cleaned_data)
+        with tabs[1]:  # Description tab
+            render_description_tab(strategy_name, strategy_data_dict, cleaned_data)
     else:
         for tab, tab_name in zip(tabs, tab_names):
             with tab:
