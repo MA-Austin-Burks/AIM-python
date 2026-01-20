@@ -264,7 +264,7 @@ st.divider()
 # Side-by-side Metrics Visualization
 # ============================================================================
 # Create bar charts comparing key metrics
-metrics_to_compare = ["Expense Ratio", "Yield", "Equity %"]
+metrics_to_compare = ["Expense Ratio", "Yield", "Account Minimum"]
 metric_cols = st.columns(len(metrics_to_compare))
 
 for metric_idx, (metric_col, metric_name) in enumerate(zip(metric_cols, metrics_to_compare)):
@@ -279,9 +279,9 @@ for metric_idx, (metric_col, metric_name) in enumerate(zip(metric_cols, metrics_
         elif metric_name == "Yield":
             values = [m.get("Yield", 0) * 100 if m.get("Yield") else 0 for m in models_data]
             y_label = "Percentage (%)"
-        else:  # Equity %
-            values = [m.get("Equity %", 0) for m in models_data]
-            y_label = "Percentage (%)"
+        else:  # Account Minimum
+            values = [m.get("Minimum", 0) for m in models_data]
+            y_label = "Amount ($)"
         
         # Get colors for each model
         colors = [get_strategy_color(m.get("Type", "")) for m in models_data]
@@ -292,25 +292,35 @@ for metric_idx, (metric_col, metric_name) in enumerate(zip(metric_cols, metrics_
             for val, color in zip(values, colors)
         ]
         
+        # Format labels and tooltips based on metric type
+        if metric_name == "Account Minimum":
+            # Format as currency for Account Minimum
+            labels_format = "{point.y:,.0f}"
+            tooltip_format = "<b>{point.category}</b><br>${point.y:,.0f}"
+        else:
+            # Format as percentage for Expense Ratio and Yield
+            labels_format = "{point.y:.2f}%"
+            tooltip_format = "<b>{point.category}</b><br>{point.y:.2f}%"
+        
         chart = easychart.new("column", legend=False)
         chart.categories = model_names
-        chart.plot(bar_data, name=metric_name, labels="{point.y:.2f}%")
+        chart.plot(bar_data, name=metric_name, labels=labels_format)
         chart.title = None
         chart.yAxis.title = y_label
         # Custom tooltip format - show only model name and value (no series name repetition)
-        chart.tooltip = "<b>{point.category}</b><br>{point.y:.2f}%"
+        chart.tooltip = tooltip_format
         # Disable shared tooltip and hide series name to avoid repetition
         try:
             chart.tooltip.shared = False
             chart.tooltip.headerFormat = ""
-            chart.tooltip.pointFormat = "<b>{point.category}</b><br>{point.y:.2f}%"
+            chart.tooltip.pointFormat = tooltip_format
         except (AttributeError, TypeError):
             # Fallback: set via dict if direct assignment doesn't work
             if not hasattr(chart, "tooltip"):
                 chart.tooltip = {}
             chart.tooltip["shared"] = False
             chart.tooltip["headerFormat"] = ""
-            chart.tooltip["pointFormat"] = "<b>{point.category}</b><br>{point.y:.2f}%"
+            chart.tooltip["pointFormat"] = tooltip_format
         # Set bottom margin to prevent x-axis labels from being cut off
         try:
             chart.chart.marginBottom = 80
