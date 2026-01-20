@@ -37,7 +37,7 @@ strats: pl.DataFrame = load_strategy_list()
 # Load full dataset for modal tabs (only when needed)
 cleaned_data: pl.LazyFrame = load_cleaned_data()
 
-st.markdown("# Aspen Investing Menu")
+st.markdown("# Aspen Investing Menu (Development Version)")
 
 # Build caption with local mode indicator if applicable
 is_local_mode = os.getenv("USE_LOCAL_DATA", "").lower() in ("true", "1", "yes")
