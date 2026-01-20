@@ -428,6 +428,47 @@ def _load_under_development() -> str:
         return f.read()
 
 
+def render_aggregate_stats(strats: pl.DataFrame) -> None:
+    """Render aggregate platform statistics at the top of the search page.
+    
+    Args:
+        strats: Full strategy DataFrame (before filtering) to calculate platform-wide stats
+    """
+    with st.expander("Platform Statistics", expanded=True, icon=":material/analytics:"):
+        # Calculate aggregate statistics
+        total_strategies = strats.height
+        
+        # Count IC Recommended strategies
+        recommended_count = strats.filter(pl.col("Recommended") == True).height
+        
+        # Count tax-managed strategies
+        tax_managed_count = strats.filter(pl.col("Tax-Managed") == True).height
+        
+        # Count strategies with SMA managers
+        sma_count = strats.filter(pl.col("Has SMA Manager") == True).height
+        
+        # Count private markets strategies
+        private_markets_count = strats.filter(pl.col("Private Markets") == True).height
+        
+        # Display stats in one row with 5 columns
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        with col1:
+            st.metric("Total Strategies", f"{total_strategies:,}")
+        
+        with col2:
+            st.metric("IC Recommended", f"{recommended_count:,}")
+        
+        with col3:
+            st.metric("Tax-Managed", f"{tax_managed_count:,}")
+        
+        with col4:
+            st.metric("SMA Managers", f"{sma_count:,}")
+        
+        with col5:
+            st.metric("Private Markets", f"{private_markets_count:,}")
+
+
 def render_reference_data() -> None:
     """Render reference data sections in the main content area."""
     # ============================================================================

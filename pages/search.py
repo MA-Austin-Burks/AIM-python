@@ -5,6 +5,7 @@ import polars as pl
 import streamlit as st
 
 from components import (
+    render_aggregate_stats,
     render_card_view,
     render_filters,
     render_filters_inline,
@@ -39,6 +40,9 @@ caption_text = f"last updated: {EXPLANATION_CARD_UPDATE_DATE}"
 if is_local_mode:
     caption_text += " • local mode"
 st.caption(caption_text)
+
+# Render aggregate platform statistics
+render_aggregate_stats(strats)
 
 # Check if we need to clear search (must be done before any widgets are created)
 if st.session_state["_clear_search_flag"]:
