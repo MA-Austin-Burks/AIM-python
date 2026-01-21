@@ -85,13 +85,13 @@ def render_filters_inline(search_active: bool) -> None:
     
     with st.expander(expander_label, expanded=False, icon=":material/feature_search:"):
         # Row 1: IC Status, Yes/No filters, Account Value
-        col_ic, col_tax, col_sma, col_private, col_min = st.columns([1, 1, 1, 1, 2])
+        col_ic, col_tax, col_sma, col_private, col_min = st.columns([2, 1, 1, 1, 2])
         
         with col_ic:
-            # IC Status: Recommended / All
+            # IC Status: Recommended / Approved
             st.segmented_control(
                 "IC Status",
-                options=["Recommended", "All"],
+                options=["Recommended", "Recommended & Approved"],
                 selection_mode="single",
                 disabled=search_active,
                 key="filter_recommended_only",
@@ -118,20 +118,20 @@ def render_filters_inline(search_active: bool) -> None:
             st.number_input(
                 "Account Value ($)",
                 min_value=0,
-                value=DEFAULT_MIN_STRATEGY,
+                value=None,
                 step=10000,
                 key="min_strategy",
                 disabled=search_active,
             )
         
-        # Row 2: Strategy Type (multi-select), Series, Equity Allocation (always visible, disabled when Risk-Based not selected)
+        # Row 2: Strategy Type (multi-select), Series, Equity Allocation (only visible when Risk-Based selected)
         selected_type = st.session_state.get("filter_strategy_type", STRATEGY_TYPES[0])
         if not isinstance(selected_type, list):
             selected_type = [selected_type] if selected_type else STRATEGY_TYPES
         
         is_risk_based = "Risk-Based" in selected_type
         
-        # Always show equity allocation column
+        # Always use 3 columns for consistent alignment
         col_type, col_series, col_equity = st.columns([2, 2, 2])
         
         with col_type:
@@ -205,18 +205,22 @@ def render_filters_inline(search_active: bool) -> None:
                 key="filter_series",
             )
         
-        # Equity Allocation slider (disabled when Risk-Based is not selected)
+        # Equity Allocation slider (only visible when Risk-Based is selected)
         with col_equity:
-            equity_value = st.session_state.get("equity_allocation", 60)
-            st.slider(
-                "Equity Allocation (%)",
-                min_value=0,
-                max_value=100,
-                value=equity_value,
-                step=10,
-                key="equity_allocation",
-                disabled=search_active or not is_risk_based,
-            )
+            if is_risk_based:
+                equity_value = st.session_state.get("equity_allocation", 60)
+                st.slider(
+                    "Equity Allocation (%)",
+                    min_value=0,
+                    max_value=100,
+                    value=equity_value,
+                    step=10,
+                    key="equity_allocation",
+                    disabled=search_active,
+                )
+            else:
+                # Empty spacer to maintain column alignment
+                st.empty()
 
 
 def _build_search_filter(strategy_search: str | None) -> pl.Expr:
@@ -242,7 +246,7 @@ def _build_recommended_filter(recommended_selection: str | None) -> pl.Expr | No
     """Build recommended filter expression.
     
     Args:
-        recommended_selection: "Recommended", "All", or None
+        recommended_selection: "Recommended", "Recommended & Approved", or None
         
     Returns:
         Polars expression or None if no filter needed
@@ -252,15 +256,17 @@ def _build_recommended_filter(recommended_selection: str | None) -> pl.Expr | No
     return None
 
 
-def _build_account_value_filter(min_strategy: int | float) -> pl.Expr:
+def _build_account_value_filter(min_strategy: int | float | None) -> pl.Expr | None:
     """Build account value filter expression.
     
     Args:
-        min_strategy: Minimum account value
+        min_strategy: Minimum account value or None to disable filtering
         
     Returns:
-        Polars expression for account value filter
+        Polars expression for account value filter or None if no filter needed
     """
+    if min_strategy is None:
+        return None
     return pl.col("Minimum") <= min_strategy
 
 
@@ -394,7 +400,9 @@ def render_filters(search_active: bool) -> pl.Expr:
         expressions.append(recommended_expr)
     
     # Account Value
-    expressions.append(_build_account_value_filter(st.session_state["min_strategy"]))
+    account_value_expr = _build_account_value_filter(st.session_state["min_strategy"])
+    if account_value_expr is not None:
+        expressions.append(account_value_expr)
     
     # Equity Allocation (only if Risk-Based is selected and equity_allocation is set)
     selected_type = st.session_state.get("filter_strategy_type", STRATEGY_TYPES[0])

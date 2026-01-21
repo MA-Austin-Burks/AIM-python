@@ -6,6 +6,7 @@ from components.model_card import model_card
 
 from utils.core.constants import (
     CARD_FIXED_WIDTH,
+    CARD_GRID_COLUMNS,
     CARD_ORDER_KEY,
     CARDS_DISPLAYED_KEY,
     CARDS_PER_LOAD,
@@ -186,12 +187,33 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
         # Render all cards sequentially, each wrapped in a fixed-width container
         for card_idx, strategy_row in enumerate(strategy_rows):
             # Wrap each card in a fixed-width container
-            # Convert "300px" to integer for width parameter
+            # Convert "350px" to integer for width parameter
             card_width_px = int(CARD_FIXED_WIDTH.replace("px", ""))
             with st.container(width=card_width_px):
                 clicked, strategy_name = _render_strategy_card(strategy_row, card_idx)
                 if clicked:
                     clicked_strategy = strategy_name
+        
+        # Add empty placeholder cards to fill incomplete last row
+        # Using CARD_GRID_COLUMNS (4) as expected cards per row
+        num_cards = len(strategy_rows)
+        cards_per_row = CARD_GRID_COLUMNS
+        remainder = num_cards % cards_per_row
+        
+        if remainder > 0:
+            # Calculate how many empty cards needed to complete the row
+            empty_cards_needed = cards_per_row - remainder
+            
+            # Render empty placeholder cards (transparent, same dimensions as real cards)
+            for empty_idx in range(empty_cards_needed):
+                card_width_px = int(CARD_FIXED_WIDTH.replace("px", ""))
+                with st.container(width=card_width_px):
+                    # Render transparent placeholder with approximate card height
+                    # Card height: ~60px header + ~120px body = ~180px total
+                    st.markdown(
+                        '<div style="width:100%;min-height:180px;opacity:0;pointer-events:none;"></div>',
+                        unsafe_allow_html=True
+                    )
     
     # Handle click after all cards are rendered to preserve layout
     if clicked_strategy:

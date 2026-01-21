@@ -142,7 +142,7 @@ CHART_COLORS_SEQUENTIAL_AZURE = [
 SERIES_COLORS = {
     "Multifactor Series": PRIMARY["raspberry"],
     "Market Series": SECONDARY["iris"],
-    "Income Series": TERTIARY["spring"],
+    "Income Series": PRIMARY["charcoal"],
     "Equity Strategies": TERTIARY["azure"],
     "Fixed Income Strategies": TERTIARY["dark_azure"],
     "Cash Strategies": PRIMARY["charcoal"],

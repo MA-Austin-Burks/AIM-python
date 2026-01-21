@@ -18,7 +18,7 @@ T = TypeVar("T")
 
 def _validate_filter_recommended(value: Any) -> bool:
     """Validate filter_recommended_only value."""
-    return value in ("Recommended", "All", None)
+    return value in ("Recommended", "Recommended & Approved", None)
 
 
 def _validate_filter_yes_no(value: Any) -> bool:
@@ -114,14 +114,14 @@ def initialize_session_state() -> None:
         st.session_state["filter_private_markets"] = None
     
     if "min_strategy" not in st.session_state:
-        st.session_state["min_strategy"] = DEFAULT_MIN_STRATEGY
+        st.session_state["min_strategy"] = None
     elif not validate_session_state_value(
         "min_strategy",
         st.session_state["min_strategy"],
-        (int, float),
-        _validate_min_strategy
+        (int, float, type(None)),
+        lambda v: v is None or _validate_min_strategy(v)
     ):
-        st.session_state["min_strategy"] = 50000
+        st.session_state["min_strategy"] = None
     
     if "equity_allocation" not in st.session_state:
         st.session_state["equity_allocation"] = 60
