@@ -5,7 +5,7 @@ import streamlit as st
 from components.model_card import model_card
 
 from utils.core.constants import (
-    CARD_GRID_COLUMNS,
+    CARD_FIXED_WIDTH,
     CARD_ORDER_KEY,
     CARDS_DISPLAYED_KEY,
     CARDS_PER_LOAD,
@@ -155,27 +155,24 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
     st.markdown(f"**Showing {cards_to_show} of {total_count} strategies**")
     
     # ============================================================================
-    # STEP 4: Render cards in grid layout
+    # STEP 4: Render cards in flex container (fixed width, dynamic wrapping)
     # ============================================================================
-    # Render cards row by row for consistent spacing
     clicked_strategy = None
     
-    # Convert to list for easier row-based rendering
+    # Convert to list for easier rendering
     strategy_rows = list(display_strategies.iter_rows(named=True))
     
-    # Render cards in rows of CARD_GRID_COLUMNS
-    for row_start in range(0, len(strategy_rows), CARD_GRID_COLUMNS):
-        # Get cards for this row
-        row_cards = strategy_rows[row_start:row_start + CARD_GRID_COLUMNS]
-        
-        # Create columns for this row only
-        cols = st.columns(CARD_GRID_COLUMNS)
-        
-        # Render each card in this row
-        for col_idx in range(len(row_cards)):
-            with cols[col_idx]:
-                card_idx = row_start + col_idx
-                clicked, strategy_name = _render_strategy_card(row_cards[col_idx], card_idx)
+    # Use st.container with horizontal=True for automatic flexbox wrapping
+    # horizontal_alignment="distribute" distributes cards evenly across the row
+    # Each card is wrapped in a fixed-width container to ensure consistent sizing
+    with st.container(horizontal=True, gap="small", horizontal_alignment="distribute"):
+        # Render all cards sequentially, each wrapped in a fixed-width container
+        for card_idx, strategy_row in enumerate(strategy_rows):
+            # Wrap each card in a fixed-width container
+            # Convert "300px" to integer for width parameter
+            card_width_px = int(CARD_FIXED_WIDTH.replace("px", ""))
+            with st.container(width=card_width_px):
+                clicked, strategy_name = _render_strategy_card(strategy_row, card_idx)
                 if clicked:
                     clicked_strategy = strategy_name
     

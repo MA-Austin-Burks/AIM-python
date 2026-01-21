@@ -1,21 +1,24 @@
 import streamlit as st
 
+from utils.core.constants import CARD_FIXED_WIDTH
+
 # ======================
 # INLINE CSS (scoped)
 # ======================
 # Minimal CSS to keep hover behavior and shared class rules.
-CSS = """
-.mc-card{
+CSS = f"""
+.mc-card{{
   overflow:hidden;
   cursor:pointer;
   transition:box-shadow .15s,transform .06s;
-  margin-bottom:1rem
-}
-.mc-card:hover{
+  width:100%;
+  flex-shrink:0;
+}}
+.mc-card:hover{{
   box-shadow:var(--mc-card-hover-shadow);
   transform:translateY(-1px)
-}
-.mc-row-last{border-bottom:none}
+}}
+.mc-row-last{{border-bottom:none}}
 """
 
 # ======================

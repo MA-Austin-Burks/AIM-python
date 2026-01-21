@@ -24,7 +24,9 @@ ALLOCATION_COLLAPSE_SMA_KEY: Final[str] = "allocation_collapse_sma"
 # =============================================================================
 DEFAULT_CARD_ORDER: Final[str] = "Recommended (Default)"
 CARDS_PER_LOAD: Final[int] = 20
-CARD_GRID_COLUMNS: Final[int] = 4
+CARD_GRID_COLUMNS: Final[int] = 4  # Deprecated: kept for backwards compatibility
+CARD_FIXED_WIDTH: Final[str] = "350px"  # Fixed width for each card
+CARD_GAP: Final[str] = "1rem"  # Gap between cards
 
 CARD_ORDER_OPTIONS: Final[list[str]] = [
     "Recommended (Default)",
