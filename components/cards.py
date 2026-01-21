@@ -20,7 +20,7 @@ from utils.core.session_state import get_or_init
 @st.cache_data(ttl=3600)
 def _load_explanation_card() -> str:
     """Load explanation card text file (cached for 1 hour)."""
-    with open("data/explanation_card.txt", "r", encoding="utf-8") as f:
+    with open("pages/about/data/explanation_card.txt", "r", encoding="utf-8") as f:
         return f.read()
 
 

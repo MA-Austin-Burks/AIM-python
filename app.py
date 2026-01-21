@@ -17,12 +17,14 @@ st.logo("utils/styles/Mercer_Advisors_Logo_blk.png", size="large")
 # Set up navigation with pages
 pages = {
     "Aspen Investing Menu": [
-        st.Page("pages/search.py", title="Search", icon=":material/dashboard:", url_path="search", default=True),
-        st.Page("pages/about.py", title="About", icon=":material/description:", url_path="about"),
-        st.Page("pages/roadmap.py", title="Roadmap", icon=":material/map:", url_path="roadmap"),
+        st.Page("pages/search/search.py", title="Search", icon=":material/dashboard:", url_path="search", default=True),
     ],
-    "Mission Control": [
-        st.Page("pages/mission_control.py", title="Mission Control", icon=":material/rocket_launch:", url_path="mission_control"),
+    "About": [
+        st.Page("pages/about/about_platform.py", title="About the Platform", icon=":material/description:", url_path="about"),
+        st.Page("pages/about/abbreviations.py", title="Abbreviations", icon=":material/menu_book:", url_path="abbreviations"),
+        st.Page("pages/about/tax_loss_harvesting.py", title="Tax-Loss Harvesting", icon=":material/money_off:", url_path="tax-loss-harvesting"),
+        st.Page("pages/about/equivalents.py", title="Equivalents", icon=":material/equal:", url_path="equivalents"),
+        st.Page("pages/about/under_development.py", title="Under Development", icon=":material/construction:", url_path="under-development"),
     ],
 }
 

@@ -18,12 +18,8 @@ from utils.styles.branding import (
 from components.cards import render_card_view, render_explanation_card, _load_explanation_card
 from components.footer import render_footer
 from components.modal import render_strategy_modal
-from components.filters import render_filters, render_filters_inline, render_reference_data, render_search_bar
-from components.tabs import (
-    render_allocation_tab,
-    render_description_tab,
-    render_tabs,
-)
+from components.filters import render_filters, render_filters_inline, render_search_bar
+from components.tab_overview import render_allocation_tab
 
 __all__ = [
     # Branding
@@ -47,11 +43,8 @@ __all__ = [
     "render_filters",
     "render_filters_inline",
     "render_footer",
-    "render_reference_data",
     "render_search_bar",
     "render_strategy_modal",
-    "render_tabs",
     # Individual tab components
-    "render_description_tab",
     "render_allocation_tab",
 ]

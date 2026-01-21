@@ -2,12 +2,8 @@ import polars as pl
 import streamlit as st
 
 from utils.core.constants import (
-    ABBREVIATIONS_UPDATE_DATE,
-    EQUIVALENTS_UPDATE_DATE,
     STRATEGY_TYPE_TO_SERIES,
     STRATEGY_TYPES,
-    TLH_UPDATE_DATE,
-    UNDER_DEVELOPMENT_UPDATE_DATE,
 )
 from utils.security import MAX_SEARCH_INPUT_LENGTH, validate_search_input
 
@@ -113,8 +109,6 @@ def render_filters_inline(search_active: bool) -> None:
             )
         
         with col_min:
-            from utils.core.constants import DEFAULT_MIN_STRATEGY
-            
             st.number_input(
                 "Account Value ($)",
                 min_value=0,
@@ -449,77 +443,3 @@ def render_filters(search_active: bool) -> pl.Expr:
     return _combine_filter_expressions(expressions)
 
 
-@st.cache_data(ttl=3600)
-def _load_abbreviations() -> pl.DataFrame:
-    """Load abbreviations CSV file (cached for 1 hour)."""
-    return pl.read_csv("data/abbreviations.csv")
-
-
-@st.cache_data(ttl=3600)
-def _load_tlh() -> pl.DataFrame:
-    """Load TLH CSV file (cached for 1 hour)."""
-    return pl.read_csv("data/tlh.csv")
-
-
-@st.cache_data(ttl=3600)
-def _load_equivalents() -> pl.DataFrame:
-    """Load equivalents CSV file (cached for 1 hour)."""
-    return pl.read_csv("data/equivalents.csv")
-
-
-@st.cache_data(ttl=3600)
-def _load_explanation_card() -> str:
-    """Load explanation card text file (cached for 1 hour)."""
-    with open("data/explanation_card.txt", "r", encoding="utf-8") as f:
-        return f.read()
-
-
-@st.cache_data(ttl=3600)
-def _load_under_development() -> str:
-    """Load under development text file (cached for 1 hour)."""
-    with open("data/under_development.txt", "r", encoding="utf-8") as f:
-        return f.read()
-
-
-def render_reference_data() -> None:
-    """Render reference data sections in the main content area."""
-    # ============================================================================
-    # Render abbreviations section
-    # ============================================================================
-    with st.expander("Abbreviations", icon=":material/menu_book:"):
-        st.caption(f"last updated: {ABBREVIATIONS_UPDATE_DATE}")
-        abbreviations_df: pl.DataFrame = _load_abbreviations()
-        st.dataframe(
-            abbreviations_df,
-            height="content",
-        )
-    
-    # ============================================================================
-    # Render TLH section
-    # ============================================================================
-    with st.expander("Tax-Loss Harvesting (TLH)", icon=":material/money_off:"):
-        st.caption(f"last updated: {TLH_UPDATE_DATE}")
-        tlh_df: pl.DataFrame = _load_tlh()
-        st.dataframe(
-            tlh_df,
-            height="content",
-        )
-    
-    # ============================================================================
-    # Render equivalents section
-    # ============================================================================
-    with st.expander("Equivalents", icon=":material/equal:"):
-        st.caption(f"last updated: {EQUIVALENTS_UPDATE_DATE}")
-        equivalents_df: pl.DataFrame = _load_equivalents()
-        st.dataframe(
-            equivalents_df,
-            height="content",
-        )
-    
-    # ============================================================================
-    # Render under development expander
-    # ============================================================================
-    with st.expander("Under Development", icon=":material/construction:"):
-        st.caption(f"last updated: {UNDER_DEVELOPMENT_UPDATE_DATE}")
-        under_development_text: str = _load_under_development()
-        st.markdown(under_development_text)

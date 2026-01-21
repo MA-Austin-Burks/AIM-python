@@ -28,7 +28,7 @@ def _load_model_agg_sort_order() -> dict[str, int]:
     Returns:
         Dictionary mapping model aggregate names to sort order integers
     """
-    model_agg_sort_df: pl.DataFrame = pl.read_csv("data/model_agg_sort_order.csv")
+    model_agg_sort_df: pl.DataFrame = pl.read_csv("pages/search/data/model_agg_sort_order.csv")
     return dict(
         zip(model_agg_sort_df["ModelAggregate"].to_list(), model_agg_sort_df["SortOrder"].to_list())
     )

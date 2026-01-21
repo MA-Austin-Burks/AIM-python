@@ -1,7 +1,19 @@
+"""About the Platform page - main platform information and series comparison."""
+
 import streamlit as st
 
-from components import render_footer, render_reference_data, _load_explanation_card
+from components import render_footer
 from utils.core.constants import EXPLANATION_CARD_UPDATE_DATE
+
+st.set_page_config(page_title="About the Platform", layout="wide")
+
+
+@st.cache_data(ttl=3600)
+def _load_explanation_card() -> str:
+    """Load explanation card text file (cached for 1 hour)."""
+    with open("pages/about/data/explanation_card.txt", "r", encoding="utf-8") as f:
+        return f.read()
+
 
 st.markdown("# About the Platform")
 st.caption(f"last updated: {EXPLANATION_CARD_UPDATE_DATE}")
@@ -39,10 +51,6 @@ with col3:
     st.markdown("**Who is it For?**")
     st.markdown("Investors requiring income for current or specified cash flow needs.")
     st.markdown('**Client Examples:** Retirees, "Red Zone" clients, and certain Trusts/Institutions')
-
-# Render reference data sections (Abbreviations, TLH, Equivalents, Under Development)
-st.markdown("### Additional Information")
-render_reference_data()
 
 # Footer
 render_footer()

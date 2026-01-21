@@ -3,8 +3,7 @@ from typing import Any
 import polars as pl
 import streamlit as st
 
-from components.tabs.allocation import render_allocation_tab
-from components.tabs.description import render_description_tab
+from components.tab_overview import render_allocation_tab
 from utils.styles.branding import generate_badges
 
 
@@ -30,10 +29,8 @@ def render_strategy_modal(strategy_name: str, strategy_data: dict[str, Any], str
     if badges:
         st.markdown(" &nbsp; ".join(badges) + " &nbsp;")
 
-    tab_names: list[str] = ["Overview", "Description"]
+    tab_names: list[str] = ["Overview"]
     tabs: list[Any] = st.tabs(tab_names)
     
     with tabs[0]:  # Overview tab
         render_allocation_tab(strategy_name, cleaned_data)
-    with tabs[1]:  # Description tab
-        render_description_tab(strategy_name, strategy_data, cleaned_data)
