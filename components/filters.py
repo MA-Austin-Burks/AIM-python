@@ -130,15 +130,12 @@ def render_filters_inline(search_active: bool) -> None:
         
         with col_type:
             # Strategy Type: multi-select
-            current_selections = st.session_state.get("filter_strategy_type", STRATEGY_TYPES)
-            if not isinstance(current_selections, list):
-                current_selections = [current_selections] if current_selections else STRATEGY_TYPES
-            
+            # Note: Don't use default= when key is set - Streamlit automatically syncs with session state
+            # The session state is initialized in utils.core.session_state, so the key will handle the value
             st.segmented_control(
                 "Strategy Type",
                 options=STRATEGY_TYPES,
                 selection_mode="multi",
-                default=current_selections,
                 disabled=search_active,
                 key="filter_strategy_type",
             )

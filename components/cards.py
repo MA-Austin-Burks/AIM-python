@@ -195,25 +195,63 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
                     clicked_strategy = strategy_name
         
         # Add empty placeholder cards to fill incomplete last row
-        # Using CARD_GRID_COLUMNS (4) as expected cards per row
+        # Calculate cards per row dynamically based on viewport width estimates
         num_cards = len(strategy_rows)
-        cards_per_row = CARD_GRID_COLUMNS
-        remainder = num_cards % cards_per_row
         
-        if remainder > 0:
-            # Calculate how many empty cards needed to complete the row
-            empty_cards_needed = cards_per_row - remainder
+        if num_cards > 0:
+            card_width_px = int(CARD_FIXED_WIDTH.replace("px", ""))
             
-            # Render empty placeholder cards (transparent, same dimensions as real cards)
-            for empty_idx in range(empty_cards_needed):
-                card_width_px = int(CARD_FIXED_WIDTH.replace("px", ""))
-                with st.container(width=card_width_px):
-                    # Render transparent placeholder with approximate card height
-                    # Card height: ~60px header + ~120px body = ~180px total
-                    st.markdown(
-                        '<div style="width:100%;min-height:180px;opacity:0;pointer-events:none;"></div>',
-                        unsafe_allow_html=True
-                    )
+            # Calculate cards per row dynamically based on container width
+            # Streamlit main content area can be quite wide (up to ~1800px+ in wide mode)
+            # Card width: 350px, gap: ~8-12px (small gap in Streamlit)
+            # Account for container padding/margins (~40-80px total)
+            
+            # Calculate for different viewport widths and use the maximum
+            # This ensures we add enough placeholders for wider screens
+            # Using wider viewport estimates to handle modern wide screens and ultra-wide displays
+            viewport_scenarios = [1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400]  # Common viewport widths
+            gap_size = 10  # Conservative gap estimate (Streamlit's "small" gap is typically 8-12px)
+            container_padding = 50  # Conservative padding estimate for Streamlit containers
+            max_cards_per_row = 1
+            
+            for viewport_width in viewport_scenarios:
+                # Available width = viewport - padding
+                available_width = viewport_width - container_padding
+                # Cards that fit = (available_width + gap) / (card_width + gap)
+                # Using floor division to get maximum cards that fit
+                cards_fit = int((available_width + gap_size) / (card_width_px + gap_size))
+                max_cards_per_row = max(max_cards_per_row, cards_fit)
+            
+            # Use the maximum cards per row from all scenarios
+            # This ensures we handle wide viewports correctly (e.g., 5-6 cards per row)
+            # Cap at 6 to avoid excessive placeholders on ultra-wide screens
+            cards_per_row = min(max_cards_per_row, 6)
+            
+            # Calculate remainder: how many cards are in the incomplete last row
+            remainder = num_cards % cards_per_row
+            
+            # Add empty placeholder cards only when there's an incomplete last row
+            # Edge cases handled:
+            # - num_cards == 0: Skipped by outer if ✓
+            # - remainder == 0: Complete rows, no empty cards needed ✓
+            # - remainder > 0: Incomplete last row, add empty cards to complete it ✓
+            if remainder > 0:
+                # Calculate how many empty cards needed to complete the row
+                empty_cards_needed = cards_per_row - remainder
+                
+                # Safety check: ensure we don't add more placeholders than needed
+                # empty_cards_needed should always be between 1 and (cards_per_row - 1)
+                empty_cards_needed = max(1, min(empty_cards_needed, cards_per_row - 1))
+                
+                # Render empty placeholder cards (transparent, same dimensions as real cards)
+                for _ in range(empty_cards_needed):
+                    with st.container(width=card_width_px):
+                        # Render transparent placeholder with approximate card height
+                        # Card height: ~60px header + ~120px body = ~180px total
+                        st.markdown(
+                            '<div style="width:100%;min-height:180px;opacity:0;pointer-events:none;"></div>',
+                            unsafe_allow_html=True
+                        )
     
     # Handle click after all cards are rendered to preserve layout
     if clicked_strategy:
