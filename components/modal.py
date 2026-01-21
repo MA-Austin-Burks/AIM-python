@@ -7,7 +7,7 @@ from components.tab_overview import render_allocation_tab
 from utils.styles.branding import generate_badges
 
 
-@st.dialog("Details", width="large", icon=":material/strategy:")
+@st.dialog("Strategy Details", width="large", icon=":material/process_chart:")
 def render_strategy_modal(strategy_name: str, strategy_data: dict[str, Any], strategy_color: str, cleaned_data: pl.LazyFrame) -> None:
     """Render strategy details in a modal dialog."""
     st.markdown(f'<h1 style="color: {strategy_color}">{strategy_name}</h1>', unsafe_allow_html=True)
@@ -18,12 +18,18 @@ def render_strategy_modal(strategy_name: str, strategy_data: dict[str, Any], str
     equity_pct = strategy_data.get("Equity %", 0) - alt_pct
     fixed_pct = 100 - equity_pct - alt_pct
     
-    parts = [f"{int(equity_pct)}% Equity", f"{int(fixed_pct)}% Fixed Income"]
-    if alt_pct:
+    # Only show allocations with value > 0
+    parts = []
+    if equity_pct > 0:
+        parts.append(f"{int(equity_pct)}% Equity")
+    if fixed_pct > 0:
+        parts.append(f"{int(fixed_pct)}% Fixed Income")
+    if alt_pct > 0:
         parts.append(f"{alt_pct}% Alternative")
-    exposure_display_text = " - ".join(parts)
     
-    st.markdown(f"### {exposure_display_text}")
+    if parts:
+        exposure_display_text = " - ".join(parts)
+        st.markdown(f"### {exposure_display_text}")
     
     badges: list[str] = generate_badges(strategy_data)
     if badges:

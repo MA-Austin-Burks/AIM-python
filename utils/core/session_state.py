@@ -4,41 +4,23 @@ from typing import TypeVar, Callable, Any
 
 import streamlit as st
 
-from utils.core.constants import (
-    DEFAULT_COLLAPSE_SMA,
-    DEFAULT_EQUITY_RANGE,
-    DEFAULT_MIN_STRATEGY,
-    STRATEGY_TYPES,
-    STRATEGY_TYPE_TO_SERIES,
-)
 from utils.security import validate_session_state_value
 
 T = TypeVar("T")
 
 
+# =============================================================================
+# FILTER VALIDATION FUNCTIONS
+# =============================================================================
+
 def _validate_filter_recommended(value: Any) -> bool:
     """Validate filter_recommended_only value."""
-    return value in ("Recommended", "Recommended & Approved", None)
+    return value in ("Recommended", "Recommended & Approved")
 
 
 def _validate_filter_yes_no(value: Any) -> bool:
     """Validate Yes/No filter values."""
     return value in ("Yes", "No", None)
-
-
-def _validate_min_strategy(value: Any) -> bool:
-    """Validate min_strategy value."""
-    return isinstance(value, (int, float)) and value >= 0
-
-
-def _validate_equity_range(value: Any) -> bool:
-    """Validate equity_range value."""
-    return (
-        isinstance(value, tuple) 
-        and len(value) == 2 
-        and all(isinstance(x, (int, float)) for x in value)
-        and 0 <= value[0] <= value[1] <= 100
-    )
 
 
 def _validate_strategy_type(value: Any) -> bool:
@@ -58,6 +40,15 @@ def _validate_filter_series(value: Any) -> bool:
     return False
 
 
+# =============================================================================
+# INPUT/NUMERIC VALIDATION FUNCTIONS
+# =============================================================================
+
+def _validate_min_strategy(value: Any) -> bool:
+    """Validate min_strategy value."""
+    return isinstance(value, (int, float)) and value >= 0
+
+
 def _validate_search_input(value: Any) -> bool:
     """Validate strategy_search_input value."""
     if value is None:
@@ -72,17 +63,22 @@ def initialize_session_state() -> None:
     the need for fallback defaults in .get() calls throughout the codebase.
     Also validates existing values to prevent session state manipulation.
     """
-    # Filter state - initialize with defaults, validate existing values
+    # =========================================================================
+    # FILTER STATE - Initialize with defaults, validate existing values
+    # =========================================================================
+    
+    # IC Status filter
     if "filter_recommended_only" not in st.session_state:
         st.session_state["filter_recommended_only"] = "Recommended"
     elif not validate_session_state_value(
         "filter_recommended_only", 
         st.session_state["filter_recommended_only"],
-        (str, type(None)),
+        str,  # Only allow string, not None
         _validate_filter_recommended
     ):
         st.session_state["filter_recommended_only"] = "Recommended"
     
+    # Yes/No filters (Tax-Managed, SMA Manager, Private Markets)
     if "filter_tax_managed" not in st.session_state:
         st.session_state["filter_tax_managed"] = None
     elif not validate_session_state_value(
@@ -113,6 +109,7 @@ def initialize_session_state() -> None:
     ):
         st.session_state["filter_private_markets"] = None
     
+    # Numeric filters
     if "min_strategy" not in st.session_state:
         st.session_state["min_strategy"] = None
     elif not validate_session_state_value(
@@ -123,48 +120,52 @@ def initialize_session_state() -> None:
     ):
         st.session_state["min_strategy"] = None
     
-    if "equity_allocation" not in st.session_state:
-        st.session_state["equity_allocation"] = 60
+    if "equity_allocation_range" not in st.session_state:
+        st.session_state["equity_allocation_range"] = (0, 100)
     elif not validate_session_state_value(
-        "equity_allocation",
-        st.session_state["equity_allocation"],
-        (int, float),
-        lambda v: isinstance(v, (int, float)) and 0 <= v <= 100
+        "equity_allocation_range",
+        st.session_state["equity_allocation_range"],
+        tuple,
+        lambda v: isinstance(v, tuple) and len(v) == 2 and all(isinstance(x, (int, float)) and 0 <= x <= 100 for x in v) and v[0] <= v[1]
     ):
-        st.session_state["equity_allocation"] = 60
+        st.session_state["equity_allocation_range"] = (0, 100)
     
+    # Multi-select filters (Strategy Type, Series)
     if "filter_strategy_type" not in st.session_state:
-        st.session_state["filter_strategy_type"] = [STRATEGY_TYPES[0]]  # ["Risk-Based"]
+        st.session_state["filter_strategy_type"] = []  # Empty list means show all (none selected)
     elif not validate_session_state_value(
         "filter_strategy_type",
         st.session_state["filter_strategy_type"],
         (list, str),
         lambda v: (isinstance(v, list) and all(_validate_strategy_type(t) for t in v)) or _validate_strategy_type(v)
     ):
-        st.session_state["filter_strategy_type"] = [STRATEGY_TYPES[0]]
+        st.session_state["filter_strategy_type"] = []
     
     if "filter_series" not in st.session_state:
-        # Default series for Risk-Based strategy type
-        st.session_state["filter_series"] = STRATEGY_TYPE_TO_SERIES[STRATEGY_TYPES[0]]
+        # Empty list means show all series (none selected)
+        st.session_state["filter_series"] = []
     elif not validate_session_state_value(
         "filter_series",
         st.session_state["filter_series"],
         (list, str, type(None)),
         _validate_filter_series
     ):
-        st.session_state["filter_series"] = ["Multifactor Series", "Market Series", "Income Series"]
+        st.session_state["filter_series"] = []
     
     if "_previous_strategy_type" not in st.session_state:
-        st.session_state["_previous_strategy_type"] = STRATEGY_TYPES[0]  # "Risk-Based"
+        st.session_state["_previous_strategy_type"] = []  # Empty list for no selection
     elif not validate_session_state_value(
         "_previous_strategy_type",
         st.session_state["_previous_strategy_type"],
-        str,
-        _validate_strategy_type
+        (list, str),
+        lambda v: (isinstance(v, list) and all(_validate_strategy_type(t) for t in v)) or _validate_strategy_type(v)
     ):
-        st.session_state["_previous_strategy_type"] = "Risk-Based"
+        # Reset to default empty list if validation fails (consistent with initial default)
+        st.session_state["_previous_strategy_type"] = []
     
-    # Search state
+    # =========================================================================
+    # SEARCH STATE
+    # =========================================================================
     if "strategy_search_input" not in st.session_state:
         st.session_state["strategy_search_input"] = ""
     elif not validate_session_state_value(

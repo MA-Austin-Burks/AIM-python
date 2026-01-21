@@ -20,6 +20,7 @@ from utils.core.constants import (
     ALLOCATION_COLLAPSE_SMA_KEY,
     DEFAULT_COLLAPSE_SMA,
     SMA_COLLAPSE_THRESHOLD,
+    STRATEGY_TYPE_TO_SERIES,
 )
 from utils.core.data import get_model_agg_sort_order, get_strategy_by_name, hash_lazyframe
 
@@ -425,7 +426,10 @@ def _has_collapsible_smas(all_model_data: pl.DataFrame, strategy_name: str) -> b
     if all_model_data.height == 0:
         return False
     
-    selected_strategy_data = all_model_data.filter(pl.col("strategy") == strategy_name)
+    normalized_strategy = strategy_name.strip().lower()
+    selected_strategy_data = all_model_data.filter(
+        pl.col("strategy").str.strip_chars().str.to_lowercase() == normalized_strategy
+    )
     if selected_strategy_data.height == 0:
         return False
     
@@ -498,7 +502,6 @@ def _get_equity_matrix_data(
     # STEP 2: Pre-process data with vectorized operations
     # ============================================================================
     all_model_data = _preprocess_product_data(all_model_data)
-    selected_strategy_data: pl.DataFrame = all_model_data.filter(pl.col("strategy") == strategy_name)
     
     # ============================================================================
     # STEP 3: Build lookup dictionaries for efficient data access
@@ -508,7 +511,7 @@ def _get_equity_matrix_data(
     product_weight_lookup = _build_product_weight_lookup(all_model_data)
     
     model_aggs: list[str | None] = sorted(
-        [ma for ma in selected_strategy_data["model_agg"].unique().to_list() if ma is not None],
+        [ma for ma in all_model_data["model_agg"].unique().to_list() if ma is not None],
         key=get_model_agg_sort_order
     )
     
@@ -538,11 +541,14 @@ def _get_equity_matrix_data(
         data.append(row_data)
         row_metadata.append(meta)
         
-        # Get products for this model aggregate
+        # Get products for this model aggregate across the full model
+        # (ensures product rows appear even if the selected strategy has 0% allocation)
         products: pl.DataFrame = (
-            selected_strategy_data
+            all_model_data
             .filter(pl.col("model_agg") == model_agg)
             .select(["product_cleaned", "ticker", "weight_float"])
+            .group_by(["product_cleaned", "ticker"])
+            .agg(pl.col("weight_float").max().alias("weight_float"))
             .sort("weight_float", descending=True)
         )
         
@@ -1222,6 +1228,136 @@ def _render_allocation_table(
     st.html(complete_html)
 
 
+def _render_asset_class_table(
+    strategy_name: str,
+    all_model_data: pl.DataFrame,
+    strategy_color: str,
+    expense_ratio: float,
+    yield_pct: float | None,
+    minimum: float,
+) -> None:
+    """Render a simplified allocation table for Asset-Class strategies."""
+    if all_model_data.height == 0:
+        st.info("No allocation data available for this strategy.")
+        return
+    
+    # Filter to the selected strategy only (case/whitespace tolerant)
+    normalized_strategy = strategy_name.strip().lower()
+    strategy_products = all_model_data.filter(
+        pl.col("strategy").str.strip_chars().str.to_lowercase() == normalized_strategy
+    )
+    if strategy_products.height == 0:
+        st.info("No allocation data available for this strategy.")
+        return
+    
+    data_rows: list[dict[str, Any]] = []
+    row_metadata: list[dict[str, Any]] = []
+    
+    # Asset-Class strategies are expected to have a single model agg,
+    # so just render the strategy's own products without grouping.
+    for product_row in strategy_products.select(
+        ["product_cleaned", "ticker", "weight_float"]
+    ).sort("weight_float", descending=True).to_dicts():
+        product_name = product_row["product_cleaned"]
+        ticker = product_row["ticker"]
+        weight_val = product_row["weight_float"]
+        
+        data_rows.append({"asset": product_name, "weight": weight_val})
+        row_metadata.append({
+            "row_type": RowType.PRODUCT.value,
+            "is_category": False,
+            "name": product_name,
+            "ticker": ticker,
+            "color": strategy_color,
+        })
+    
+    asset_names_combined = _format_asset_names(row_metadata)
+    is_category_list: list[bool] = [meta["is_category"] for meta in row_metadata]
+    row_colors: list[str] = [meta.get("color", PRIMARY["raspberry"]) for meta in row_metadata]
+    
+    base_df = pl.DataFrame(data_rows).with_columns([
+        pl.Series("asset_formatted", asset_names_combined),
+        pl.Series("is_category", is_category_list),
+        pl.Series("row_color", row_colors),
+    ])
+    base_df = base_df.select(["asset_formatted", "weight", "is_category", "asset", "row_color"])
+    
+    # Build summary rows
+    summary_rows = [
+        {
+            "asset_formatted": "Weighted Expense Ratio",
+            "weight": expense_ratio,
+            "is_category": False,
+            "asset": "Weighted Expense Ratio",
+            "row_color": strategy_color,
+        },
+        {
+            "asset_formatted": "Weighted Indicated Yield",
+            "weight": yield_pct if yield_pct is not None else 0.0,
+            "is_category": False,
+            "asset": "Weighted Indicated Yield",
+            "row_color": strategy_color,
+        },
+        {
+            "asset_formatted": "Account Minimum",
+            "weight": float(minimum),
+            "is_category": False,
+            "asset": "Account Minimum",
+            "row_color": strategy_color,
+        },
+    ]
+    summary_metadata: list[dict[str, Any]] = [
+        {
+            "row_type": RowType.SUMMARY.value,
+            "is_category": False,
+            "is_summary": True,
+            "name": row["asset_formatted"],
+            "color": strategy_color,
+        }
+        for row in summary_rows
+    ]
+    
+    # Spacer rows
+    spacer_row = {
+        "asset_formatted": "",
+        "weight": None,
+        "is_category": False,
+        "asset": "",
+        "row_color": strategy_color,
+    }
+    spacer_df = pl.DataFrame([spacer_row, spacer_row], schema=base_df.schema)
+    summary_df = pl.DataFrame(summary_rows, schema=base_df.schema)
+    
+    combined_df = pl.concat([base_df, spacer_df, summary_df])
+    combined_metadata = row_metadata + [
+        {"row_type": RowType.SPACER.value, "is_category": False, "is_spacer": True, "name": "", "color": strategy_color},
+        {"row_type": RowType.SPACER.value, "is_category": False, "is_spacer": True, "name": "", "color": strategy_color},
+    ] + summary_metadata
+    
+    equity_cols = ["weight"]
+    combined_table = _build_base_table(combined_df, strategy_name, equity_cols)
+    combined_table = combined_table.cols_label(weight="Weight")
+    combined_table = _apply_allocation_formatting(combined_table, equity_cols, base_df.height)
+    combined_table = _apply_summary_formatting(combined_table, equity_cols, base_df.height)
+    combined_table = _apply_table_styling(
+        combined_table, combined_metadata, strategy_color, equity_cols, highlighted_col_idx=0
+    )
+    
+    # Set column widths (single weight column)
+    combined_table = combined_table.cols_width(cases={"asset_formatted": "80%", "weight": "20%"})
+    
+    table_html: str = combined_table.as_raw_html(inline_css=True)
+    table_data_hash: str = hashlib.md5(
+        (
+            str(combined_df.write_json()) +
+            str(strategy_name) +
+            str(strategy_color)
+        ).encode()
+    ).hexdigest()
+    complete_html: str = _generate_allocation_table_html_cached(table_html, table_data_hash)
+    st.html(complete_html)
+
+
 def _render_collapse_toggle(
     all_model_data: pl.DataFrame,
     strategy_name: str,
@@ -1256,24 +1392,27 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     strategy_data, strategy_equity_pct, model_name, all_model_data = _load_strategy_allocation_data(
         cleaned_data, strategy_name
     )
+    if not strategy_data:
+        st.info("No allocation data available for this strategy.")
+        return
     
     # ============================================================================
     # STEP 2: Render summary statistics metrics
     # ============================================================================
-    from datetime import datetime
-    
     st.markdown("#### Summary Statistics")
-    st.caption(f"as of {datetime.now().strftime('%m-%d-%Y')}")
     
     # Row 1: Expense Ratio, Yield, Minimum
     # Note: cleaned_data uses lowercase column names
     row1_col1, row1_col2, row1_col3 = st.columns(3)
+    normalized_strategy = strategy_name.strip().lower()
     with row1_col1:
         # Get expense ratio from strategy data (cleaned_data has lowercase column names)
-        expense_ratio = strategy_data.get("expense_ratio", 0) if strategy_data else 0
+        expense_ratio = strategy_data.get("expense_ratio", 0)
         # If not found, calculate weighted expense ratio from model data
         if expense_ratio == 0 and all_model_data.height > 0:
-            strategy_model_data = all_model_data.filter(pl.col("strategy") == strategy_name)
+            strategy_model_data = all_model_data.filter(
+                pl.col("strategy").str.strip_chars().str.to_lowercase() == normalized_strategy
+            )
             if strategy_model_data.height > 0:
                 total_target = strategy_model_data["target"].sum()
                 weighted_fee_sum = (strategy_model_data["target"] * strategy_model_data["fee"]).sum()
@@ -1282,10 +1421,12 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
         st.metric("WEIGHTED AVG EXP RATIO", f"{expense_ratio * 100:.2f}%")
     with row1_col2:
         # Get yield from strategy data
-        y: Optional[float] = strategy_data.get("yield") if strategy_data else None
+        y: Optional[float] = strategy_data.get("yield")
         # If not found, calculate weighted yield from model data
         if y is None and all_model_data.height > 0:
-            strategy_model_data = all_model_data.filter(pl.col("strategy") == strategy_name)
+            strategy_model_data = all_model_data.filter(
+                pl.col("strategy").str.strip_chars().str.to_lowercase() == normalized_strategy
+            )
             if strategy_model_data.height > 0:
                 total_target = strategy_model_data["target"].sum()
                 weighted_yield_sum = (strategy_model_data["target"] * strategy_model_data["yield"]).sum()
@@ -1294,12 +1435,45 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
         st.metric("12-MONTH YIELD", f"{y * 100:.2f}%" if y else "0.00%")
     with row1_col3:
         # Get minimum from strategy data
-        minimum = strategy_data.get("minimum", 0) if strategy_data else 0
+        minimum = strategy_data.get("minimum", 0)
         st.metric(
             "ACCOUNT MINIMUM", format_currency_compact(float(minimum)) if minimum else "$0.0"
         )
     
     st.divider()
+    
+    # If this is an Asset-Class or Special Situation strategy, render a simplified table
+    preprocessed_model_data = _preprocess_product_data(all_model_data) if all_model_data.height > 0 else all_model_data
+    strategy_type_label = None
+    if strategy_data:
+        strategy_type_label = (
+            strategy_data.get("Strategy Type")
+            or strategy_data.get("strategy_type")
+            or strategy_data.get("type")
+        )
+    normalized_type = str(strategy_type_label or "").strip().lower()
+    is_asset_class = "asset" in normalized_type and "class" in normalized_type
+    is_special_situation = "special" in normalized_type and "situation" in normalized_type
+    
+    # Fallback: if series matches Asset-Class series names, treat as Asset-Class
+    series_label = None
+    if strategy_data:
+        series_label = strategy_data.get("Type") or strategy_data.get("type")
+    if not (is_asset_class or is_special_situation) and series_label in STRATEGY_TYPE_TO_SERIES.get("Asset-Class", []):
+        is_asset_class = True
+    
+    if is_asset_class or is_special_situation:
+        st.markdown("#### Asset Allocation")
+        strategy_color: str = get_strategy_color(series_label) if series_label else PRIMARY["raspberry"]
+        _render_asset_class_table(
+            strategy_name,
+            preprocessed_model_data,
+            strategy_color,
+            expense_ratio,
+            y,
+            minimum,
+        )
+        return
     
     collapse_sma: bool = get_or_init(ALLOCATION_COLLAPSE_SMA_KEY, DEFAULT_COLLAPSE_SMA)
     

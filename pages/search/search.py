@@ -51,10 +51,8 @@ if st.session_state["_clear_search_flag"]:
     st.session_state["strategy_search_input"] = ""
     st.session_state["_clear_search_flag"] = False
 
-# Render Strategy Name search bar (full row, first)
+# Render filters inline (search bar is now inside the filters expander)
 search_active, strategy_search = render_search_bar()
-
-# Render filters inline in two rows
 render_filters_inline(search_active)
 
 # Small space between filters and order by
