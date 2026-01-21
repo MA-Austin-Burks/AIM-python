@@ -1,6 +1,6 @@
 """Styling utilities and branding configuration."""
 
-from utils.styles.branding import (
+from .branding import (
     CHART_COLORS_ALLOCATION,
     CHART_COLORS_EXTENDED,
     CHART_COLORS_PRIMARY,

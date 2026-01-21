@@ -162,10 +162,27 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
     # Convert to list for easier rendering
     strategy_rows = list(display_strategies.iter_rows(named=True))
     
+    # Add CSS to ensure cards spread evenly even in the last row
+    # Streamlit adds 'st-key-' prefix to key-based classes
+    st.markdown(
+        """
+        <style>
+        /* Target the cards container to ensure even distribution */
+        .st-key-cards-flex-container {
+            justify-content: space-evenly !important;
+        }
+        /* Ensure card containers don't shrink */
+        .st-key-cards-flex-container > div {
+            flex: 0 0 auto;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    
     # Use st.container with horizontal=True for automatic flexbox wrapping
-    # horizontal_alignment="distribute" distributes cards evenly across the row
     # Each card is wrapped in a fixed-width container to ensure consistent sizing
-    with st.container(horizontal=True, gap="small", horizontal_alignment="distribute"):
+    with st.container(horizontal=True, gap="small", key="cards-flex-container"):
         # Render all cards sequentially, each wrapped in a fixed-width container
         for card_idx, strategy_row in enumerate(strategy_rows):
             # Wrap each card in a fixed-width container
