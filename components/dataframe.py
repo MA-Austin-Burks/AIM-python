@@ -1,10 +1,11 @@
-from typing import Any, Optional
+from typing import Optional
 import hashlib
 
 import polars as pl
 import streamlit as st
 
 from utils.styles.branding import SERIES_COLORS
+from utils.core.models import StrategySummary
 
 
 def _hash_filter_expression(filter_expr: pl.Expr) -> str:
@@ -37,7 +38,7 @@ def filter_and_sort_strategies(strats: pl.DataFrame, _filter_expr: pl.Expr, filt
     )
 
 
-def render_dataframe_section(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], Optional[dict[str, Any]]]:
+def render_dataframe_section(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], Optional[StrategySummary]]:
     st.markdown(f"**{filtered_strategies.height} strategies returned**")
     
     selected_rows = st.dataframe(
@@ -86,7 +87,7 @@ def render_dataframe_section(filtered_strategies: pl.DataFrame) -> tuple[Optiona
 
     if selected_rows.selection.rows:
         row_idx = selected_rows.selection.rows[0]
-        strategy_name = filtered_strategies["Strategy"][row_idx]
         strategy_row = filtered_strategies.row(row_idx, named=True)
-        return strategy_name, strategy_row
+        strategy_summary = StrategySummary.from_row(strategy_row)
+        return strategy_summary.strategy, strategy_summary
     return None, None

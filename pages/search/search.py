@@ -1,5 +1,4 @@
 import os
-from typing import Any
 
 import polars as pl
 import streamlit as st
@@ -25,6 +24,7 @@ from utils.core.constants import (
     EXPLANATION_CARD_UPDATE_DATE,
 )
 from utils.core.data import load_strategy_list, load_cleaned_data
+from utils.core.models import StrategySummary
 from utils.styles.branding import get_strategy_color
 from utils.core.session_state import get_or_init, initialize_session_state, reset_if_changed
 
@@ -88,11 +88,9 @@ strategy_name = st.session_state.get(SELECTED_STRATEGY_MODAL_KEY)
 if strategy_name:
     strategy_row: pl.DataFrame = filtered_strategies.filter(pl.col("Strategy") == strategy_name)
     if strategy_row.height > 0:
-        strategy_data_dict: dict[str, Any] = strategy_row.row(0, named=True)
-        # ETL should ensure "Type" field exists and is consistent
-        strategy_type: str = strategy_data_dict["Type"]
-        strategy_color: str = get_strategy_color(strategy_type)
-        render_strategy_modal(strategy_name, strategy_data_dict, strategy_color, cleaned_data)
+        strategy_data = StrategySummary.from_row(strategy_row.row(0, named=True))
+        strategy_color: str = get_strategy_color(strategy_data.strategy_type)
+        render_strategy_modal(strategy_name, strategy_data, strategy_color, cleaned_data)
     del st.session_state[SELECTED_STRATEGY_MODAL_KEY]
 
 # Footer

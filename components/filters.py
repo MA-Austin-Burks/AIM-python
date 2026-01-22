@@ -58,6 +58,35 @@ def render_search_bar() -> tuple[bool, str | None]:
     return search_active, strategy_search
 
 
+def _reset_filter_state() -> None:
+    """Reset filter-related session state to defaults."""
+    st.session_state["filter_recommended_only"] = "Recommended"
+    st.session_state["filter_tax_managed"] = None
+    st.session_state["filter_sma_manager"] = None
+    st.session_state["filter_private_markets"] = None
+    st.session_state["min_strategy"] = None
+    st.session_state["equity_allocation_range"] = (0, 100)
+    st.session_state["filter_strategy_type"] = []
+    st.session_state["filter_series"] = []
+    st.session_state["_previous_strategy_type"] = []
+
+
+def _clear_search_state() -> None:
+    """Clear search input while preserving filters."""
+    st.session_state["_clear_search_flag"] = True
+
+
+def _clear_filters_state() -> None:
+    """Clear filters while preserving search input."""
+    _reset_filter_state()
+
+
+def _reset_all_state() -> None:
+    """Reset search input and filters."""
+    _reset_filter_state()
+    st.session_state["_clear_search_flag"] = True
+
+
 def render_filters_inline(search_active: bool) -> None:
     """Render filter controls inline in two rows above Order By.
     
@@ -71,7 +100,7 @@ def render_filters_inline(search_active: bool) -> None:
     
     with st.expander("Filters", expanded=True, icon=":material/feature_search:"):
         # Render search bar at the top of the filters container
-        col_search, col_clear = st.columns([10, 2])
+        col_search, col_clear_search, col_clear_filters, col_reset_all = st.columns([8, 2, 2, 2])
         with col_search:
             strategy_search_text = st.text_input(
                 "Strategy Name:",
@@ -88,10 +117,27 @@ def render_filters_inline(search_active: bool) -> None:
                 except ValueError as e:
                     st.error(str(e))
                     st.session_state["strategy_search_input"] = ""
-        with col_clear:
-            if st.button(":material/close: Clear", key="clear_search_btn", use_container_width=True):
-                st.session_state["_clear_search_flag"] = True
-                st.rerun()
+        with col_clear_search:
+            st.button(
+                ":material/close: Clear search",
+                key="clear_search_btn",
+                use_container_width=True,
+                on_click=_clear_search_state,
+            )
+        with col_clear_filters:
+            st.button(
+                ":material/filter_alt_off: Clear filters",
+                key="clear_filters_btn",
+                use_container_width=True,
+                on_click=_clear_filters_state,
+            )
+        with col_reset_all:
+            st.button(
+                ":material/restart_alt: Reset all",
+                key="reset_all_btn",
+                use_container_width=True,
+                on_click=_reset_all_state,
+            )
         
         st.space(1)
         # Row 1: IC Status, Yes/No filters, Account Value

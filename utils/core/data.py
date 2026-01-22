@@ -7,6 +7,8 @@ from typing import Any
 import polars as pl
 import streamlit as st
 
+from utils.core.models import StrategyDetail
+
 from utils.download_parquet_from_azure import download_parquet_from_azure
 
 
@@ -379,10 +381,14 @@ def load_strategy_list(parquet_url: str | None = None) -> pl.DataFrame:
 
 
 @st.cache_data(ttl=3600, hash_funcs={pl.LazyFrame: hash_lazyframe})
-def get_strategy_by_name(cleaned_data: pl.LazyFrame, strategy_name: str) -> dict[str, Any] | None:
-    """Get a strategy row as a dict by name (cached).
+def get_strategy_by_name(
+    cleaned_data: pl.LazyFrame,
+    strategy_name: str,
+    cache_version: int = 1,
+) -> StrategyDetail | None:
+    """Get a strategy row as a dataclass by name (cached).
     
-    Returns the full strategy row as a dict for use in modals and other components.
+    Returns the full strategy row as a StrategyDetail for use in allocation tabs.
     Optimized to use head(1) instead of first() for better performance.
     
     Args:
@@ -390,7 +396,7 @@ def get_strategy_by_name(cleaned_data: pl.LazyFrame, strategy_name: str) -> dict
         strategy_name: Name of the strategy
     
     Returns:
-        dict with all strategy fields, or None if not found
+        StrategyDetail with core fields, or None if not found
     """
     strategy_row = (
         cleaned_data
@@ -402,6 +408,6 @@ def get_strategy_by_name(cleaned_data: pl.LazyFrame, strategy_name: str) -> dict
     if strategy_row.height == 0:
         return None
     
-    return strategy_row.row(0, named=True)
+    return StrategyDetail.from_row(strategy_row.row(0, named=True))
 
 

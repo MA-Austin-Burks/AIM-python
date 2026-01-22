@@ -1,4 +1,4 @@
-from typing import Any, Optional, Final
+from typing import Optional
 
 import polars as pl
 import streamlit as st
@@ -6,13 +6,13 @@ from components.model_card import model_card
 
 from utils.core.constants import (
     CARD_FIXED_WIDTH,
-    CARD_GRID_COLUMNS,
     CARD_ORDER_KEY,
     CARDS_DISPLAYED_KEY,
     CARDS_PER_LOAD,
     DEFAULT_CARD_ORDER,
     SELECTED_STRATEGY_MODAL_KEY,
 )
+from utils.core.models import StrategySummary
 from utils.styles.branding import get_series_color_from_row
 from utils.core.session_state import get_or_init
 
@@ -31,27 +31,14 @@ def render_explanation_card() -> None:
         st.markdown(explanation_text)
 
 
-def _render_strategy_card(strategy_row: dict[str, Any], index: int) -> tuple[bool, str]:
+def _render_strategy_card(strategy_row: StrategySummary, index: int) -> tuple[bool, str]:
     """Render a single strategy card using the custom investment card component, return (clicked, strategy_name)."""
-    strategy_name = strategy_row["Strategy"]
+    strategy_name = strategy_row.strategy
     series_color = get_series_color_from_row(strategy_row)
-    
-    recommended_raw = strategy_row.get("Recommended", False)
-    if isinstance(recommended_raw, str):
-        recommended = recommended_raw.strip().upper() == "TRUE"
-    else:
-        recommended = bool(recommended_raw)
-    equity_pct = strategy_row.get("Equity %", 0)
-    yield_val = strategy_row.get("Yield")
-    expense_ratio = strategy_row.get("Expense Ratio", 0)
-    minimum = strategy_row.get("Minimum", 0)
-    
-    # Convert decimal values to percentages for display
-    # yield_val is stored as decimal (e.g., 0.085 for 8.5%)
-    yield_pct_display = (yield_val * 100) if yield_val is not None else 0.0
-    
-    # expense_ratio is stored as decimal (e.g., 0.0045 for 0.45%)
-    expense_ratio_display = expense_ratio * 100
+    recommended = strategy_row.recommended
+    yield_pct_display = strategy_row.yield_pct_display
+    expense_ratio_display = strategy_row.expense_ratio_pct_display
+    minimum = strategy_row.minimum
     
     card_key = f"strategy_card_{index}_{strategy_name}"
     clicked_id = model_card(
@@ -114,7 +101,7 @@ def _reset_cards_displayed() -> None:
     st.session_state[CARDS_DISPLAYED_KEY] = CARDS_PER_LOAD
 
 
-def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], Optional[dict[str, Any]]]:
+def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], Optional[StrategySummary]]:
     """Render the card view with filtered strategies.
     
     Steps:
@@ -161,7 +148,10 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
     clicked_strategy = None
     
     # Convert to list for easier rendering
-    strategy_rows = list(display_strategies.iter_rows(named=True))
+    strategy_rows = [
+        StrategySummary.from_row(row)
+        for row in display_strategies.iter_rows(named=True)
+    ]
     
     # Add CSS to ensure cards spread evenly even in the last row
     # Streamlit adds 'st-key-' prefix to key-based classes

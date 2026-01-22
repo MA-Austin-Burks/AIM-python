@@ -32,12 +32,6 @@ from utils.core.data import (
     load_strategy_list,
 )
 from utils.core.dates import PERIOD_OPTIONS, get_period_dates
-from utils.styles.branding import (
-    format_currency_compact,
-    generate_badges,
-    get_series_color_from_row,
-    get_strategy_color,
-)
 from utils.core.session_state import get_or_init, reset_if_changed
 
 __all__ = [
@@ -64,11 +58,6 @@ __all__ = [
     "STRATEGY_TYPE_TO_SERIES",
     "TLH_UPDATE_DATE",
     "UNDER_DEVELOPMENT_UPDATE_DATE",
-    # Formatting utilities
-    "format_currency_compact",
-    "generate_badges",
-    "get_strategy_color",
-    "get_series_color_from_row",
     # Date utilities
     "PERIOD_OPTIONS",
     "get_period_dates",

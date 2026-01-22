@@ -23,6 +23,7 @@ from utils.core.constants import (
     STRATEGY_TYPE_TO_SERIES,
 )
 from utils.core.data import get_model_agg_sort_order, get_strategy_by_name, hash_lazyframe
+from utils.core.models import StrategyDetail
 
 
 class RowType(str, Enum):
@@ -45,7 +46,21 @@ class TableStyleConfig:
     spacer_height: str = "4px"
     highlight_color: str = "#fff3cd"
 
-def _group_rows_by_type(metadata: list[dict[str, Any]]) -> dict[RowType, list[int]]:
+
+@dataclass(frozen=True, slots=True)
+class RowMetadata:
+    """Metadata for allocation table rows."""
+
+    row_type: RowType
+    is_category: bool
+    name: str
+    color: str
+    ticker: str | None = None
+    is_spacer: bool = False
+    is_summary: bool = False
+
+
+def _group_rows_by_type(metadata: list[RowMetadata]) -> dict[RowType, list[int]]:
     """Group row indices by their type for batch styling.
     
     Args:
@@ -62,22 +77,15 @@ def _group_rows_by_type(metadata: list[dict[str, Any]]) -> dict[RowType, list[in
     }
     
     for idx, meta in enumerate(metadata):
-        # Check for row_type first (new approach)
-        row_type_str = meta.get("row_type")
-        if row_type_str:
-            try:
-                row_type = RowType(row_type_str)
-                groups[row_type].append(idx)
-                continue
-            except ValueError:
-                pass
-        
-        # Fallback to old boolean flags for backward compatibility
-        if meta.get("is_summary", False):
+        if meta.row_type:
+            groups[meta.row_type].append(idx)
+            continue
+
+        if meta.is_summary:
             groups[RowType.SUMMARY].append(idx)
-        elif meta.get("is_category", False):
+        elif meta.is_category:
             groups[RowType.CATEGORY].append(idx)
-        elif meta.get("is_spacer", False):
+        elif meta.is_spacer:
             groups[RowType.SPACER].append(idx)
         else:
             groups[RowType.PRODUCT].append(idx)
@@ -292,7 +300,7 @@ def _build_model_agg_row(
     equity_to_strategy: dict[int, str],
     agg_target_lookup: dict[tuple[str, str], float],
     strategy_color: str,
-) -> tuple[dict[str, Any], dict[str, Any]]:
+) -> tuple[dict[str, Any], RowMetadata]:
     """Build a model aggregate category row.
     
     Args:
@@ -307,12 +315,12 @@ def _build_model_agg_row(
         Tuple of (row_data dict, row_metadata dict)
     """
     row_data: dict[str, Any] = {"asset": model_agg_name}
-    row_metadata: dict[str, Any] = {
-        "row_type": RowType.CATEGORY.value,
-        "is_category": True,
-        "name": model_agg_name,
-        "color": strategy_color
-    }
+    row_metadata = RowMetadata(
+        row_type=RowType.CATEGORY,
+        is_category=True,
+        name=model_agg_name,
+        color=strategy_color,
+    )
     
     # Model agg rows use agg_target
     for eq_pct in available_equity_levels:
@@ -330,7 +338,7 @@ def _build_product_rows(
     equity_to_strategy: dict[int, str],
     product_weight_lookup: dict[tuple[str, str, str], float],
     strategy_color: str,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+) -> tuple[list[dict[str, Any]], list[RowMetadata]]:
     """Build product rows for a model aggregate.
     
     Args:
@@ -345,20 +353,22 @@ def _build_product_rows(
         Tuple of (list of row_data dicts, list of row_metadata dicts)
     """
     product_rows: list[dict[str, Any]] = []
-    product_metadata: list[dict[str, Any]] = []
+    product_metadata: list[RowMetadata] = []
     
     for product_row in products.to_dicts():
         product_name: str = product_row["product_cleaned"]
         ticker: str = product_row["ticker"]
         
         product_row_data: dict[str, Any] = {"asset": product_name}
-        product_metadata.append({
-            "row_type": RowType.PRODUCT.value,
-            "is_category": False,
-            "name": product_name,
-            "ticker": ticker,
-            "color": strategy_color
-        })
+        product_metadata.append(
+            RowMetadata(
+                row_type=RowType.PRODUCT,
+                is_category=False,
+                name=product_name,
+                ticker=ticker,
+                color=strategy_color,
+            )
+        )
         
         # Product allocations shown across all equity levels for comparison
         for eq_pct in available_equity_levels:
@@ -378,7 +388,7 @@ def _build_product_rows(
 def _build_spacer_row(
     available_equity_levels: list[int],
     strategy_color: str,
-) -> tuple[dict[str, Any], dict[str, Any]]:
+) -> tuple[dict[str, Any], RowMetadata]:
     """Build a spacer row.
     
     Args:
@@ -392,13 +402,13 @@ def _build_spacer_row(
     for eq_pct in available_equity_levels:
         spacer_row[str(int(eq_pct))] = None
     
-    spacer_metadata: dict[str, Any] = {
-        "row_type": RowType.SPACER.value,
-        "is_category": False,
-        "is_spacer": True,
-        "name": "",
-        "color": strategy_color
-    }
+    spacer_metadata = RowMetadata(
+        row_type=RowType.SPACER,
+        is_category=False,
+        name="",
+        color=strategy_color,
+        is_spacer=True,
+    )
     
     return spacer_row, spacer_metadata
 
@@ -477,7 +487,7 @@ def _get_equity_matrix_data(
     strategy_name: str,
     strategy_equity_pct: int | None,
     collapse_sma: bool = DEFAULT_COLLAPSE_SMA,
-) -> tuple[pl.DataFrame, int, list[dict[str, Any]], dict[int, str]]:
+) -> tuple[pl.DataFrame, int, list[RowMetadata], dict[int, str]]:
     """Get allocation data in matrix format with equity % columns.
     
     Steps:
@@ -491,9 +501,9 @@ def _get_equity_matrix_data(
     # ============================================================================
     # STEP 1: Load strategy data and get model information
     # ============================================================================
-    strategy_data: dict[str, Any] | None = get_strategy_by_name(cleaned_data, strategy_name)
-    strategy_model: str = strategy_data["model"]
-    strategy_type: str = strategy_data["type"]
+    strategy_data: StrategyDetail | None = get_strategy_by_name(cleaned_data, strategy_name, cache_version=3)
+    strategy_model: str = strategy_data.model
+    strategy_type: str = strategy_data.strategy_type
     strategy_color: str = get_strategy_color(strategy_type)
     
     all_model_data: pl.DataFrame = _get_model_data(cleaned_data, strategy_model)
@@ -528,7 +538,7 @@ def _get_equity_matrix_data(
     # STEP 4: Iterate over model aggregates to build matrix rows
     # ============================================================================
     data: list[dict[str, Any]] = []
-    row_metadata: list[dict[str, Any]] = []
+    row_metadata: list[RowMetadata] = []
     
     for model_agg in model_aggs:
         model_agg_name: str = model_agg_names[model_agg]
@@ -578,7 +588,7 @@ def _get_equity_matrix_data(
     return pl.DataFrame(data), highlighted_col_idx, row_metadata, equity_to_strategy
 
 
-def _format_asset_names(row_metadata: list[dict[str, Any]]) -> list[str]:
+def _format_asset_names(row_metadata: list[RowMetadata]) -> list[str]:
     """Format asset names by combining with tickers.
     
     Args:
@@ -589,13 +599,11 @@ def _format_asset_names(row_metadata: list[dict[str, Any]]) -> list[str]:
     """
     asset_names_combined: list[str] = []
     for row in row_metadata:
-        name: str = row["name"]
-        ticker: str = row.get("ticker", "")
-        is_spacer: bool = row.get("is_spacer", False)
-        
-        if is_spacer:
+        name: str = row.name
+        ticker: str = row.ticker or ""
+        if row.is_spacer:
             combined_name = ""
-        elif not row["is_category"]:
+        elif not row.is_category:
             # Product rows: include ticker if available
             combined_name = f"{name} ({ticker})" if ticker else name
         else:
@@ -608,7 +616,7 @@ def _format_asset_names(row_metadata: list[dict[str, Any]]) -> list[str]:
 
 def _prepare_matrix_dataframe(
     matrix_df: pl.DataFrame,
-    row_metadata: list[dict[str, Any]],
+    row_metadata: list[RowMetadata],
     equity_cols: list[str],
 ) -> pl.DataFrame:
     """Prepare matrix DataFrame with formatted columns.
@@ -622,8 +630,8 @@ def _prepare_matrix_dataframe(
         Formatted DataFrame with asset_formatted, is_category, row_color columns
     """
     asset_names_combined = _format_asset_names(row_metadata)
-    is_category_list: list[bool] = [meta["is_category"] for meta in row_metadata]
-    row_colors: list[str] = [meta.get("color", PRIMARY["raspberry"]) for meta in row_metadata]
+    is_category_list: list[bool] = [meta.is_category for meta in row_metadata]
+    row_colors: list[str] = [meta.color for meta in row_metadata]
     
     formatted_matrix_df: pl.DataFrame = matrix_df.with_columns([
         pl.Series("is_category", is_category_list),
@@ -690,7 +698,7 @@ def _build_summary_rows(
     equity_to_strategy: dict[int, str],
     summary_metrics_lookup: dict[str, dict[str, float]],
     strategy_color: str,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+) -> tuple[list[dict[str, Any]], list[RowMetadata]]:
     """Build summary metric rows.
     
     Args:
@@ -738,14 +746,14 @@ def _build_summary_rows(
         summary_row["row_color"] = strategy_color
         summary_rows.append(summary_row)
     
-    summary_metadata: list[dict[str, Any]] = [
-        {
-            "row_type": RowType.SUMMARY.value,
-            "is_category": False,
-            "is_summary": True,
-            "name": name,
-            "color": strategy_color
-        }
+    summary_metadata: list[RowMetadata] = [
+        RowMetadata(
+            row_type=RowType.SUMMARY,
+            is_category=False,
+            name=name,
+            color=strategy_color,
+            is_summary=True,
+        )
         for name in summary_row_names
     ]
     
@@ -757,7 +765,7 @@ def _combine_allocation_and_summary(
     equity_cols: list[str],
     summary_rows: list[dict[str, Any]],
     strategy_color: str,
-) -> tuple[pl.DataFrame, int, list[dict[str, Any]]]:
+) -> tuple[pl.DataFrame, int, list[RowMetadata]]:
     """Combine allocation and summary DataFrames.
     
     Args:
@@ -828,13 +836,13 @@ def _combine_allocation_and_summary(
     ])
     
     # Build combined metadata
-    spacer_metadata: dict[str, Any] = {
-        "row_type": RowType.SPACER.value,
-        "is_category": False,
-        "is_spacer": True,
-        "name": "",
-        "color": strategy_color
-    }
+    spacer_metadata = RowMetadata(
+        row_type=RowType.SPACER,
+        is_category=False,
+        name="",
+        color=strategy_color,
+        is_spacer=True,
+    )
     
     return combined_df, num_allocation_rows, [spacer_metadata, spacer_metadata]
 
@@ -938,7 +946,7 @@ def _apply_summary_formatting(
 
 def _apply_table_styling(
     table: GT,
-    combined_row_metadata: list[dict[str, Any]],
+    combined_row_metadata: list[RowMetadata],
     strategy_color: str,
     equity_cols: list[str],
     highlighted_col_idx: int,
@@ -972,7 +980,7 @@ def _apply_table_styling(
     
     # Build row colors dict for category rows
     row_colors: dict[int, str] = {
-        idx: combined_row_metadata[idx]["color"]
+        idx: combined_row_metadata[idx].color
         for idx in row_groups[RowType.CATEGORY]
         if idx < len(combined_row_metadata)
     }
@@ -1029,7 +1037,7 @@ def _apply_table_styling(
 def _build_allocation_tables(
     matrix_df: pl.DataFrame,
     equity_cols: list[str],
-    row_metadata: list[dict[str, Any]],
+    row_metadata: list[RowMetadata],
     header_name: str,
     highlighted_col_idx: int,
     all_model_data: pl.DataFrame,
@@ -1048,7 +1056,7 @@ def _build_allocation_tables(
     Returns:
         Single GT table object containing both allocation and summary rows
     """
-    strategy_color: str = row_metadata[0]["color"] if row_metadata else PRIMARY["raspberry"]
+    strategy_color: str = row_metadata[0].color if row_metadata else PRIMARY["raspberry"]
     
     # ============================================================================
     # STEP 1: Format asset names and prepare matrix DataFrame
@@ -1075,7 +1083,7 @@ def _build_allocation_tables(
     )
     
     # Build combined metadata
-    combined_row_metadata: list[dict[str, Any]] = row_metadata.copy()
+    combined_row_metadata: list[RowMetadata] = row_metadata.copy()
     combined_row_metadata.extend(spacer_metadata)
     combined_row_metadata.extend(summary_metadata)
     
@@ -1095,7 +1103,7 @@ def _build_allocation_tables(
 def _load_strategy_allocation_data(
     cleaned_data: pl.LazyFrame,
     strategy_name: str,
-) -> tuple[dict[str, Any] | None, int | None, str | None, pl.DataFrame]:
+) -> tuple[StrategyDetail | None, int | None, str | None, pl.DataFrame]:
     """Load strategy data and prepare model data.
     
     Args:
@@ -1105,18 +1113,17 @@ def _load_strategy_allocation_data(
     Returns:
         Tuple of (strategy_data, strategy_equity_pct, model_name, all_model_data)
     """
-    strategy_data: dict[str, Any] | None = get_strategy_by_name(cleaned_data, strategy_name)
+    strategy_data: StrategyDetail | None = get_strategy_by_name(cleaned_data, strategy_name, cache_version=3)
     strategy_equity_pct: int | None = None
     model_name: str | None = None
     
     if strategy_data:
-        portfolio_val = strategy_data.get("portfolio")
-        strategy_equity_pct = int(portfolio_val) if portfolio_val is not None else None
-        model_name = strategy_data.get("model")
+        strategy_equity_pct = int(strategy_data.portfolio) if strategy_data.portfolio is not None else None
+        model_name = strategy_data.model
     
     # Get model data for summary table (cached)
-    if strategy_data and strategy_data.get("model"):
-        all_model_data: pl.DataFrame = _get_model_data(cleaned_data, strategy_data["model"])
+    if strategy_data and strategy_data.model:
+        all_model_data: pl.DataFrame = _get_model_data(cleaned_data, strategy_data.model)
     else:
         all_model_data = pl.DataFrame()
     
@@ -1128,7 +1135,7 @@ def _prepare_allocation_matrix(
     strategy_name: str,
     strategy_equity_pct: int | None,
     collapse_sma: bool,
-) -> tuple[pl.DataFrame, int, list[dict[str, Any]], dict[int, str], list[str]]:
+) -> tuple[pl.DataFrame, int, list[RowMetadata], dict[int, str], list[str]]:
     """Prepare allocation matrix data.
     
     Args:
@@ -1150,8 +1157,8 @@ def _prepare_allocation_matrix(
     equity_cols: list[str] = [col for col in matrix_df.columns if col != "asset"]
     
     # Prepare metadata for styling
-    is_category_list: list[bool] = [meta["is_category"] for meta in row_metadata]
-    row_colors: list[str] = [meta.get("color", PRIMARY["raspberry"]) for meta in row_metadata]
+    is_category_list: list[bool] = [meta.is_category for meta in row_metadata]
+    row_colors: list[str] = [meta.color for meta in row_metadata]
     
     # Add formatted columns to matrix_df
     matrix_df = matrix_df.with_columns([
@@ -1165,7 +1172,7 @@ def _prepare_allocation_matrix(
 def _render_allocation_table(
     matrix_df: pl.DataFrame,
     equity_cols: list[str],
-    row_metadata: list[dict[str, Any]],
+    row_metadata: list[RowMetadata],
     header_name: str,
     highlighted_col_idx: int,
     all_model_data: pl.DataFrame,
@@ -1251,7 +1258,7 @@ def _render_asset_class_table(
         return
     
     data_rows: list[dict[str, Any]] = []
-    row_metadata: list[dict[str, Any]] = []
+    row_metadata: list[RowMetadata] = []
     
     # Asset-Class strategies are expected to have a single model agg,
     # so just render the strategy's own products without grouping.
@@ -1263,17 +1270,19 @@ def _render_asset_class_table(
         weight_val = product_row["weight_float"]
         
         data_rows.append({"asset": product_name, "weight": weight_val})
-        row_metadata.append({
-            "row_type": RowType.PRODUCT.value,
-            "is_category": False,
-            "name": product_name,
-            "ticker": ticker,
-            "color": strategy_color,
-        })
+        row_metadata.append(
+            RowMetadata(
+                row_type=RowType.PRODUCT,
+                is_category=False,
+                name=product_name,
+                ticker=ticker,
+                color=strategy_color,
+            )
+        )
     
     asset_names_combined = _format_asset_names(row_metadata)
-    is_category_list: list[bool] = [meta["is_category"] for meta in row_metadata]
-    row_colors: list[str] = [meta.get("color", PRIMARY["raspberry"]) for meta in row_metadata]
+    is_category_list: list[bool] = [meta.is_category for meta in row_metadata]
+    row_colors: list[str] = [meta.color for meta in row_metadata]
     
     base_df = pl.DataFrame(data_rows).with_columns([
         pl.Series("asset_formatted", asset_names_combined),
@@ -1306,14 +1315,14 @@ def _render_asset_class_table(
             "row_color": strategy_color,
         },
     ]
-    summary_metadata: list[dict[str, Any]] = [
-        {
-            "row_type": RowType.SUMMARY.value,
-            "is_category": False,
-            "is_summary": True,
-            "name": row["asset_formatted"],
-            "color": strategy_color,
-        }
+    summary_metadata: list[RowMetadata] = [
+        RowMetadata(
+            row_type=RowType.SUMMARY,
+            is_category=False,
+            name=row["asset_formatted"],
+            color=strategy_color,
+            is_summary=True,
+        )
         for row in summary_rows
     ]
     
@@ -1330,8 +1339,20 @@ def _render_asset_class_table(
     
     combined_df = pl.concat([base_df, spacer_df, summary_df])
     combined_metadata = row_metadata + [
-        {"row_type": RowType.SPACER.value, "is_category": False, "is_spacer": True, "name": "", "color": strategy_color},
-        {"row_type": RowType.SPACER.value, "is_category": False, "is_spacer": True, "name": "", "color": strategy_color},
+        RowMetadata(
+            row_type=RowType.SPACER,
+            is_category=False,
+            name="",
+            color=strategy_color,
+            is_spacer=True,
+        ),
+        RowMetadata(
+            row_type=RowType.SPACER,
+            is_category=False,
+            name="",
+            color=strategy_color,
+            is_spacer=True,
+        ),
     ] + summary_metadata
     
     equity_cols = ["weight"]
@@ -1407,7 +1428,7 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     normalized_strategy = strategy_name.strip().lower()
     with row1_col1:
         # Get expense ratio from strategy data (cleaned_data has lowercase column names)
-        expense_ratio = strategy_data.get("expense_ratio", 0)
+        expense_ratio = strategy_data.expense_ratio or 0
         # If not found, calculate weighted expense ratio from model data
         if expense_ratio == 0 and all_model_data.height > 0:
             strategy_model_data = all_model_data.filter(
@@ -1421,7 +1442,7 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
         st.metric("WEIGHTED AVG EXP RATIO", f"{expense_ratio * 100:.2f}%")
     with row1_col2:
         # Get yield from strategy data
-        y: Optional[float] = strategy_data.get("yield")
+        y: Optional[float] = strategy_data.yield_val
         # If not found, calculate weighted yield from model data
         if y is None and all_model_data.height > 0:
             strategy_model_data = all_model_data.filter(
@@ -1435,7 +1456,7 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
         st.metric("12-MONTH YIELD", f"{y * 100:.2f}%" if y else "0.00%")
     with row1_col3:
         # Get minimum from strategy data
-        minimum = strategy_data.get("minimum", 0)
+        minimum = strategy_data.minimum or 0
         st.metric(
             "ACCOUNT MINIMUM", format_currency_compact(float(minimum)) if minimum else "$0.0"
         )
@@ -1446,11 +1467,7 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     preprocessed_model_data = _preprocess_product_data(all_model_data) if all_model_data.height > 0 else all_model_data
     strategy_type_label = None
     if strategy_data:
-        strategy_type_label = (
-            strategy_data.get("Strategy Type")
-            or strategy_data.get("strategy_type")
-            or strategy_data.get("type")
-        )
+        strategy_type_label = strategy_data.strategy_category or strategy_data.strategy_type
     normalized_type = str(strategy_type_label or "").strip().lower()
     is_asset_class = "asset" in normalized_type and "class" in normalized_type
     is_special_situation = "special" in normalized_type and "situation" in normalized_type
@@ -1458,7 +1475,7 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     # Fallback: if series matches Asset-Class series names, treat as Asset-Class
     series_label = None
     if strategy_data:
-        series_label = strategy_data.get("Type") or strategy_data.get("type")
+        series_label = strategy_data.strategy_type
     if not (is_asset_class or is_special_situation) and series_label in STRATEGY_TYPE_TO_SERIES.get("Asset-Class", []):
         is_asset_class = True
     
@@ -1494,7 +1511,7 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     else:
         header_name = strategy_name.replace(" Portfolio", "").replace("Portfolio", "")
     
-    strategy_color: str = row_metadata[0]["color"] if row_metadata else PRIMARY["raspberry"]
+    strategy_color: str = row_metadata[0].color if row_metadata else PRIMARY["raspberry"]
     
     # ============================================================================
     # STEP 4: Render combined allocation table

@@ -8,7 +8,10 @@ Note: Theme colors, fonts, and UI styling are now configured in .streamlit/confi
 This module provides programmatic access to brand colors and chart color sequences.
 """
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from utils.core.models import StrategySummary
 
 # =============================================================================
 # PRIMARY PALETTE
@@ -200,25 +203,36 @@ def format_currency_compact(value: float) -> str:
         return f"${value:.1f}"
 
 
-def generate_badges(strategy_data: dict[str, Any]) -> list[str]:
+def generate_badges(strategy_data: "StrategySummary | dict[str, Any]") -> list[str]:
     """Generate badge strings for a strategy based on its data."""
+    if hasattr(strategy_data, "strategy_type"):
+        recommended = getattr(strategy_data, "recommended", False)
+        strategy_category = getattr(strategy_data, "strategy_category", None)
+        strategy_type = getattr(strategy_data, "strategy_type", None)
+        tax_managed = getattr(strategy_data, "tax_managed", False)
+        private_markets = getattr(strategy_data, "private_markets", False)
+    else:
+        recommended = strategy_data.get("Recommended")
+        strategy_category = strategy_data.get("Strategy Type")
+        strategy_type = strategy_data.get("Type")
+        tax_managed = strategy_data.get("Tax-Managed")
+        private_markets = strategy_data.get("Private Markets")
+
     badges = []
 
-    if strategy_data.get("Recommended"):
+    if recommended:
         badges.append(":primary-badge[Recommend]")
 
-    strategy_type = strategy_data.get("Strategy Type")
+    if strategy_category:
+        badges.append(f":orange-badge[{strategy_category}]")
+
     if strategy_type:
-        badges.append(f":orange-badge[{strategy_type}]")
+        badges.append(f":blue-badge[{strategy_type}]")
 
-    strategy_type_field = strategy_data.get("Type")
-    if strategy_type_field:
-        badges.append(f":blue-badge[{strategy_type_field}]")
-
-    if strategy_data.get("Tax-Managed"):
+    if tax_managed:
         badges.append(":green-badge[Tax-Managed]")
 
-    if strategy_data.get("Private Markets"):
+    if private_markets:
         badges.append(":gray-badge[Private Markets]")
 
     return badges
@@ -229,18 +243,27 @@ def get_strategy_color(strategy_type: str) -> str:
     return SERIES_COLORS.get(strategy_type, PRIMARY["raspberry"])
 
 
-def get_series_color_from_row(strategy_row: dict[str, Any]) -> str:
+def get_series_color_from_row(strategy_row: "StrategySummary | dict[str, Any]") -> str:
     """Get the color for a strategy based on its Series/Type from a row dict."""
+    if hasattr(strategy_row, "strategy_type"):
+        series_name = getattr(strategy_row, "series_primary", None)
+        if series_name:
+            return SERIES_COLORS.get(series_name, PRIMARY["light_gray"])
+        strategy_type = getattr(strategy_row, "strategy_type", None)
+        if strategy_type:
+            return SERIES_COLORS.get(strategy_type, PRIMARY["light_gray"])
+        return PRIMARY["light_gray"]
+
     series_list = strategy_row.get("Series", [])
     if series_list and len(series_list) > 0:
         series_name = series_list[0] if isinstance(series_list, list) else series_list
         return SERIES_COLORS.get(series_name, PRIMARY["light_gray"])
-    
+
     # Fallback to Type field if Series is empty
     strategy_type = strategy_row.get("Type")
     if strategy_type:
         return SERIES_COLORS.get(strategy_type, PRIMARY["light_gray"])
-    
+
     return PRIMARY["light_gray"]
 
 

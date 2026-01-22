@@ -1,21 +1,25 @@
-from typing import Any
-
 import polars as pl
 import streamlit as st
 
 from components.tab_overview import render_allocation_tab
+from utils.core.models import StrategySummary
 from utils.styles.branding import generate_badges
 
 
 @st.dialog("Strategy Details", width="large", icon=":material/process_chart:")
-def render_strategy_modal(strategy_name: str, strategy_data: dict[str, Any], strategy_color: str, cleaned_data: pl.LazyFrame) -> None:
+def render_strategy_modal(
+    strategy_name: str,
+    strategy_data: StrategySummary,
+    strategy_color: str,
+    cleaned_data: pl.LazyFrame,
+) -> None:
     """Render strategy details in a modal dialog."""
     st.markdown(f'<h1 style="color: {strategy_color}">{strategy_name}</h1>', unsafe_allow_html=True)
 
     # Private Markets allocation reduces equity allocation by 15%
-    has_private = strategy_data.get("Private Markets", False)
+    has_private = strategy_data.private_markets
     alt_pct = 15 if has_private else 0
-    equity_pct = strategy_data.get("Equity %", 0) - alt_pct
+    equity_pct = strategy_data.equity_pct - alt_pct
     fixed_pct = 100 - equity_pct - alt_pct
     
     # Only show allocations with value > 0
