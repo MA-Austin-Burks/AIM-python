@@ -19,6 +19,31 @@ import hashlib
 from components.filters import TYPE_TO_SUBTYPE
 from utils.data import get_model_agg_sort_order, get_strategy_by_name, hash_lazyframe
 from utils.models import StrategyDetail
+from utils.column_names import (
+    STRATEGY,
+    MODEL,
+    PORTFOLIO,
+    MODEL_AGG,
+    PRODUCT,
+    TICKER,
+    TARGET,
+    AGG_TARGET,
+    WEIGHT,
+    FEE,
+    YIELD,
+    MINIMUM,
+    PRODUCT_CLEANED,
+    WEIGHT_FLOAT,
+    MODEL_DATA_COLUMNS,
+    SUMMARY_METRICS_COLUMNS,
+    PRODUCT_COLUMNS,
+    ASSET_FORMATTED,
+    IS_CATEGORY,
+    ROW_COLOR,
+    ASSET,
+    INTERNAL_TO_DISPLAY,
+    DISPLAY_WEIGHT,
+)
 
 # Session state keys
 ALLOCATION_COLLAPSE_SMA_KEY = "allocation_collapse_sma"
@@ -144,7 +169,7 @@ def _apply_row_styling(
             style=[
                 style.css(rule=f"padding-left: {config.product_indent}; font-family: '{config.body_font}', sans-serif !important;"),
             ],
-            locations=loc.body(columns=["asset_formatted"], rows=row_indices),
+            locations=loc.body(columns=[ASSET_FORMATTED], rows=row_indices),
         )
         # Apply font to equity columns
         if equity_cols:
@@ -161,7 +186,7 @@ def _apply_row_styling(
             style=[
                 style.css(rule=f"height: {config.spacer_height}; line-height: {config.spacer_height};"),
             ],
-            locations=loc.body(columns=["asset_formatted"], rows=row_indices),
+            locations=loc.body(columns=[ASSET_FORMATTED], rows=row_indices),
         )
     
     elif row_type == RowType.SUMMARY:
@@ -187,8 +212,8 @@ def _get_model_data(cleaned_data: pl.LazyFrame, strategy_model: str) -> pl.DataF
     """
     return (
         cleaned_data
-        .filter(pl.col("model") == strategy_model)
-        .select(["strategy", "portfolio", "model_agg", "product", "ticker", "target", "agg_target", "weight", "fee", "yield", "minimum"])
+        .filter(pl.col(MODEL) == strategy_model)
+        .select(MODEL_DATA_COLUMNS)
         .collect()
     )
 
@@ -204,12 +229,12 @@ def _preprocess_product_data(all_model_data: pl.DataFrame) -> pl.DataFrame:
     """
     return all_model_data.with_columns([
         # Vectorized product name cleaning: remove trailing "ETF" (case-insensitive) and whitespace
-        pl.col("product")
+        pl.col(PRODUCT)
         .str.strip_chars()
         .str.replace(r"(?i)ETF\s*$", "", literal=False)
         .str.strip_chars()
-        .alias("product_cleaned"),
-        pl.col("weight").fill_null(0.0).cast(pl.Float64).alias("weight_float")
+        .alias(PRODUCT_CLEANED),
+        pl.col(WEIGHT).fill_null(0.0).cast(pl.Float64).alias(WEIGHT_FLOAT)
     ])
 
 
@@ -224,13 +249,13 @@ def _build_equity_to_strategy_lookup(all_model_data: pl.DataFrame) -> tuple[dict
     """
     all_strategies: pl.DataFrame = (
         all_model_data
-        .select(["strategy", "portfolio"])
+        .select([STRATEGY, PORTFOLIO])
         .unique()
-        .sort("portfolio", descending=True)
+        .sort(PORTFOLIO, descending=True)
     )
     
     equity_to_strategy: dict[int, str] = {
-        int(row["portfolio"]): row["strategy"]
+        int(row[PORTFOLIO]): row[STRATEGY]
         for row in all_strategies.to_dicts()
     }
     
@@ -255,14 +280,14 @@ def _build_agg_target_lookup(all_model_data: pl.DataFrame) -> dict[tuple[str, st
     agg_target_lookup: dict[tuple[str, str], float] = {}
     agg_target_data: pl.DataFrame = (
         all_model_data
-        .select(["strategy", "model_agg", "agg_target"])
-        .unique(subset=["strategy", "model_agg"], keep="first")
+        .select([STRATEGY, MODEL_AGG, AGG_TARGET])
+        .unique(subset=[STRATEGY, MODEL_AGG], keep="first")
     )
     
     for row in agg_target_data.to_dicts():
-        strat_name: str = row["strategy"]
-        model_agg_name: str = row["model_agg"]
-        agg_target: float = row["agg_target"]
+        strat_name: str = row[STRATEGY]
+        model_agg_name: str = row[MODEL_AGG]
+        agg_target: float = row[AGG_TARGET]
         if strat_name and model_agg_name is not None:
             agg_target_lookup[(strat_name, str(model_agg_name))] = float(agg_target) if agg_target is not None else 0.0
     
@@ -281,15 +306,15 @@ def _build_product_weight_lookup(all_model_data: pl.DataFrame) -> dict[tuple[str
     product_weight_lookup: dict[tuple[str, str, str], float] = {}
     product_weight_data: pl.DataFrame = (
         all_model_data
-        .select(["strategy", "model_agg", "ticker", "weight_float"])
-        .unique(subset=["strategy", "model_agg", "ticker"], keep="first")
+        .select([STRATEGY, MODEL_AGG, TICKER, WEIGHT_FLOAT])
+        .unique(subset=[STRATEGY, MODEL_AGG, TICKER], keep="first")
     )
     
     for row in product_weight_data.to_dicts():
-        strat: str = row["strategy"]
-        model_agg_val: str = str(row["model_agg"])
-        ticker_val: str = str(row["ticker"])
-        weight_val: float = row["weight_float"]
+        strat: str = row[STRATEGY]
+        model_agg_val: str = str(row[MODEL_AGG])
+        ticker_val: str = str(row[TICKER])
+        weight_val: float = row[WEIGHT_FLOAT]
         product_weight_lookup[(strat, model_agg_val, ticker_val)] = weight_val
     
     return product_weight_lookup
@@ -358,8 +383,8 @@ def _build_product_rows(
     product_metadata: list[RowMetadata] = []
     
     for product_row in products.to_dicts():
-        product_name: str = product_row["product_cleaned"]
-        ticker: str = product_row["ticker"]
+        product_name: str = product_row[PRODUCT_CLEANED]
+        ticker: str = product_row[TICKER]
         
         product_row_data: dict[str, Any] = {"asset": product_name}
         product_metadata.append(
@@ -440,7 +465,7 @@ def _has_collapsible_smas(all_model_data: pl.DataFrame, strategy_name: str) -> b
     
     normalized_strategy = strategy_name.strip().lower()
     selected_strategy_data = all_model_data.filter(
-        pl.col("strategy").str.strip_chars().str.to_lowercase() == normalized_strategy
+        pl.col(STRATEGY).str.strip_chars().str.to_lowercase() == normalized_strategy
     )
     if selected_strategy_data.height == 0:
         return False
@@ -448,8 +473,8 @@ def _has_collapsible_smas(all_model_data: pl.DataFrame, strategy_name: str) -> b
     # Count products per model_agg
     product_counts = (
         selected_strategy_data
-        .group_by("model_agg")
-        .agg(pl.count("product").alias("product_count"))
+        .group_by(MODEL_AGG)
+        .agg(pl.count(PRODUCT).alias("product_count"))
     )
     
     # Check if any model_agg has more products than the threshold
@@ -523,7 +548,7 @@ def _get_equity_matrix_data(
     product_weight_lookup = _build_product_weight_lookup(all_model_data)
     
     model_aggs: list[str | None] = sorted(
-        [ma for ma in all_model_data["model_agg"].unique().to_list() if ma is not None],
+        [ma for ma in all_model_data[MODEL_AGG].unique().to_list() if ma is not None],
         key=get_model_agg_sort_order
     )
     
@@ -557,11 +582,11 @@ def _get_equity_matrix_data(
         # (ensures product rows appear even if the selected strategy has 0% allocation)
         products: pl.DataFrame = (
             all_model_data
-            .filter(pl.col("model_agg") == model_agg)
-            .select(["product_cleaned", "ticker", "weight_float"])
-            .group_by(["product_cleaned", "ticker"])
-            .agg(pl.col("weight_float").max().alias("weight_float"))
-            .sort("weight_float", descending=True)
+            .filter(pl.col(MODEL_AGG) == model_agg)
+            .select(PRODUCT_COLUMNS)
+            .group_by([PRODUCT_CLEANED, TICKER])
+            .agg(pl.col(WEIGHT_FLOAT).max().alias(WEIGHT_FLOAT))
+            .sort(WEIGHT_FLOAT, descending=True)
         )
         
         # Collapse SMAs with many holdings to reduce visual clutter
@@ -624,12 +649,12 @@ def _prepare_matrix_dataframe(
     row_colors: list[str] = [meta.color for meta in row_metadata]
     
     formatted_matrix_df: pl.DataFrame = matrix_df.with_columns([
-        pl.Series("is_category", is_category_list),
-        pl.Series("asset_formatted", asset_names_combined),
-        pl.Series("row_color", row_colors),
+        pl.Series(IS_CATEGORY, is_category_list),
+        pl.Series(ASSET_FORMATTED, asset_names_combined),
+        pl.Series(ROW_COLOR, row_colors),
     ])
     
-    column_order: list[str] = ["asset_formatted"] + equity_cols + ["is_category", "asset", "row_color"]
+    column_order: list[str] = [ASSET_FORMATTED] + equity_cols + [IS_CATEGORY, ASSET, ROW_COLOR]
     return formatted_matrix_df.select(column_order)
 
 
@@ -648,20 +673,20 @@ def _build_summary_metrics_lookup(
     """
     summary_strategies_data: pl.DataFrame = (
         all_model_data
-        .filter(pl.col("strategy").is_in(list(equity_to_strategy.values())))
-        .select(["strategy", "target", "fee", "yield", "minimum"])
-        .group_by("strategy")
+        .filter(pl.col(STRATEGY).is_in(list(equity_to_strategy.values())))
+        .select(SUMMARY_METRICS_COLUMNS)
+        .group_by(STRATEGY)
         .agg([
-            pl.col("target").sum().alias("total_target"),
-            (pl.col("target") * pl.col("fee")).sum().alias("weighted_fee_sum"),
-            (pl.col("target") * pl.col("yield")).sum().alias("weighted_yield_sum"),
-            pl.col("minimum").first().alias("account_min")
+            pl.col(TARGET).sum().alias("total_target"),
+            (pl.col(TARGET) * pl.col(FEE)).sum().alias("weighted_fee_sum"),
+            (pl.col(TARGET) * pl.col(YIELD)).sum().alias("weighted_yield_sum"),
+            pl.col(MINIMUM).first().alias("account_min")
         ])
     )
     
     summary_metrics_lookup: dict[str, dict[str, float]] = {}
     for row in summary_strategies_data.to_dicts():
-        strategy_name_for_lookup: str = row["strategy"]
+        strategy_name_for_lookup: str = row[STRATEGY]
         total_target: float = row["total_target"]
         weighted_fee_sum: float = row["weighted_fee_sum"]
         weighted_yield_sum: float = row["weighted_yield_sum"]
@@ -700,7 +725,7 @@ def _build_summary_rows(
     Returns:
         Tuple of (list of summary row dicts, list of summary metadata dicts)
     """
-    summary_metrics_raw: dict[str, dict[str, float]] = {
+    summary_metrics_raw: dict[str, dict[str, float | None]] = {
         "Weighted Expense Ratio": {},
         "Weighted Indicated Yield": {},
         "Account Minimum": {}
@@ -730,13 +755,13 @@ def _build_summary_rows(
     summary_row_names: list[str] = ["Weighted Expense Ratio", "Weighted Indicated Yield", "Account Minimum"]
     
     for summary_name in summary_row_names:
-        summary_row: dict[str, Any] = {"asset_formatted": summary_name}
+        summary_row: dict[str, Any] = {ASSET_FORMATTED: summary_name}
         for col in equity_cols:
-            default_val = None if summary_name == "Weighted Indicated Yield" else 0.0
+            default_val: float | None = None if summary_name == "Weighted Indicated Yield" else 0.0
             summary_row[col] = summary_metrics_raw[summary_name].get(col, default_val)
-        summary_row["is_category"] = False
-        summary_row["asset"] = summary_name
-        summary_row["row_color"] = strategy_color
+        summary_row[IS_CATEGORY] = False
+        summary_row[ASSET] = summary_name
+        summary_row[ROW_COLOR] = strategy_color
         summary_rows.append(summary_row)
     
     summary_metadata: list[RowMetadata] = [
@@ -780,16 +805,16 @@ def _combine_allocation_and_summary(
     spacer_row_2: dict[str, Any] = {}
     
     for col in expected_columns:
-        if col == "asset_formatted":
+        if col == ASSET_FORMATTED:
             spacer_row[col] = ""
             spacer_row_2[col] = ""
-        elif col == "is_category":
+        elif col == IS_CATEGORY:
             spacer_row[col] = False
             spacer_row_2[col] = False
-        elif col == "asset":
+        elif col == ASSET:
             spacer_row[col] = ""
             spacer_row_2[col] = ""
-        elif col == "row_color":
+        elif col == ROW_COLOR:
             spacer_row[col] = strategy_color
             spacer_row_2[col] = strategy_color
         else:
@@ -808,11 +833,11 @@ def _combine_allocation_and_summary(
         for col in expected_columns:
             if col in summary_row:
                 complete_row[col] = summary_row[col]
-            elif col == "is_category":
+            elif col == IS_CATEGORY:
                 complete_row[col] = False
-            elif col == "asset":
-                complete_row[col] = summary_row.get("asset_formatted", "")
-            elif col == "row_color":
+            elif col == ASSET:
+                complete_row[col] = summary_row.get(ASSET_FORMATTED, "")
+            elif col == ROW_COLOR:
                 complete_row[col] = strategy_color
             else:
                 # Equity columns - should already be in summary_row
@@ -855,13 +880,20 @@ def _build_base_table(
     Returns:
         Base GT table
     """
+    # Build display labels mapping internal names to display names
+    display_labels: dict[str, str] = {ASSET_FORMATTED: header_name}
+    # Add display labels for equity columns if they exist in mapping
+    for col in equity_cols:
+        if col in INTERNAL_TO_DISPLAY:
+            display_labels[col] = INTERNAL_TO_DISPLAY[col]
+    
     return (
         GT(combined_df)
-        .cols_hide(["is_category", "asset", "row_color"])
-        .cols_label(asset_formatted=header_name)
+        .cols_hide([IS_CATEGORY, ASSET, ROW_COLOR])
+        .cols_label(display_labels)
         .sub_missing(columns=equity_cols, missing_text="")
         .cols_align(columns=equity_cols, align="center")
-        .cols_align(columns=["asset_formatted"], align="left")
+        .cols_align(columns=[ASSET_FORMATTED], align="left")
     )
 
 
@@ -1167,7 +1199,7 @@ def _prepare_allocation_matrix(
     if matrix_df.height == 0:
         return matrix_df, highlighted_col_idx, row_metadata, equity_to_strategy, []
     
-    equity_cols: list[str] = [col for col in matrix_df.columns if col != "asset"]
+    equity_cols: list[str] = [col for col in matrix_df.columns if col != ASSET]
     
     # Prepare metadata for styling
     is_category_list: list[bool] = [meta.is_category for meta in row_metadata]
@@ -1175,8 +1207,8 @@ def _prepare_allocation_matrix(
     
     # Add formatted columns to matrix_df
     matrix_df = matrix_df.with_columns([
-        pl.Series("is_category", is_category_list),
-        pl.Series("row_color", row_colors),
+        pl.Series(IS_CATEGORY, is_category_list),
+        pl.Series(ROW_COLOR, row_colors),
     ])
     
     return matrix_df, highlighted_col_idx, row_metadata, equity_to_strategy, equity_cols
@@ -1222,7 +1254,7 @@ def _render_allocation_table(
     equity_col_width: str = f"{(60 / num_equity_cols):.2f}%" if num_equity_cols > 0 else "0%"
     
     # Set column widths
-    width_cases: dict[str, str] = {"asset_formatted": asset_col_width}
+    width_cases: dict[str, str] = {ASSET_FORMATTED: asset_col_width}
     width_cases.update({col: equity_col_width for col in equity_cols})
     combined_table = combined_table.cols_width(cases=width_cases)
     
@@ -1264,7 +1296,7 @@ def _render_asset_class_table(
     # Filter to the selected strategy only (case/whitespace tolerant)
     normalized_strategy = strategy_name.strip().lower()
     strategy_products = all_model_data.filter(
-        pl.col("strategy").str.strip_chars().str.to_lowercase() == normalized_strategy
+        pl.col(STRATEGY).str.strip_chars().str.to_lowercase() == normalized_strategy
     )
     if strategy_products.height == 0:
         st.info("No allocation data available for this strategy.")
@@ -1276,13 +1308,13 @@ def _render_asset_class_table(
     # Asset-Class strategies are expected to have a single model agg,
     # so just render the strategy's own products without grouping.
     for product_row in strategy_products.select(
-        ["product_cleaned", "ticker", "weight_float"]
-    ).sort("weight_float", descending=True).to_dicts():
-        product_name = product_row["product_cleaned"]
-        ticker = product_row["ticker"]
-        weight_val = product_row["weight_float"]
+        PRODUCT_COLUMNS
+    ).sort(WEIGHT_FLOAT, descending=True).to_dicts():
+        product_name = product_row[PRODUCT_CLEANED]
+        ticker = product_row[TICKER]
+        weight_val = product_row[WEIGHT_FLOAT]
         
-        data_rows.append({"asset": product_name, "weight": weight_val})
+        data_rows.append({ASSET: product_name, WEIGHT: weight_val})
         row_metadata.append(
             RowMetadata(
                 row_type=RowType.PRODUCT,
@@ -1298,41 +1330,41 @@ def _render_asset_class_table(
     row_colors: list[str] = [meta.color for meta in row_metadata]
     
     base_df = pl.DataFrame(data_rows).with_columns([
-        pl.Series("asset_formatted", asset_names_combined),
-        pl.Series("is_category", is_category_list),
-        pl.Series("row_color", row_colors),
+        pl.Series(ASSET_FORMATTED, asset_names_combined),
+        pl.Series(IS_CATEGORY, is_category_list),
+        pl.Series(ROW_COLOR, row_colors),
     ])
-    base_df = base_df.select(["asset_formatted", "weight", "is_category", "asset", "row_color"])
+    base_df = base_df.select([ASSET_FORMATTED, WEIGHT, IS_CATEGORY, ASSET, ROW_COLOR])
     
     # Build summary rows
     summary_rows = [
         {
-            "asset_formatted": "Weighted Expense Ratio",
-            "weight": expense_ratio,
-            "is_category": False,
-            "asset": "Weighted Expense Ratio",
-            "row_color": strategy_color,
+            ASSET_FORMATTED: "Weighted Expense Ratio",
+            WEIGHT: expense_ratio,
+            IS_CATEGORY: False,
+            ASSET: "Weighted Expense Ratio",
+            ROW_COLOR: strategy_color,
         },
         {
-            "asset_formatted": "Weighted Indicated Yield",
-            "weight": None if (yield_pct is None or yield_pct == 0.0) else yield_pct,
-            "is_category": False,
-            "asset": "Weighted Indicated Yield",
-            "row_color": strategy_color,
+            ASSET_FORMATTED: "Weighted Indicated Yield",
+            WEIGHT: None if (yield_pct is None or yield_pct == 0.0) else yield_pct,
+            IS_CATEGORY: False,
+            ASSET: "Weighted Indicated Yield",
+            ROW_COLOR: strategy_color,
         },
         {
-            "asset_formatted": "Account Minimum",
-            "weight": float(minimum),
-            "is_category": False,
-            "asset": "Account Minimum",
-            "row_color": strategy_color,
+            ASSET_FORMATTED: "Account Minimum",
+            WEIGHT: float(minimum),
+            IS_CATEGORY: False,
+            ASSET: "Account Minimum",
+            ROW_COLOR: strategy_color,
         },
     ]
     summary_metadata: list[RowMetadata] = [
         RowMetadata(
             row_type=RowType.SUMMARY,
             is_category=False,
-            name=row["asset_formatted"],
+            name=str(row[ASSET_FORMATTED]),
             color=strategy_color,
             is_summary=True,
         )
@@ -1341,11 +1373,11 @@ def _render_asset_class_table(
     
     # Spacer rows
     spacer_row = {
-        "asset_formatted": "",
-        "weight": None,
-        "is_category": False,
-        "asset": "",
-        "row_color": strategy_color,
+        ASSET_FORMATTED: "",
+        WEIGHT: None,
+        IS_CATEGORY: False,
+        ASSET: "",
+        ROW_COLOR: strategy_color,
     }
     spacer_df = pl.DataFrame([spacer_row, spacer_row], schema=base_df.schema)
     summary_df = pl.DataFrame(summary_rows, schema=base_df.schema)
@@ -1368,9 +1400,9 @@ def _render_asset_class_table(
         ),
     ] + summary_metadata
     
-    equity_cols = ["weight"]
+    equity_cols = [WEIGHT]
     combined_table = _build_base_table(combined_df, strategy_name, equity_cols)
-    combined_table = combined_table.cols_label(weight="Weight")
+    combined_table = combined_table.cols_label({WEIGHT: DISPLAY_WEIGHT})
     combined_table = _apply_allocation_formatting(combined_table, equity_cols, base_df.height)
     combined_table = _apply_summary_formatting(combined_table, equity_cols, base_df.height)
     combined_table = _apply_table_styling(
@@ -1378,7 +1410,7 @@ def _render_asset_class_table(
     )
     
     # Set column widths (single weight column)
-    combined_table = combined_table.cols_width(cases={"asset_formatted": "80%", "weight": "20%"})
+    combined_table = combined_table.cols_width(cases={ASSET_FORMATTED: "80%", WEIGHT: "20%"})
     
     table_html: str = combined_table.as_raw_html(inline_css=True)
     table_data_hash: str = hashlib.md5(
@@ -1445,11 +1477,11 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
         # If not found, calculate weighted expense ratio from model data
         if expense_ratio == 0 and all_model_data.height > 0:
             strategy_model_data = all_model_data.filter(
-                pl.col("strategy").str.strip_chars().str.to_lowercase() == normalized_strategy
+                pl.col(STRATEGY).str.strip_chars().str.to_lowercase() == normalized_strategy
             )
             if strategy_model_data.height > 0:
-                total_target = strategy_model_data["target"].sum()
-                weighted_fee_sum = (strategy_model_data["target"] * strategy_model_data["fee"]).sum()
+                total_target = strategy_model_data[TARGET].sum()
+                weighted_fee_sum = (strategy_model_data[TARGET] * strategy_model_data[FEE]).sum()
                 if total_target > 0:
                     expense_ratio = weighted_fee_sum / total_target
         st.metric("WEIGHTED AVG EXP RATIO", f"{expense_ratio * 100:.2f}%")
@@ -1465,11 +1497,11 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
         # If not found, calculate weighted yield from model data
         if y is None and all_model_data.height > 0:
             strategy_model_data = all_model_data.filter(
-                pl.col("strategy").str.strip_chars().str.to_lowercase() == normalized_strategy
+                pl.col(STRATEGY).str.strip_chars().str.to_lowercase() == normalized_strategy
             )
             if strategy_model_data.height > 0:
-                total_target = strategy_model_data["target"].sum()
-                weighted_yield_sum = (strategy_model_data["target"] * strategy_model_data["yield"]).sum()
+                total_target = strategy_model_data[TARGET].sum()
+                weighted_yield_sum = (strategy_model_data[TARGET] * strategy_model_data[YIELD]).sum()
                 if total_target > 0:
                     y = weighted_yield_sum / total_target
         # Only show yield if it exists and is not 0.0, otherwise show empty

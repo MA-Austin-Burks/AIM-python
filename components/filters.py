@@ -1,6 +1,18 @@
 import polars as pl
 import streamlit as st
 
+from utils.column_names import (
+    STRATEGY,
+    RECOMMENDED,
+    TAX_MANAGED,
+    HAS_SMA_MANAGER,
+    PRIVATE_MARKETS,
+    MINIMUM,
+    EQUITY_PCT,
+    CATEGORY,
+    TYPE,
+)
+
 # Type to subtype mapping
 TYPE_TO_SUBTYPE: dict[str, list[str]] = {
     "Risk-Based": [
@@ -196,7 +208,7 @@ def build_filter_expression() -> pl.Expr:
         sanitized: str = strategy_search_text.strip()
         if sanitized:
             expressions.append(
-                pl.col("Strategy")
+                pl.col(STRATEGY)
                 .str.to_lowercase()
                 .str.contains(pattern=sanitized.lower(), literal=True)
             )
@@ -204,52 +216,52 @@ def build_filter_expression() -> pl.Expr:
     # IC Status filter
     recommended_selection: str = st.session_state["filter_ic"]
     if recommended_selection == "Recommended":
-        expressions.append(pl.col("Recommended"))
+        expressions.append(pl.col(RECOMMENDED))
 
     # TODO: update to use boolean filter once database is updated
     # Tax-Managed filter
     tax_managed_selection: str | None = st.session_state["filter_tm"]
     if tax_managed_selection:
-        expressions.append(pl.col("Tax-Managed") == (tax_managed_selection == "Yes"))
+        expressions.append(pl.col(TAX_MANAGED) == (tax_managed_selection == "Yes"))
 
     # TODO: update to use boolean filter once database is updated
     # Has SMA Manager filter
     sma_selection: str | None = st.session_state["filter_sma"]
     if sma_selection:
-        expressions.append(pl.col("Has SMA Manager") == (sma_selection == "Yes"))
+        expressions.append(pl.col(HAS_SMA_MANAGER) == (sma_selection == "Yes"))
     
     # TODO: update to use boolean filter once database is updated
     # Private Markets filter
     private_markets_selection: str | None = st.session_state["filter_pm"]
     if private_markets_selection:
         if private_markets_selection == "Yes":
-            expressions.append(pl.col("Private Markets"))
+            expressions.append(pl.col(PRIVATE_MARKETS))
         elif private_markets_selection == "No":
-            expressions.append(~pl.col("Private Markets"))
+            expressions.append(~pl.col(PRIVATE_MARKETS))
 
     # Account Value filter
     min_strategy: int | float | None = st.session_state["min_strategy"]
     if min_strategy is not None:
-        expressions.append(pl.col("Minimum").le(min_strategy))
+        expressions.append(pl.col(MINIMUM).le(min_strategy))
 
     # Equity Allocation filter (only if Risk-Based is selected)
     if "Risk-Based" in st.session_state.get("filter_type", []):
         min_eq, max_eq = st.session_state.get("equity_allocation_range", (0, 100))
         expressions.append(
-            (pl.col("Equity %").is_not_null()) # TODO: check database if this is needed
-            & (pl.col("Equity %").ge(min_eq))
-            & (pl.col("Equity %").le(max_eq))
+            (pl.col(EQUITY_PCT).is_not_null()) # TODO: check database if this is needed
+            & (pl.col(EQUITY_PCT).ge(min_eq))
+            & (pl.col(EQUITY_PCT).le(max_eq))
         )
     
     # Type (multi-select) - Empty list means show all (none selected)
     type_value: list[str] = st.session_state.get("filter_type", [])
     if type_value:
-        expressions.append(pl.col("Strategy Type").is_in(type_value)) # TODO: check when database is updated
+        expressions.append(pl.col(CATEGORY).is_in(type_value)) # TODO: check when database is updated
     
     # Subtype - Empty list means show all (none selected)
     subtype_value: list[str] = st.session_state.get("filter_subtype", [])
     if subtype_value:
-        expressions.append(pl.col("Type").is_in(subtype_value)) # TODO: check when database is updated
+        expressions.append(pl.col(TYPE).is_in(subtype_value)) # TODO: check when database is updated
     
     # Combine all filter expressions with AND logic
     if not expressions:

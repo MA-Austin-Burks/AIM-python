@@ -7,6 +7,14 @@ from components.model_card import CARD_FIXED_WIDTH, model_card
 from utils.models import StrategySummary
 from utils.branding import get_subtype_color_from_row
 from utils.session_state import get_or_init
+from utils.column_names import (
+    MINIMUM,
+    EXPENSE_RATIO,
+    YIELD,
+    EQUITY_PCT,
+    STRATEGY,
+    RECOMMENDED,
+)
 
 # Session state keys
 SELECTED_STRATEGY_MODAL_KEY = "selected_strategy_for_modal"
@@ -63,21 +71,21 @@ def _apply_sort_order(strategies: pl.DataFrame, sort_order: str) -> pl.DataFrame
     # Mapping of sort order options to (column, descending) tuples
     # Special case for "Recommended (Default)" uses multi-column sort
     sort_configs: dict[str, tuple[list[str], list[bool]] | tuple[str, bool]] = {
-        "Acct Min - Highest to Lowest": ("Minimum", True),
-        "Acct Min - Lowest to Highest": ("Minimum", False),
-        "Expense Ratio - Highest to Lowest": ("Expense Ratio", True),
-        "Expense Ratio - Lowest to Highest": ("Expense Ratio", False),
-        "Yield - High to Low": ("Yield", True),
-        "Yield - Low to High": ("Yield", False),
-        "Equity % - High to Low": ("Equity %", True),
-        "Equity % - Low to High": ("Equity %", False),
-        "Strategy Name - A to Z": ("Strategy", False),
-        "Strategy Name - Z to A": ("Strategy", True),
+        "Acct Min - Highest to Lowest": (MINIMUM, True),
+        "Acct Min - Lowest to Highest": (MINIMUM, False),
+        "Expense Ratio - Highest to Lowest": (EXPENSE_RATIO, True),
+        "Expense Ratio - Lowest to Highest": (EXPENSE_RATIO, False),
+        "Yield - High to Low": (YIELD, True),
+        "Yield - Low to High": (YIELD, False),
+        "Equity % - High to Low": (EQUITY_PCT, True),
+        "Equity % - Low to High": (EQUITY_PCT, False),
+        "Strategy Name - A to Z": (STRATEGY, False),
+        "Strategy Name - Z to A": (STRATEGY, True),
     }
     
     # Default sort: Investment Committee recommendations prioritized, then by equity allocation
     default_sort = (
-        ["Recommended", "Equity %", "Strategy"],
+        [RECOMMENDED, EQUITY_PCT, STRATEGY],
         [True, True, True]
     )
     

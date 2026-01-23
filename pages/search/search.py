@@ -9,6 +9,7 @@ from utils.data import load_strategy_list, load_cleaned_data
 from utils.models import StrategySummary
 from utils.branding import get_subtype_color
 from utils.session_state import get_or_init, initialize_session_state, reset_if_changed
+from utils.column_names import RECOMMENDED, EQUITY_PCT, STRATEGY
 from components import (
     render_card_view,
     build_filter_expression,
@@ -62,7 +63,7 @@ def filter_and_sort_strategies(strats: pl.DataFrame, _filter_expr: pl.Expr, filt
     return (
         strats.filter(_filter_expr)
         .sort(
-            by=["Recommended", "Equity %", "Strategy"],
+            by=[RECOMMENDED, EQUITY_PCT, STRATEGY],
             descending=[True, True, True],
             nulls_last=True,
         )
@@ -105,7 +106,7 @@ render_card_view(filtered_strategies)
 
 strategy_name: str | None = st.session_state.get(SELECTED_STRATEGY_MODAL_KEY)
 if strategy_name:
-    strategy_row: pl.DataFrame = filtered_strategies.filter(pl.col("Strategy") == strategy_name)
+    strategy_row: pl.DataFrame = filtered_strategies.filter(pl.col(STRATEGY) == strategy_name)
     if strategy_row.height > 0:
         strategy_data = StrategySummary.from_row(strategy_row.row(0, named=True))
         strategy_color: str = get_subtype_color(strategy_data.type)

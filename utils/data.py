@@ -13,6 +13,7 @@ import streamlit as st
 import urllib3  # type: ignore[import-untyped]
 
 from utils.models import StrategyDetail
+from utils.column_names import STRATEGY
 
 # Disable SSL warnings when verify=False
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -344,6 +345,9 @@ def load_strategy_list(parquet_url: str | None = None) -> pl.DataFrame:
     This file contains a summary table for all strategies, pre-aggregated from cleaned-data.
     Use this for card filtering, sorting, and rendering instead of calling get_strategy_table().
     
+    Column names are normalized to lowercase for consistency throughout the codebase.
+    Display names are handled separately at the presentation layer.
+    
     If USE_LOCAL_DATA environment variable is set or --local flag is used, loads from
     local file: utils/archive/data/strategy_list.parquet or data/strategy_list.parquet
     
@@ -353,7 +357,7 @@ def load_strategy_list(parquet_url: str | None = None) -> pl.DataFrame:
                      Ignored if local mode is enabled.
     
     Returns:
-        pl.DataFrame: Strategy-level DataFrame with columns matching get_strategy_table() output.
+        pl.DataFrame: Strategy-level DataFrame with normalized lowercase column names.
     
     Raises:
         ValueError: If URL is not found in secrets or environment variable (when not in local mode)
@@ -362,11 +366,30 @@ def load_strategy_list(parquet_url: str | None = None) -> pl.DataFrame:
     """
     import tempfile
     
+    # Column name mapping: title case (from file) -> lowercase (internal)
+    # This ensures consistent naming throughout the codebase
+    column_mapping = {
+        "Strategy": "strategy",
+        "Equity %": "equity_pct",
+        "Expense Ratio": "expense_ratio",
+        "Recommended": "recommended",
+        "Minimum": "minimum",
+        "Yield": "yield",
+        "Type": "type",
+        "Strategy Type": "strategy_type",
+        "Tax-Managed": "tax_managed",
+        "Private Markets": "private_markets",
+        "Has SMA Manager": "has_sma_manager",
+        "Series": "series",
+    }
+    
     # Check for local mode first
     if _is_local_mode():
         local_path = "archive/data/strategy_list.parquet"
         if os.path.exists(local_path):
-            return pl.read_parquet(local_path)
+            df = pl.read_parquet(local_path)
+            # Normalize column names to lowercase
+            return df.rename(column_mapping)
         
         raise FileNotFoundError(
             f"Local mode enabled but strategy_list.parquet not found at: {local_path}"
@@ -416,7 +439,9 @@ def load_strategy_list(parquet_url: str | None = None) -> pl.DataFrame:
             tmp_file.write(parquet_buffer.getvalue())
             tmp_path = tmp_file.name
         
-        return pl.read_parquet(tmp_path)
+        df = pl.read_parquet(tmp_path)
+        # Normalize column names to lowercase
+        return df.rename(column_mapping)
     finally:
         # Always clean up temp file, even on error
         if tmp_path and os.path.exists(tmp_path):
@@ -447,7 +472,7 @@ def get_strategy_by_name(
     """
     strategy_row = (
         cleaned_data
-        .filter(pl.col("strategy") == strategy_name)
+        .filter(pl.col(STRATEGY) == strategy_name)
         .head(1)
         .collect()
     )
