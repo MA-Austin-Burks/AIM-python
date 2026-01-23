@@ -11,7 +11,7 @@ EQUIVALENTS_UPDATE_DATE = "2026-01-17"
 @st.cache_data(ttl=3600)
 def _load_equivalents() -> pl.DataFrame:
     """Load equivalents CSV file (cached for 1 hour)."""
-    return pl.read_csv("app_pages/about/data/equivalents.csv")
+    return pl.read_csv("app_pages/data/equivalents.csv")
 
 
 st.markdown("# :material/equal: Equivalents")

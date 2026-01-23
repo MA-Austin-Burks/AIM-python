@@ -10,7 +10,7 @@ EXPLANATION_CARD_UPDATE_DATE = "2026-01-17"
 @st.cache_data(ttl=3600)
 def _load_explanation_card() -> str:
     """Load explanation card text file (cached for 1 hour)."""
-    with open("app_pages/about/data/explanation_card.txt", "r", encoding="utf-8") as f:
+    with open("app_pages/data/explanation_card.txt", "r", encoding="utf-8") as f:
         return f.read()
 
 

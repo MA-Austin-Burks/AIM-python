@@ -11,7 +11,7 @@ ABBREVIATIONS_UPDATE_DATE = "2026-01-17"
 @st.cache_data(ttl=3600)
 def _load_abbreviations() -> pl.DataFrame:
     """Load abbreviations CSV file (cached for 1 hour)."""
-    return pl.read_csv("app_pages/about/data/abbreviations.csv")
+    return pl.read_csv("app_pages/data/abbreviations.csv")
 
 
 st.markdown("# :material/menu_book: Abbreviations")
