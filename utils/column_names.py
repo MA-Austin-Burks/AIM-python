@@ -15,14 +15,14 @@ are handled separately at the presentation layer.
 
 # Core identifiers
 STRATEGY = "strategy"
-MODEL = "model"
+MODEL = "ss_suite"  # Updated: was "model"
 PORTFOLIO = "portfolio"
 MODEL_AGG = "model_agg"
 PRODUCT = "product"
 TICKER = "ticker"
 
 # Allocation/weighting
-TARGET = "target"
+TARGET = "target"  # Derived column: agg_target / 100 (created in _map_ss_all_to_cleaned_data)
 AGG_TARGET = "agg_target"
 WEIGHT = "weight"
 WEIGHT_FLOAT = "weight_float"  # Derived column
@@ -34,16 +34,16 @@ MINIMUM = "minimum"
 EXPENSE_RATIO = "expense_ratio"
 
 # Type/category
-TYPE = "type"
-CATEGORY = "strategy_type"  # Note: column name is "strategy_type" not "category"
+TYPE = "ss_subtype"  # Updated: was "type"
+CATEGORY = "ss_type"  # Updated: was "strategy_type"
 
 # Strategy list specific columns (normalized to lowercase)
-EQUITY_PCT = "equity_pct"
-RECOMMENDED = "recommended"
-TAX_MANAGED = "tax_managed"
-PRIVATE_MARKETS = "private_markets"
-HAS_SMA_MANAGER = "has_sma_manager"
-SERIES = "series"
+EQUITY_PCT = "equity_allo"  # Updated: was "equity_pct"
+RECOMMENDED = "ic_recommend"  # Updated: was "recommended"
+TAX_MANAGED = "has_tm"  # Updated: was "tax_managed"
+PRIVATE_MARKETS = "has_private_market"  # Updated: was "private_markets"
+HAS_SMA_MANAGER = "has_sma"  # Updated: was "has_sma_manager"
+SERIES = "series"  # Updated: was "series" - list of ss_subtype values (aggregated)
 
 # Derived/cleaned columns
 PRODUCT_CLEANED = "product_cleaned"  # Derived column

@@ -14,19 +14,18 @@ from utils.column_names import (
 )
 
 # Type to subtype mapping
+# Note: Keys must match ss_type values in the data ("Asset Class" not "Asset-Class")
 TYPE_TO_SUBTYPE: dict[str, list[str]] = {
     "Risk-Based": [
         "Multifactor Series",
         "Market Series",
         "Income Series",
     ],
-    "Asset-Class": [
+    "Asset Class": [
         "Equity Strategies",
         "Fixed Income Strategies",
         "Cash Strategies",
         "Alternative Strategies",
-    ],
-    "Special Situation": [
         "Special Situation Strategies",
     ],
 }
@@ -152,7 +151,7 @@ def render_filters() -> None:
         with type:
             st.segmented_control(
                 ":material/stat_minus_1: Type",
-                options=["Risk-Based", "Asset-Class", "Special Situation"],
+                options=["Risk-Based", "Asset Class"],
                 selection_mode="multi",
                 key="filter_type",
             )

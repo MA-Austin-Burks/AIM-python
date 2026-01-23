@@ -83,11 +83,11 @@ class StrategySummary:
             yield_decimal=row.get(YIELD, None),
             expense_ratio_decimal=float(row.get(EXPENSE_RATIO, 0) or 0),
             minimum=float(row.get(MINIMUM, 0) or 0),
-            subtype=_normalize_subtype(row.get(SERIES, [])),
-            type=str(row.get(TYPE, "")),
-            category=row.get(CATEGORY, None),
-            tax_managed=_normalize_bool(row.get(TAX_MANAGED, False)),
-            private_markets=_normalize_bool(row.get(PRIVATE_MARKETS, False)),
+            subtype=_normalize_subtype(row.get(SERIES, [])),  # SERIES maps to ss_subtype
+            type=str(row.get(TYPE, "")),  # TYPE maps to ss_subtype
+            category=row.get(CATEGORY, None),  # CATEGORY maps to ss_type
+            tax_managed=_normalize_bool(row.get(TAX_MANAGED, False)),  # TAX_MANAGED maps to has_tm
+            private_markets=_normalize_bool(row.get(PRIVATE_MARKETS, False)),  # PRIVATE_MARKETS maps to has_private_market
         )
 
     @property
@@ -128,9 +128,9 @@ class StrategyDetail:
         """
         return cls(
             strategy=str(row.get(STRATEGY, "")),
-            model=str(row.get(MODEL, "")),
-            type=str(row.get(TYPE, "")),
-            category=row.get(CATEGORY, None),
+            model=str(row.get(MODEL, "")),  # MODEL maps to ss_suite
+            type=str(row.get(TYPE, "")),  # TYPE maps to ss_subtype
+            category=row.get(CATEGORY, None),  # CATEGORY maps to ss_type
             portfolio=row.get(PORTFOLIO, None),
             expense_ratio=row.get(EXPENSE_RATIO, None),
             yield_val=row.get(YIELD, None),

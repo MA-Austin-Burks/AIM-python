@@ -157,6 +157,66 @@ def get_model_agg_sort_order(model_agg: str | None) -> int:
     return best_match
 
 
+def _map_ss_all_to_cleaned_data(ss_all_df: pl.LazyFrame) -> pl.LazyFrame:
+    """Load ss_all.parquet and derive target column for calculations.
+    
+    Keeps all new column names (ss_subtype, ss_suite, ss_type, etc.) and derives
+    target column from agg_target / 100 for backward compatibility with calculations.
+    
+    Args:
+        ss_all_df: LazyFrame loaded from ss_all.parquet
+        
+    Returns:
+        LazyFrame with target column derived from agg_target / 100
+    """
+    return (
+        ss_all_df
+        .with_columns([
+            # Derive target column from agg_target / 100 for calculations
+            (pl.col("agg_target") / 100).alias("target"),
+        ])
+        # Keep all columns - no renaming back to old names
+    )
+
+
+def _derive_strategy_list_from_ss_all(ss_all_df: pl.LazyFrame) -> pl.DataFrame:
+    """Derive strategy_list DataFrame from ss_all by aggregating per strategy.
+    
+    Groups by strategy and aggregates all strategy-level fields.
+    Uses new column names matching constants from utils.column_names.
+    
+    Args:
+        ss_all_df: LazyFrame loaded from ss_all.parquet
+        
+    Returns:
+        DataFrame with strategy-level aggregated data using new column names
+    """
+    from utils.column_names import (
+        STRATEGY, EQUITY_PCT, TYPE, TAX_MANAGED, RECOMMENDED,
+        PRIVATE_MARKETS, HAS_SMA_MANAGER, MINIMUM, YIELD,
+        EXPENSE_RATIO, SERIES, CATEGORY
+    )
+    
+    return (
+        ss_all_df
+        .group_by(STRATEGY)
+        .agg([
+            pl.col("equity_allo").first().alias(EQUITY_PCT),  # equity_allo
+            pl.col("ss_subtype").first().alias(TYPE),  # ss_subtype -> type
+            pl.col("has_tm").first().alias(TAX_MANAGED),  # has_tm
+            pl.col("ic_recommend").first().alias(RECOMMENDED),  # ic_recommend
+            pl.col("has_private_market").first().alias(PRIVATE_MARKETS),  # has_private_market
+            pl.col("has_sma").first().alias(HAS_SMA_MANAGER),  # has_sma
+            pl.col(MINIMUM).first().alias(MINIMUM),
+            pl.col(YIELD).first().alias(YIELD),
+            pl.col("fee").max().alias(EXPENSE_RATIO),  # fee -> expense_ratio
+            pl.col("ss_subtype").unique().alias(SERIES),  # ss_subtype -> series (as list)
+            pl.col("ss_type").first().alias(CATEGORY),  # ss_type -> category
+        ])
+        .collect()
+    )
+
+
 def _get_cleaned_data_url() -> str:
     """Get the cleaned-data parquet URL from Streamlit secrets or environment variable.
     
@@ -198,99 +258,36 @@ def _get_cleaned_data_url() -> str:
 
 @st.cache_resource
 def load_cleaned_data(parquet_url: str | None = None) -> pl.LazyFrame:
-    """Load the full cleaned-data file as a Parquet LazyFrame from Azure Blob Storage or local file.
+    """Load ss_all.parquet file as a Parquet LazyFrame from local file.
     
-    Downloads Parquet file from Azure Blob Storage and loads into Polars as a LazyFrame.
+    Currently loads only from local file: archive/data/ss_all.parquet
+    Azure download functions are kept but not used (for future use).
+    
     Uses @st.cache_resource to keep the DataFrame in memory without serialization overhead.
     The download is cached per user session to avoid repeated downloads.
     
-    If USE_LOCAL_DATA environment variable is set or --local flag is used, loads from
-    local file: utils/archive/data/cleaned-data.parquet
-    
     Parquet format provides faster loading and better compression than CSV.
-    Schema is preserved from the original conversion, ensuring type consistency.
+    Derives target column from agg_target / 100 for calculations.
     
     Args:
-        parquet_url: Optional URL to override the default Azure Blob Storage URL.
-                     If None, reads from Streamlit secrets or environment variable.
-                     Ignored if local mode is enabled.
+        parquet_url: Optional URL (not used currently, kept for future Azure support).
     
     Returns:
-        pl.LazyFrame: A lazy Polars DataFrame ready for querying.
+        pl.LazyFrame: A lazy Polars DataFrame ready for querying with new column names.
     
     Raises:
-        RuntimeError: If there's an error downloading or reading the Parquet file.
-        FileNotFoundError: If local mode is enabled but file doesn't exist.
+        FileNotFoundError: If ss_all.parquet file doesn't exist.
     """
-    # Check for local mode first
-    if _is_local_mode():
-        local_path = "archive/data/cleaned-data.parquet"
-        if os.path.exists(local_path):
-            return pl.scan_parquet(local_path)
-        
+    # Load only from local file
+    local_path = "archive/data/ss_all.parquet"
+    if not os.path.exists(local_path):
         raise FileNotFoundError(
-            f"Local mode enabled but cleaned-data.parquet not found at: {local_path}"
+            f"ss_all.parquet not found at: {local_path}"
         )
     
-    # Use provided URL or get from secrets/environment
-    url = (parquet_url or _get_cleaned_data_url()).strip().strip('"').strip("'")
-    
-    # Check if URL is a remote HTTP/HTTPS URL vs local file path
-    is_remote_url = url.lower().startswith(("http://", "https://"))
-    
-    # Check if URL is a local file path (for backward compatibility)
-    if not is_remote_url:
-        # Local file path - check if it exists
-        parquet_path = url.replace(".csv", ".parquet")
-        csv_path = url.replace(".parquet", ".csv")
-        
-        if os.path.exists(parquet_path):
-            return pl.scan_parquet(parquet_path)
-        elif os.path.exists(csv_path):
-            # Fallback to CSV for backward compatibility
-            return pl.scan_csv(
-                csv_path,
-                null_values=["NA", "#VALUE!"],
-                infer_schema_length=10000,
-            )
-        else:
-            raise FileNotFoundError(f"Neither {parquet_path} nor {csv_path} found")
-    
-    # Download from URL
-    parquet_buffer, _ = download_parquet(url)
-    
-    # Optimize: Use scan_parquet for true lazy evaluation
-    # Write to temp file since scan_parquet requires a file path
-    # The file persists during the session since load_cleaned_data is cached
-    import tempfile
-    import atexit
-    
-    tmp_path = None
-    try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.parquet') as tmp_file:
-            tmp_file.write(parquet_buffer.getvalue())
-            tmp_path = tmp_file.name
-        
-        # Register cleanup function to ensure temp file is deleted on exit
-        def cleanup_temp_file():
-            if tmp_path and os.path.exists(tmp_path):
-                try:
-                    os.unlink(tmp_path)
-                except OSError:
-                    pass
-        
-        atexit.register(cleanup_temp_file)
-        
-        # Use scan_parquet for true lazy evaluation (doesn't load entire file into memory)
-        return pl.scan_parquet(tmp_path)
-    except Exception:
-        # Ensure cleanup on error
-        if tmp_path and os.path.exists(tmp_path):
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
-        raise
+    # Load ss_all.parquet and apply transformations
+    ss_all_df = pl.scan_parquet(local_path)
+    return _map_ss_all_to_cleaned_data(ss_all_df)
 
 
 def _get_strategy_list_url() -> str | None:
@@ -340,116 +337,36 @@ def _get_strategy_list_url() -> str | None:
 
 @st.cache_data(ttl=3600)
 def load_strategy_list(parquet_url: str | None = None) -> pl.DataFrame:
-    """Load the pre-generated strategy_list.parquet file from Azure Blob Storage or local file.
+    """Derive strategy_list DataFrame from ss_all.parquet by aggregating per strategy.
     
-    This file contains a summary table for all strategies, pre-aggregated from cleaned-data.
-    Use this for card filtering, sorting, and rendering instead of calling get_strategy_table().
+    Currently loads only from local file: archive/data/ss_all.parquet
+    Azure download functions are kept but not used (for future use).
     
-    Column names are normalized to lowercase for consistency throughout the codebase.
+    This function aggregates ss_all.parquet to create a strategy-level summary table.
+    Use this for card filtering, sorting, and rendering.
+    
+    Column names use new ss_all column names (no mapping to old names).
     Display names are handled separately at the presentation layer.
     
-    If USE_LOCAL_DATA environment variable is set or --local flag is used, loads from
-    local file: utils/archive/data/strategy_list.parquet or data/strategy_list.parquet
-    
     Args:
-        parquet_url: Optional URL to override the default Azure Blob Storage URL.
-                     If None, reads from Streamlit secrets or environment variable.
-                     Ignored if local mode is enabled.
+        parquet_url: Optional URL (not used currently, kept for future Azure support).
     
     Returns:
-        pl.DataFrame: Strategy-level DataFrame with normalized lowercase column names.
+        pl.DataFrame: Strategy-level DataFrame with new column names.
     
     Raises:
-        ValueError: If URL is not found in secrets or environment variable (when not in local mode)
-        FileNotFoundError: If local mode is enabled but file doesn't exist
-        RuntimeError: If there's an error downloading or reading the Parquet file
+        FileNotFoundError: If ss_all.parquet file doesn't exist.
     """
-    import tempfile
-    
-    # Column name mapping: title case (from file) -> lowercase (internal)
-    # This ensures consistent naming throughout the codebase
-    column_mapping = {
-        "Strategy": "strategy",
-        "Equity %": "equity_pct",
-        "Expense Ratio": "expense_ratio",
-        "Recommended": "recommended",
-        "Minimum": "minimum",
-        "Yield": "yield",
-        "Type": "type",
-        "Strategy Type": "strategy_type",
-        "Tax-Managed": "tax_managed",
-        "Private Markets": "private_markets",
-        "Has SMA Manager": "has_sma_manager",
-        "Series": "series",
-    }
-    
-    # Check for local mode first
-    if _is_local_mode():
-        local_path = "archive/data/strategy_list.parquet"
-        if os.path.exists(local_path):
-            df = pl.read_parquet(local_path)
-            # Normalize column names to lowercase
-            return df.rename(column_mapping)
-        
+    # Load only from local file
+    local_path = "archive/data/ss_all.parquet"
+    if not os.path.exists(local_path):
         raise FileNotFoundError(
-            f"Local mode enabled but strategy_list.parquet not found at: {local_path}"
+            f"ss_all.parquet not found at: {local_path}"
         )
     
-    # Use provided URL or get from secrets/environment
-    url = parquet_url or _get_strategy_list_url()
-    
-    if not url:
-        # Provide helpful debug information
-        env_check = os.getenv('STRATEGY_LIST_PARQUET')
-        secrets_check = None
-        try:
-            if hasattr(st, 'secrets') and st.secrets is not None:
-                secrets_check = getattr(st.secrets, 'STRATEGY_LIST_PARQUET', None) or (
-                    st.secrets.get('STRATEGY_LIST_PARQUET', None) if hasattr(st.secrets, 'get') else None
-                )
-        except Exception:
-            pass
-        
-        error_msg = (
-            "Azure Blob Storage URL not found. "
-            "Please set STRATEGY_LIST_PARQUET in Streamlit secrets or environment variable.\n"
-            f"Environment variable check: {'Set' if env_check else 'Not set'}\n"
-            f"Secrets check: {'Set' if secrets_check else 'Not set'}"
-        )
-        raise ValueError(error_msg)
-    
-    url = url.strip().strip('"').strip("'")
-    
-    # Check if URL is a remote HTTP/HTTPS URL
-    is_remote_url = url.lower().startswith(("http://", "https://"))
-    
-    if not is_remote_url:
-        raise ValueError(
-            f"Invalid URL format: {url}. "
-            "STRATEGY_LIST_PARQUET must be a valid HTTP/HTTPS URL to Azure Blob Storage."
-        )
-    
-    # Download from URL
-    parquet_buffer, _ = download_parquet(url)
-    
-    # Write to temp file and read as DataFrame (not LazyFrame since it's small)
-    tmp_path = None
-    try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.parquet') as tmp_file:
-            tmp_file.write(parquet_buffer.getvalue())
-            tmp_path = tmp_file.name
-        
-        df = pl.read_parquet(tmp_path)
-        # Normalize column names to lowercase
-        return df.rename(column_mapping)
-    finally:
-        # Always clean up temp file, even on error
-        if tmp_path and os.path.exists(tmp_path):
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                # Log error but don't fail - temp file will be cleaned up by OS eventually
-                pass
+    # Load ss_all.parquet and derive strategy_list
+    ss_all_df = pl.scan_parquet(local_path)
+    return _derive_strategy_list_from_ss_all(ss_all_df)
 
 
 @st.cache_data(ttl=3600, hash_funcs={pl.LazyFrame: hash_lazyframe})
