@@ -97,7 +97,7 @@ export default function(component) {
                     padding:${rowPadding};border-bottom:1px solid rgba(0,0,0,.08);">
           <span style="font-size:${labelSize};color:${labelColor};">Yield</span>
           <span style="font-size:${valueSize};font-weight:${valueWeight};color:${valueColor};">
-            ${Number(m.yield ?? 0).toFixed(2)}%
+            ${(Number(m.yield ?? 0) === 0) ? "" : Number(m.yield ?? 0).toFixed(2) + "%"}
           </span>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;

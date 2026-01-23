@@ -591,26 +591,14 @@ def _get_equity_matrix_data(
 
 
 def _format_asset_names(row_metadata: list[RowMetadata]) -> list[str]:
-    """Format asset names by combining with tickers.
-    
-    Args:
-        row_metadata: List of row metadata dictionaries
-        
-    Returns:
-        List of formatted asset names
-    """
+    """Format asset names."""
     asset_names_combined: list[str] = []
     for row in row_metadata:
         name: str = row.name
-        ticker: str = row.ticker or ""
         if row.is_spacer:
-            combined_name = ""
-        elif not row.is_category:
-            # Product rows: include ticker if available
-            combined_name = f"{name} ({ticker})" if ticker else name
+            combined_name: str = ""
         else:
-            # Category rows: plain name
-            combined_name = name
+            combined_name: str = name
         asset_names_combined.append(combined_name)
     
     return asset_names_combined
@@ -733,7 +721,9 @@ def _build_summary_rows(
         
         metrics = summary_metrics_lookup[strategy_name_at_equity]
         summary_metrics_raw["Weighted Expense Ratio"][equity_col_name] = metrics["weighted_expense"] if metrics["weighted_expense"] else 0.0
-        summary_metrics_raw["Weighted Indicated Yield"][equity_col_name] = metrics["weighted_yield"] if metrics["weighted_yield"] else 0.0
+        # Use None for 0.0 yield so it displays as empty
+        weighted_yield = metrics["weighted_yield"] if metrics["weighted_yield"] else 0.0
+        summary_metrics_raw["Weighted Indicated Yield"][equity_col_name] = None if weighted_yield == 0.0 else weighted_yield
         summary_metrics_raw["Account Minimum"][equity_col_name] = float(metrics["account_min"]) if metrics["account_min"] else 0.0
     
     summary_rows: list[dict[str, Any]] = []
@@ -742,7 +732,8 @@ def _build_summary_rows(
     for summary_name in summary_row_names:
         summary_row: dict[str, Any] = {"asset_formatted": summary_name}
         for col in equity_cols:
-            summary_row[col] = summary_metrics_raw[summary_name].get(col, 0.0)
+            default_val = None if summary_name == "Weighted Indicated Yield" else 0.0
+            summary_row[col] = summary_metrics_raw[summary_name].get(col, default_val)
         summary_row["is_category"] = False
         summary_row["asset"] = summary_name
         summary_row["row_color"] = strategy_color
@@ -920,12 +911,32 @@ def _apply_summary_formatting(
     indicated_yield_idx: int = summary_start_idx + 1
     account_min_idx: int = summary_start_idx + 2
     
-    # Format expense ratio and yield as percentages
+    # Format expense ratio as percentage
     table = table.fmt_percent(
         columns=equity_cols,
         decimals=2,
-        rows=[expense_ratio_idx, indicated_yield_idx]
+        rows=[expense_ratio_idx]
     )
+    
+    # Format yield as percentage, but show empty string for 0.0%
+    def format_yield(x: Any) -> str:
+        """Format yield as percentage, or empty string if 0.0%."""
+        if x is None:
+            return ""
+        try:
+            val = float(x)
+            if val == 0.0:
+                return ""
+            return f"{val:.2%}"
+        except (ValueError, TypeError):
+            return ""
+    
+    for col in equity_cols:
+        table = table.fmt(
+            columns=[col],
+            rows=[indicated_yield_idx],
+            fns=format_yield
+        )
     
     # Format account minimum as compact currency
     def format_account_min(x: Any) -> str:
@@ -1049,7 +1060,7 @@ def _build_allocation_tables(
     """Build combined allocation table with summary metrics included.
     
     Steps:
-    1. Format asset names (combine with tickers)
+    1. Format asset names
     2. Prepare matrix data with formatted columns
     3. Pre-compute summary metrics lookup
     4. Add spacer row and summary metric rows to DataFrame
@@ -1304,7 +1315,7 @@ def _render_asset_class_table(
         },
         {
             "asset_formatted": "Weighted Indicated Yield",
-            "weight": yield_pct if yield_pct is not None else 0.0,
+            "weight": None if (yield_pct is None or yield_pct == 0.0) else yield_pct,
             "is_category": False,
             "asset": "Weighted Indicated Yield",
             "row_color": strategy_color,
@@ -1424,7 +1435,7 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     # ============================================================================
     st.markdown("#### Summary Statistics")
     
-    # Row 1: Expense Ratio, Yield, Minimum
+    # Row 1: Expense Ratio, Account Minimum, Yield (conditional)
     # Note: cleaned_data uses lowercase column names
     row1_col1, row1_col2, row1_col3 = st.columns(3)
     normalized_strategy = strategy_name.strip().lower()
@@ -1443,6 +1454,12 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
                     expense_ratio = weighted_fee_sum / total_target
         st.metric("WEIGHTED AVG EXP RATIO", f"{expense_ratio * 100:.2f}%")
     with row1_col2:
+        # Get minimum from strategy data
+        minimum = strategy_data.minimum or 0
+        st.metric(
+            "ACCOUNT MINIMUM", format_currency_compact(float(minimum)) if minimum else "$0.0"
+        )
+    with row1_col3:
         # Get yield from strategy data
         y: Optional[float] = strategy_data.yield_val
         # If not found, calculate weighted yield from model data
@@ -1455,13 +1472,11 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
                 weighted_yield_sum = (strategy_model_data["target"] * strategy_model_data["yield"]).sum()
                 if total_target > 0:
                     y = weighted_yield_sum / total_target
-        st.metric("12-MONTH YIELD", f"{y * 100:.2f}%" if y else "0.00%")
-    with row1_col3:
-        # Get minimum from strategy data
-        minimum = strategy_data.minimum or 0
-        st.metric(
-            "ACCOUNT MINIMUM", format_currency_compact(float(minimum)) if minimum else "$0.0"
-        )
+        # Only show yield if it exists and is not 0.0, otherwise show empty
+        if y and y != 0.0:
+            st.metric("12-MONTH YIELD", f"{y * 100:.2f}%")
+        else:
+            st.empty()
     
     st.divider()
     
