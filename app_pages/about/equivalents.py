@@ -17,6 +17,14 @@ def _load_equivalents() -> pl.DataFrame:
 st.markdown("# :material/equal: Equivalents")
 st.caption(f"last updated: {EQUIVALENTS_UPDATE_DATE}")
 
+st.markdown(
+    """
+    This reference table provides equivalent securities and strategies that can be used as alternatives or replacements. 
+    Equivalents are strategies with similar investment characteristics, risk profiles, or market exposure that may be used 
+    interchangeably based on availability, tax considerations, or other investment objectives.
+    """
+)
+
 equivalents_df: pl.DataFrame = _load_equivalents()
 st.dataframe(
     equivalents_df,

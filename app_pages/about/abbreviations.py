@@ -17,6 +17,13 @@ def _load_abbreviations() -> pl.DataFrame:
 st.markdown("# :material/menu_book: Abbreviations")
 st.caption(f"last updated: {ABBREVIATIONS_UPDATE_DATE}")
 
+st.markdown(
+    """
+    This reference table provides abbreviations and acronyms commonly used throughout the Aspen Investment Menu platform. 
+    Use this guide to quickly identify and understand the terminology used in strategy names, documentation, and data displays.
+    """
+)
+
 abbreviations_df: pl.DataFrame = _load_abbreviations()
 st.dataframe(
     abbreviations_df,

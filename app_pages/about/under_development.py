@@ -37,6 +37,13 @@ def _load_under_development() -> dict[str, list[str]]:
 st.markdown("# :material/construction: Under Development")
 st.caption("last updated: 2026-01-17")
 
+st.markdown(
+    """
+    The following strategies and features are currently under development and will be added to the Aspen Investment Menu 
+    in future updates. This list is organized by strategy category to help you understand what's coming next.
+    """
+)
+
 sections: dict[str, list[str]] = _load_under_development()
 
 # Create three columns

@@ -45,7 +45,6 @@ with st.container(border=True, gap="small"):
         with st.expander(
             f"**{qa['question']}**",
             expanded=False,
-            icon=":material/help_outline:",
         ):
             st.markdown(qa["answer"])
 
