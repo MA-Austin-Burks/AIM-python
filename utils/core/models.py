@@ -81,7 +81,7 @@ class StrategySummary:
         return self.subtype[0] if self.subtype else None
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class StrategyDetail:
     """Strategy detail fields derived from cleaned_data for allocation tabs."""
 
