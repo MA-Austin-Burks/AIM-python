@@ -27,15 +27,21 @@ from utils.core.data import load_strategy_list, load_cleaned_data
 from utils.core.models import StrategySummary
 from utils.styles.branding import get_strategy_color
 from utils.core.session_state import get_or_init, initialize_session_state, reset_if_changed
+from utils.core.performance import track_step, track_process, get_performance_tracker
 
 # Initialize session state explicitly at app start
 initialize_session_state()
 
+# Initialize performance tracker
+get_performance_tracker()
+
 # Load pre-generated strategy summary for cards/filtering (fast)
-strats: pl.DataFrame = load_strategy_list()
+with track_step("Load Strategy List"):
+    strats: pl.DataFrame = load_strategy_list()
 
 # Load full dataset for modal tabs (only when needed)
-cleaned_data: pl.LazyFrame = load_cleaned_data()
+with track_step("Load Cleaned Data"):
+    cleaned_data: pl.LazyFrame = load_cleaned_data()
 
 st.markdown("# Aspen Investing Menu (Development Version)")
 
@@ -52,8 +58,9 @@ if st.session_state["_clear_search_flag"]:
     st.session_state["_clear_search_flag"] = False
 
 # Render filters inline (search bar is now inside the filters expander)
-search_active, strategy_search = render_search_bar()
-render_filters_inline(search_active)
+with track_step("Render Filters"):
+    search_active, strategy_search = render_search_bar()
+    render_filters_inline(search_active)
 
 # Small space between filters and order by
 st.space(1)
@@ -75,22 +82,26 @@ with col_empty:
     pass
 
 # Get filter expression from session state
-filter_expr: pl.Expr = render_filters(search_active)
+with track_step("Build Filter Expression"):
+    filter_expr: pl.Expr = render_filters(search_active)
+    filter_hash: str = _hash_filter_expression(filter_expr)
 
-filter_hash: str = _hash_filter_expression(filter_expr)
-filtered_strategies: pl.DataFrame = filter_and_sort_strategies(strats, filter_expr, filter_hash)
+with track_step("Filter and Sort Strategies"):
+    filtered_strategies: pl.DataFrame = filter_and_sort_strategies(strats, filter_expr, filter_hash)
 
 reset_if_changed("last_filter_hash", filter_hash, CARDS_DISPLAYED_KEY, CARDS_PER_LOAD)
 
-selected_strategy, strategy_data = render_card_view(filtered_strategies)
+with track_step("Render Card View"):
+    selected_strategy, strategy_data = render_card_view(filtered_strategies)
 
 strategy_name = st.session_state.get(SELECTED_STRATEGY_MODAL_KEY)
 if strategy_name:
-    strategy_row: pl.DataFrame = filtered_strategies.filter(pl.col("Strategy") == strategy_name)
-    if strategy_row.height > 0:
-        strategy_data = StrategySummary.from_row(strategy_row.row(0, named=True))
-        strategy_color: str = get_strategy_color(strategy_data.strategy_type)
-        render_strategy_modal(strategy_name, strategy_data, strategy_color, cleaned_data)
+    with track_step("Render Strategy Modal"):
+        strategy_row: pl.DataFrame = filtered_strategies.filter(pl.col("Strategy") == strategy_name)
+        if strategy_row.height > 0:
+            strategy_data = StrategySummary.from_row(strategy_row.row(0, named=True))
+            strategy_color: str = get_strategy_color(strategy_data.strategy_type)
+            render_strategy_modal(strategy_name, strategy_data, strategy_color, cleaned_data)
     del st.session_state[SELECTED_STRATEGY_MODAL_KEY]
 
 # Footer
