@@ -19,8 +19,8 @@ from .branding import (
     generate_badges,
     get_allocation_table_main_css,
     get_allocation_table_summary_css,
-    get_series_color_from_row,
-    get_strategy_color,
+    get_subtype_color_from_row,
+    get_subtype_color,
     hex_to_rgba,
 )
 
@@ -44,8 +44,8 @@ __all__ = [
     # Formatting utilities
     "format_currency_compact",
     "generate_badges",
-    "get_strategy_color",
-    "get_series_color_from_row",
+    "get_subtype_color",
+    "get_subtype_color_from_row",
     # Table styling exports
     "get_allocation_table_main_css",
     "get_allocation_table_summary_css",

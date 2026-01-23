@@ -13,7 +13,7 @@ from utils.core.constants import (
     SELECTED_STRATEGY_MODAL_KEY,
 )
 from utils.core.models import StrategySummary
-from utils.styles.branding import get_series_color_from_row
+from utils.styles.branding import get_subtype_color_from_row
 from utils.core.session_state import get_or_init
 
 
@@ -34,7 +34,7 @@ def render_explanation_card() -> None:
 def _render_strategy_card(strategy_row: StrategySummary, index: int) -> tuple[bool, str]:
     """Render a single strategy card using the custom investment card component, return (clicked, strategy_name)."""
     strategy_name = strategy_row.strategy
-    series_color = get_series_color_from_row(strategy_row)
+    subtype_color = get_subtype_color_from_row(strategy_row)
     recommended = strategy_row.recommended
     yield_pct_display = strategy_row.yield_pct_display
     expense_ratio_display = strategy_row.expense_ratio_pct_display
@@ -47,7 +47,7 @@ def _render_strategy_card(strategy_row: StrategySummary, index: int) -> tuple[bo
         yield_pct=yield_pct_display,
         expense_ratio=expense_ratio_display,
         minimum=minimum,
-        color=series_color,
+        color=subtype_color,
         featured=recommended,
         key=card_key,
     )

@@ -25,7 +25,7 @@ from utils.core.constants import (
 )
 from utils.core.data import load_strategy_list, load_cleaned_data
 from utils.core.models import StrategySummary
-from utils.styles.branding import get_strategy_color
+from utils.styles.branding import get_subtype_color
 from utils.core.session_state import get_or_init, initialize_session_state, reset_if_changed
 from utils.core.performance import track_step, track_process, get_performance_tracker
 
@@ -100,7 +100,7 @@ if strategy_name:
         strategy_row: pl.DataFrame = filtered_strategies.filter(pl.col("Strategy") == strategy_name)
         if strategy_row.height > 0:
             strategy_data = StrategySummary.from_row(strategy_row.row(0, named=True))
-            strategy_color: str = get_strategy_color(strategy_data.strategy_type)
+            strategy_color: str = get_subtype_color(strategy_data.type)
             render_strategy_modal(strategy_name, strategy_data, strategy_color, cleaned_data)
     del st.session_state[SELECTED_STRATEGY_MODAL_KEY]
 

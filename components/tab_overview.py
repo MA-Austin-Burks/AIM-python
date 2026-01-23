@@ -11,7 +11,7 @@ from utils.styles.branding import (
     hex_to_rgba,
     get_allocation_table_main_css,
     format_currency_compact,
-    get_strategy_color,
+    get_subtype_color,
 )
 from utils.core.session_state import get_or_init
 import hashlib
@@ -503,8 +503,8 @@ def _get_equity_matrix_data(
     # ============================================================================
     strategy_data: StrategyDetail | None = get_strategy_by_name(cleaned_data, strategy_name, cache_version=3)
     strategy_model: str = strategy_data.model
-    strategy_type: str = strategy_data.strategy_type
-    strategy_color: str = get_strategy_color(strategy_type)
+    type_val: str = strategy_data.type
+    strategy_color: str = get_subtype_color(type_val)
     
     all_model_data: pl.DataFrame = _get_model_data(cleaned_data, strategy_model)
     
@@ -1465,23 +1465,23 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     
     # If this is an Asset-Class or Special Situation strategy, render a simplified table
     preprocessed_model_data = _preprocess_product_data(all_model_data) if all_model_data.height > 0 else all_model_data
-    strategy_type_label = None
+    type_label = None
     if strategy_data:
-        strategy_type_label = strategy_data.strategy_category or strategy_data.strategy_type
-    normalized_type = str(strategy_type_label or "").strip().lower()
+        type_label = strategy_data.category or strategy_data.type
+    normalized_type = str(type_label or "").strip().lower()
     is_asset_class = "asset" in normalized_type and "class" in normalized_type
     is_special_situation = "special" in normalized_type and "situation" in normalized_type
     
     # Fallback: if subtype matches Asset-Class subtype names, treat as Asset-Class
     subtype_label = None
     if strategy_data:
-        subtype_label = strategy_data.strategy_type
+        subtype_label = strategy_data.type
     if not (is_asset_class or is_special_situation) and subtype_label in TYPE_TO_SUBTYPE.get("Asset-Class", []):
         is_asset_class = True
     
     if is_asset_class or is_special_situation:
         st.markdown("#### Asset Allocation")
-        strategy_color: str = get_strategy_color(subtype_label) if subtype_label else PRIMARY["raspberry"]
+        strategy_color: str = get_subtype_color(subtype_label) if subtype_label else PRIMARY["raspberry"]
         _render_asset_class_table(
             strategy_name,
             preprocessed_model_data,

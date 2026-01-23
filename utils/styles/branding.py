@@ -205,16 +205,16 @@ def format_currency_compact(value: float) -> str:
 
 def generate_badges(strategy_data: "StrategySummary | dict[str, Any]") -> list[str]:
     """Generate badge strings for a strategy based on its data."""
-    if hasattr(strategy_data, "strategy_type"):
+    if hasattr(strategy_data, "type"):
         recommended = getattr(strategy_data, "recommended", False)
-        strategy_category = getattr(strategy_data, "strategy_category", None)
-        strategy_type = getattr(strategy_data, "strategy_type", None)
+        category = getattr(strategy_data, "category", None)
+        type_val = getattr(strategy_data, "type", None)
         tax_managed = getattr(strategy_data, "tax_managed", False)
         private_markets = getattr(strategy_data, "private_markets", False)
     else:
         recommended = strategy_data.get("Recommended")
-        strategy_category = strategy_data.get("Strategy Type")
-        strategy_type = strategy_data.get("Type")
+        category = strategy_data.get("Strategy Type")  # Database column name still "Strategy Type"
+        type_val = strategy_data.get("Type")
         tax_managed = strategy_data.get("Tax-Managed")
         private_markets = strategy_data.get("Private Markets")
 
@@ -223,11 +223,11 @@ def generate_badges(strategy_data: "StrategySummary | dict[str, Any]") -> list[s
     if recommended:
         badges.append(":primary-badge[Recommend]")
 
-    if strategy_category:
-        badges.append(f":orange-badge[{strategy_category}]")
+    if category:
+        badges.append(f":orange-badge[{category}]")
 
-    if strategy_type:
-        badges.append(f":blue-badge[{strategy_type}]")
+    if type_val:
+        badges.append(f":blue-badge[{type_val}]")
 
     if tax_managed:
         badges.append(":green-badge[Tax-Managed]")
@@ -238,31 +238,31 @@ def generate_badges(strategy_data: "StrategySummary | dict[str, Any]") -> list[s
     return badges
 
 
-def get_strategy_color(strategy_type: str) -> str:
-    """Get the color for a strategy based on its type/subtype."""
-    return SUBTYPE_COLORS.get(strategy_type, PRIMARY["raspberry"])
+def get_subtype_color(subtype: str) -> str:
+    """Get the color for a strategy based on its subtype."""
+    return SUBTYPE_COLORS.get(subtype, PRIMARY["raspberry"])
 
 
-def get_series_color_from_row(strategy_row: "StrategySummary | dict[str, Any]") -> str:
-    """Get the color for a strategy based on its Series/Type from a row dict."""
-    if hasattr(strategy_row, "strategy_type"):
-        subtype_name = getattr(strategy_row, "series_primary", None)
+def get_subtype_color_from_row(strategy_row: "StrategySummary | dict[str, Any]") -> str:
+    """Get the color for a strategy based on its Subtype/Type from a row dict."""
+    if hasattr(strategy_row, "subtype"):
+        subtype_name = getattr(strategy_row, "subtype_primary", None)
         if subtype_name:
             return SUBTYPE_COLORS.get(subtype_name, PRIMARY["light_gray"])
-        strategy_type = getattr(strategy_row, "strategy_type", None)
-        if strategy_type:
-            return SUBTYPE_COLORS.get(strategy_type, PRIMARY["light_gray"])
+        type_val = getattr(strategy_row, "type", None)
+        if type_val:
+            return SUBTYPE_COLORS.get(type_val, PRIMARY["light_gray"])
         return PRIMARY["light_gray"]
 
-    series_list = strategy_row.get("Series", [])
-    if series_list and len(series_list) > 0:
-        subtype_name = series_list[0] if isinstance(series_list, list) else series_list
+    subtype_list = strategy_row.get("Series", [])  # Database column name still "Series"
+    if subtype_list and len(subtype_list) > 0:
+        subtype_name = subtype_list[0] if isinstance(subtype_list, list) else subtype_list
         return SUBTYPE_COLORS.get(subtype_name, PRIMARY["light_gray"])
 
     # Fallback to Type field if Series is empty
-    strategy_type = strategy_row.get("Type")
-    if strategy_type:
-        return SUBTYPE_COLORS.get(strategy_type, PRIMARY["light_gray"])
+    type_val = strategy_row.get("Type")
+    if type_val:
+        return SUBTYPE_COLORS.get(type_val, PRIMARY["light_gray"])
 
     return PRIMARY["light_gray"]
 

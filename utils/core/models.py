@@ -13,8 +13,8 @@ def _normalize_bool(value: Any) -> bool:
     return bool(value)
 
 
-def _normalize_series(value: Any) -> list[str]:
-    """Normalize Series field into a list of strings."""
+def _normalize_subtype(value: Any) -> list[str]:
+    """Normalize Subtype field into a list of strings."""
     if value is None:
         return []
     if isinstance(value, list):
@@ -42,9 +42,9 @@ class StrategySummary:
     yield_decimal: float | None
     expense_ratio_decimal: float
     minimum: float
-    series: list[str]
-    strategy_type: str
-    strategy_category: str | None
+    subtype: list[str]
+    type: str
+    category: str | None
     tax_managed: bool
     private_markets: bool
 
@@ -58,9 +58,9 @@ class StrategySummary:
             yield_decimal=_get_row_value(row, "Yield", default=None),
             expense_ratio_decimal=float(_get_row_value(row, "Expense Ratio", default=0) or 0),
             minimum=float(_get_row_value(row, "Minimum", default=0) or 0),
-            series=_normalize_series(_get_row_value(row, "Series", default=[])),
-            strategy_type=str(_get_row_value(row, "Type", default="")),
-            strategy_category=_get_row_value(row, "Strategy Type", default=None),
+            subtype=_normalize_subtype(_get_row_value(row, "Series", default=[])),
+            type=str(_get_row_value(row, "Type", default="")),
+            category=_get_row_value(row, "Strategy Type", default=None),
             tax_managed=_normalize_bool(_get_row_value(row, "Tax-Managed", default=False)),
             private_markets=_normalize_bool(_get_row_value(row, "Private Markets", default=False)),
         )
@@ -76,9 +76,9 @@ class StrategySummary:
         return self.expense_ratio_decimal * 100
 
     @property
-    def series_primary(self) -> str | None:
-        """First series name if available."""
-        return self.series[0] if self.series else None
+    def subtype_primary(self) -> str | None:
+        """First subtype name if available."""
+        return self.subtype[0] if self.subtype else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,8 +87,8 @@ class StrategyDetail:
 
     strategy: str
     model: str
-    strategy_type: str
-    strategy_category: str | None
+    type: str
+    category: str | None
     portfolio: float | None
     expense_ratio: float | None
     yield_val: float | None
@@ -100,8 +100,8 @@ class StrategyDetail:
         return cls(
             strategy=str(_get_row_value(row, "strategy", "Strategy", default="")),
             model=str(_get_row_value(row, "model", "Model", default="")),
-            strategy_type=str(_get_row_value(row, "type", "Type", default="")),
-            strategy_category=_get_row_value(row, "strategy_type", "Strategy Type", default=None),
+            type=str(_get_row_value(row, "type", "Type", default="")),
+            category=_get_row_value(row, "strategy_type", "Strategy Type", default=None),
             portfolio=_get_row_value(row, "portfolio", "Portfolio", default=None),
             expense_ratio=_get_row_value(row, "expense_ratio", "Expense Ratio", default=None),
             yield_val=_get_row_value(row, "yield", "Yield", default=None),
