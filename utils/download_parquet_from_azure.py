@@ -3,11 +3,10 @@
 import logging
 import time
 from io import BytesIO
+from urllib.parse import urlparse
 
 import requests  # type: ignore[import-untyped]
 import urllib3  # type: ignore[import-untyped]
-
-from utils.security import sanitize_url_for_logging
 
 # Disable SSL warnings when verify=False
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -26,7 +25,14 @@ def download_parquet_from_azure(parquet_url: str) -> tuple[BytesIO, float]:
         tuple: (BytesIO buffer, download_time_in_seconds)
     """
     # Log sanitized URL (without query parameters/tokens) for security
-    safe_url = sanitize_url_for_logging(parquet_url)
+    try:
+        parsed = urlparse(parquet_url)
+        # Only show scheme, netloc, and path - exclude query and fragment
+        safe_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+        if len(safe_url) > 50:
+            safe_url = safe_url[:50] + "..."
+    except Exception:
+        safe_url = "[URL parsing failed]"
     logger.info(f"Downloading parquet file from Azure: {safe_url}")
     
     start_time = time.time()

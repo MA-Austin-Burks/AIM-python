@@ -6,7 +6,6 @@ import streamlit as st
 
 from utils.styles.branding import SUBTYPE_COLORS
 from utils.core.models import StrategySummary
-from utils.core.performance import track_performance
 
 
 def _hash_filter_expression(filter_expr: pl.Expr) -> str:
@@ -16,7 +15,6 @@ def _hash_filter_expression(filter_expr: pl.Expr) -> str:
     return hashlib.md5(filter_str.encode()).hexdigest()
 
 
-@track_performance
 @st.cache_data
 def filter_and_sort_strategies(strats: pl.DataFrame, _filter_expr: pl.Expr, filter_hash: str) -> pl.DataFrame:
     """Filter and sort the strategy table DataFrame.

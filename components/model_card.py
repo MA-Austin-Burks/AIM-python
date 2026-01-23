@@ -1,6 +1,6 @@
 import streamlit as st
 
-from utils.core.constants import CARD_FIXED_WIDTH
+CARD_FIXED_WIDTH = "375px"  # Fixed width for each card
 
 # ======================
 # INLINE CSS (scoped)

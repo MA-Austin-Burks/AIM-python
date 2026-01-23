@@ -16,14 +16,16 @@ from utils.styles.branding import (
 from utils.core.session_state import get_or_init
 import hashlib
 
-from utils.core.constants import (
-    ALLOCATION_COLLAPSE_SMA_KEY,
-    DEFAULT_COLLAPSE_SMA,
-    SMA_COLLAPSE_THRESHOLD,
-)
 from components.filters import TYPE_TO_SUBTYPE
 from utils.core.data import get_model_agg_sort_order, get_strategy_by_name, hash_lazyframe
 from utils.core.models import StrategyDetail
+
+# Session state keys
+ALLOCATION_COLLAPSE_SMA_KEY = "allocation_collapse_sma"
+
+# Allocation tab constants
+DEFAULT_COLLAPSE_SMA = True
+SMA_COLLAPSE_THRESHOLD = 10
 
 
 class RowType(str, Enum):

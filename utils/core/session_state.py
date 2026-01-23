@@ -4,9 +4,28 @@ from typing import TypeVar, Callable, Any
 
 import streamlit as st
 
-from utils.security import validate_session_state_value
-
 T = TypeVar("T")
+
+
+def validate_session_state_value(
+    key: str, 
+    value: Any, 
+    expected_type: type | tuple[type, ...],
+    validator: Callable[[Any], bool] | None = None
+) -> bool:
+    """Validate a session state value."""
+    # Check type
+    if not isinstance(value, expected_type):
+        return False
+    
+    # Run custom validator if provided
+    if validator is not None:
+        try:
+            return validator(value)
+        except Exception:
+            return False
+    
+    return True
 
 
 # =============================================================================

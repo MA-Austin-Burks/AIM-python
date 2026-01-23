@@ -4,7 +4,8 @@ import polars as pl
 import streamlit as st
 
 from components import render_footer
-from utils.core.constants import TLH_UPDATE_DATE
+
+TLH_UPDATE_DATE = "2026-01-17"
 
 st.set_page_config(page_title="Tax-Loss Harvesting", layout="wide")
 

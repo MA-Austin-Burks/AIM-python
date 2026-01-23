@@ -4,7 +4,8 @@ import polars as pl
 import streamlit as st
 
 from components import render_footer
-from utils.core.constants import EQUIVALENTS_UPDATE_DATE
+
+EQUIVALENTS_UPDATE_DATE = "2026-01-17"
 
 st.set_page_config(page_title="Equivalents", layout="wide")
 

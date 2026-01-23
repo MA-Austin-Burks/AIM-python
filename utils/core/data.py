@@ -7,7 +7,6 @@ import polars as pl
 import streamlit as st
 
 from utils.core.models import StrategyDetail
-from utils.core.performance import track_performance
 
 from utils.download_parquet_from_azure import download_parquet_from_azure
 
@@ -23,7 +22,6 @@ def _is_local_mode() -> bool:
     return os.getenv("USE_LOCAL_DATA", "").lower() in ("true", "1", "yes")
 
 
-@track_performance
 @st.cache_data(ttl=3600)
 def _load_model_agg_sort_order() -> dict[str, int]:
     """Load model aggregate sort order from CSV (cached for 1 hour).
@@ -51,7 +49,6 @@ def hash_lazyframe(lf: pl.LazyFrame) -> str:
     return str(sorted(lf.collect_schema().items()))
 
 
-@track_performance
 @st.cache_data(ttl=3600)
 def get_model_agg_sort_order(model_agg: str | None) -> int:
     """Get sort order for model aggregate based on name patterns.
@@ -150,7 +147,6 @@ def _get_cleaned_data_url() -> str:
     )
 
 
-@track_performance
 @st.cache_resource
 def load_cleaned_data(parquet_url: str | None = None) -> pl.LazyFrame:
     """Load the full cleaned-data file as a Parquet LazyFrame from Azure Blob Storage or local file.
@@ -293,7 +289,6 @@ def _get_strategy_list_url() -> str | None:
     return None
 
 
-@track_performance
 @st.cache_data(ttl=3600)
 def load_strategy_list(parquet_url: str | None = None) -> pl.DataFrame:
     """Load the pre-generated strategy_list.parquet file from Azure Blob Storage or local file.
@@ -384,7 +379,6 @@ def load_strategy_list(parquet_url: str | None = None) -> pl.DataFrame:
                 pass
 
 
-@track_performance
 @st.cache_data(ttl=3600, hash_funcs={pl.LazyFrame: hash_lazyframe})
 def get_strategy_by_name(
     cleaned_data: pl.LazyFrame,

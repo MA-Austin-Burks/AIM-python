@@ -2,19 +2,20 @@ from typing import Optional
 
 import polars as pl
 import streamlit as st
-from components.model_card import model_card
+from components.model_card import CARD_FIXED_WIDTH, model_card
 
-from utils.core.constants import (
-    CARD_FIXED_WIDTH,
-    CARD_ORDER_KEY,
-    CARDS_DISPLAYED_KEY,
-    CARDS_PER_LOAD,
-    DEFAULT_CARD_ORDER,
-    SELECTED_STRATEGY_MODAL_KEY,
-)
 from utils.core.models import StrategySummary
 from utils.styles.branding import get_subtype_color_from_row
 from utils.core.session_state import get_or_init
+
+# Session state keys
+SELECTED_STRATEGY_MODAL_KEY = "selected_strategy_for_modal"
+CARD_ORDER_KEY = "card_order_by"
+CARDS_DISPLAYED_KEY = "cards_displayed"
+
+# Card view constants
+DEFAULT_CARD_ORDER = "Recommended (Default)"
+CARDS_PER_LOAD = 20
 
 
 @st.cache_data(ttl=3600)

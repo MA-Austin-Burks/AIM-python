@@ -3,7 +3,8 @@
 import streamlit as st
 
 from components import render_footer
-from utils.core.constants import EXPLANATION_CARD_UPDATE_DATE
+
+EXPLANATION_CARD_UPDATE_DATE = "2026-01-17"
 
 st.set_page_config(page_title="About the Platform", layout="wide")
 

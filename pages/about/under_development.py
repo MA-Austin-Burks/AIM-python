@@ -3,7 +3,8 @@
 import streamlit as st
 
 from components import render_footer
-from utils.core.constants import UNDER_DEVELOPMENT_UPDATE_DATE
+
+UNDER_DEVELOPMENT_UPDATE_DATE = "2026-01-17"
 
 st.set_page_config(page_title="Under Development", layout="wide")
 
