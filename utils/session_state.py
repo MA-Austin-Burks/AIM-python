@@ -23,7 +23,7 @@ def _validate_filter_yes_no(value: Any) -> bool:
 
 def _validate_type(value: Any) -> bool:
     """Validate filter_type value."""
-    return value in ("Risk-Based", "Asset Class")
+    return value in ("Risk-Based", "Asset Class", "Special Situation")
 
 
 def _validate_filter_subtype(value: Any) -> bool:

@@ -27,7 +27,6 @@ TYPE_TO_SUBTYPE: dict[str, list[str]] = {
         "Fixed Income Strategies",
         "Cash Strategies",
         "Alternative Strategies",
-        "Special Situation Strategies",
     ],
 }
 
@@ -153,7 +152,7 @@ def render_filters() -> None:
         with type:
             st.segmented_control(
                 ":material/stat_minus_1: Type",
-                options=["Risk-Based", "Asset Class"],
+                options=["Risk-Based", "Asset Class", "Special Situation"],
                 selection_mode="multi",
                 key="filter_type",
             )
@@ -280,7 +279,11 @@ def build_filter_expression() -> pl.Expr:
     # Type (multi-select) - Empty list means show all (none selected)
     type_value: list[str] = st.session_state.get("filter_type", [])
     if type_value:
-        expressions.append(pl.col(CATEGORY).is_in(type_value)) # TODO: check when database is updated
+        # Case-insensitive comparison to handle any capitalization differences
+        type_value_lower = [v.lower() for v in type_value]
+        expressions.append(
+            pl.col(CATEGORY).str.to_lowercase().is_in(type_value_lower)
+        )
     
     # Subtype - Empty list means show all (none selected)   
     subtype_value: list[str] = st.session_state.get("filter_subtype", [])
