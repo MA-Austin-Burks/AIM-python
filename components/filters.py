@@ -146,7 +146,7 @@ def render_filters_inline(search_active: bool) -> None:
         with col_ic:
             # IC Status: Recommended / Approved
             st.segmented_control(
-                "IC Status",
+                label=":material/star: IC Status",
                 options=["Recommended", "Recommended & Approved"],
                 selection_mode="single",
                 key="filter_recommended_only",
@@ -154,22 +154,22 @@ def render_filters_inline(search_active: bool) -> None:
         
         with col_tax:
             _render_yes_no_filter(
-                label="Tax-Managed (TM)", key="filter_tax_managed", disabled=False
+                label=":material/savings: Tax-Managed (TM)", key="filter_tax_managed", disabled=False
             )
         
         with col_sma:
             _render_yes_no_filter(
-                label="Has SMA Manager", key="filter_sma_manager", disabled=False
+                label=":material/tune: Has SMA Manager", key="filter_sma_manager", disabled=False
             )
         
         with col_private:
             _render_yes_no_filter(
-                label="Private Markets", key="filter_private_markets", disabled=False
+                label=":material/key: Private Markets", key="filter_private_markets", disabled=False
             )
         
         with col_min:
             st.number_input(
-                "Account Value ($)",
+                ":material/attach_money: Current Account Value",
                 min_value=0,
                 value=None,
                 step=10000,
@@ -191,7 +191,7 @@ def render_filters_inline(search_active: bool) -> None:
             # Note: Don't use default= when key is set - Streamlit automatically syncs with session state
             # The session state is initialized in utils.core.session_state, so the key will handle the value
             st.segmented_control(
-                "Strategy Type",
+                ":material/stat_minus_1: Strategy Type",
                 options=STRATEGY_TYPES,
                 selection_mode="multi",
                 key="filter_strategy_type",
@@ -231,7 +231,7 @@ def render_filters_inline(search_active: bool) -> None:
             # Note: Don't use default= when key is set - Streamlit automatically syncs with session state
             # Empty list in session state means show all (none selected)
             st.segmented_control(
-                "Series",
+                ":material/stat_minus_2: Series",
                 options=type_options,
                 selection_mode="multi",
                 key="filter_series",
