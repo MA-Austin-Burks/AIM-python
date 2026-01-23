@@ -23,13 +23,13 @@ def _validate_filter_yes_no(value: Any) -> bool:
     return value in ("Yes", "No", None)
 
 
-def _validate_strategy_type(value: Any) -> bool:
-    """Validate filter_strategy_type value."""
+def _validate_type(value: Any) -> bool:
+    """Validate filter_type value."""
     return value in ("Risk-Based", "Asset-Class", "Special Situation")
 
 
-def _validate_filter_series(value: Any) -> bool:
-    """Validate filter_series value."""
+def _validate_filter_subtype(value: Any) -> bool:
+    """Validate filter_subtype value."""
     if value is None:
         return True
     if isinstance(value, list):
@@ -130,38 +130,38 @@ def initialize_session_state() -> None:
     ):
         st.session_state["equity_allocation_range"] = (0, 100)
     
-    # Multi-select filters (Strategy Type, Series)
-    if "filter_strategy_type" not in st.session_state:
-        st.session_state["filter_strategy_type"] = []  # Empty list means show all (none selected)
+    # Multi-select filters (Type, Subtype)
+    if "filter_type" not in st.session_state:
+        st.session_state["filter_type"] = []  # Empty list means show all (none selected)
     elif not validate_session_state_value(
-        "filter_strategy_type",
-        st.session_state["filter_strategy_type"],
+        "filter_type",
+        st.session_state["filter_type"],
         (list, str),
-        lambda v: (isinstance(v, list) and all(_validate_strategy_type(t) for t in v)) or _validate_strategy_type(v)
+        lambda v: (isinstance(v, list) and all(_validate_type(t) for t in v)) or _validate_type(v)
     ):
-        st.session_state["filter_strategy_type"] = []
+        st.session_state["filter_type"] = []
     
-    if "filter_series" not in st.session_state:
-        # Empty list means show all series (none selected)
-        st.session_state["filter_series"] = []
+    if "filter_subtype" not in st.session_state:
+        # Empty list means show all subtypes (none selected)
+        st.session_state["filter_subtype"] = []
     elif not validate_session_state_value(
-        "filter_series",
-        st.session_state["filter_series"],
+        "filter_subtype",
+        st.session_state["filter_subtype"],
         (list, str, type(None)),
-        _validate_filter_series
+        _validate_filter_subtype
     ):
-        st.session_state["filter_series"] = []
+        st.session_state["filter_subtype"] = []
     
-    if "_previous_strategy_type" not in st.session_state:
-        st.session_state["_previous_strategy_type"] = []  # Empty list for no selection
+    if "_previous_type" not in st.session_state:
+        st.session_state["_previous_type"] = []  # Empty list for no selection
     elif not validate_session_state_value(
-        "_previous_strategy_type",
-        st.session_state["_previous_strategy_type"],
+        "_previous_type",
+        st.session_state["_previous_type"],
         (list, str),
-        lambda v: (isinstance(v, list) and all(_validate_strategy_type(t) for t in v)) or _validate_strategy_type(v)
+        lambda v: (isinstance(v, list) and all(_validate_type(t) for t in v)) or _validate_type(v)
     ):
         # Reset to default empty list if validation fails (consistent with initial default)
-        st.session_state["_previous_strategy_type"] = []
+        st.session_state["_previous_type"] = []
     
     # =========================================================================
     # SEARCH STATE

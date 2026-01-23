@@ -142,7 +142,7 @@ CHART_COLORS_SEQUENTIAL_AZURE = [
 # =============================================================================
 # SERIES/CATEGORY COLORS (for dataframe tags and filters)
 # =============================================================================
-SERIES_COLORS = {
+SUBTYPE_COLORS = {
     "Multifactor Series": PRIMARY["raspberry"],
     "Market Series": SECONDARY["iris"],
     "Income Series": PRIMARY["charcoal"],
@@ -239,30 +239,30 @@ def generate_badges(strategy_data: "StrategySummary | dict[str, Any]") -> list[s
 
 
 def get_strategy_color(strategy_type: str) -> str:
-    """Get the color for a strategy based on its type/series."""
-    return SERIES_COLORS.get(strategy_type, PRIMARY["raspberry"])
+    """Get the color for a strategy based on its type/subtype."""
+    return SUBTYPE_COLORS.get(strategy_type, PRIMARY["raspberry"])
 
 
 def get_series_color_from_row(strategy_row: "StrategySummary | dict[str, Any]") -> str:
     """Get the color for a strategy based on its Series/Type from a row dict."""
     if hasattr(strategy_row, "strategy_type"):
-        series_name = getattr(strategy_row, "series_primary", None)
-        if series_name:
-            return SERIES_COLORS.get(series_name, PRIMARY["light_gray"])
+        subtype_name = getattr(strategy_row, "series_primary", None)
+        if subtype_name:
+            return SUBTYPE_COLORS.get(subtype_name, PRIMARY["light_gray"])
         strategy_type = getattr(strategy_row, "strategy_type", None)
         if strategy_type:
-            return SERIES_COLORS.get(strategy_type, PRIMARY["light_gray"])
+            return SUBTYPE_COLORS.get(strategy_type, PRIMARY["light_gray"])
         return PRIMARY["light_gray"]
 
     series_list = strategy_row.get("Series", [])
     if series_list and len(series_list) > 0:
-        series_name = series_list[0] if isinstance(series_list, list) else series_list
-        return SERIES_COLORS.get(series_name, PRIMARY["light_gray"])
+        subtype_name = series_list[0] if isinstance(series_list, list) else series_list
+        return SUBTYPE_COLORS.get(subtype_name, PRIMARY["light_gray"])
 
     # Fallback to Type field if Series is empty
     strategy_type = strategy_row.get("Type")
     if strategy_type:
-        return SERIES_COLORS.get(strategy_type, PRIMARY["light_gray"])
+        return SUBTYPE_COLORS.get(strategy_type, PRIMARY["light_gray"])
 
     return PRIMARY["light_gray"]
 

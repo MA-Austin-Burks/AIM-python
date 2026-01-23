@@ -20,7 +20,7 @@ from utils.core.constants import (
     ALLOCATION_COLLAPSE_SMA_KEY,
     DEFAULT_COLLAPSE_SMA,
     SMA_COLLAPSE_THRESHOLD,
-    STRATEGY_TYPE_TO_SERIES,
+    TYPE_TO_SUBTYPE,
 )
 from utils.core.data import get_model_agg_sort_order, get_strategy_by_name, hash_lazyframe
 from utils.core.models import StrategyDetail
@@ -1472,16 +1472,16 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     is_asset_class = "asset" in normalized_type and "class" in normalized_type
     is_special_situation = "special" in normalized_type and "situation" in normalized_type
     
-    # Fallback: if series matches Asset-Class series names, treat as Asset-Class
-    series_label = None
+    # Fallback: if subtype matches Asset-Class subtype names, treat as Asset-Class
+    subtype_label = None
     if strategy_data:
-        series_label = strategy_data.strategy_type
-    if not (is_asset_class or is_special_situation) and series_label in STRATEGY_TYPE_TO_SERIES.get("Asset-Class", []):
+        subtype_label = strategy_data.strategy_type
+    if not (is_asset_class or is_special_situation) and subtype_label in TYPE_TO_SUBTYPE.get("Asset-Class", []):
         is_asset_class = True
     
     if is_asset_class or is_special_situation:
         st.markdown("#### Asset Allocation")
-        strategy_color: str = get_strategy_color(series_label) if series_label else PRIMARY["raspberry"]
+        strategy_color: str = get_strategy_color(subtype_label) if subtype_label else PRIMARY["raspberry"]
         _render_asset_class_table(
             strategy_name,
             preprocessed_model_data,

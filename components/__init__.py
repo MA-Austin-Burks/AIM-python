@@ -10,7 +10,7 @@ from utils.styles.branding import (
     FONTS,
     PRIMARY,
     SECONDARY,
-    SERIES_COLORS,
+    SUBTYPE_COLORS,
     SPECIAL,
     STREAMLIT_CUSTOM_CSS,
     TERTIARY,
@@ -33,7 +33,7 @@ __all__ = [
     "CHART_COLORS_SEQUENTIAL_RASPBERRY",
     "CHART_COLORS_SEQUENTIAL_IRIS",
     "CHART_COLORS_SEQUENTIAL_AZURE",
-    "SERIES_COLORS",
+    "SUBTYPE_COLORS",
     "FONTS",
     "STREAMLIT_CUSTOM_CSS",
     # Components

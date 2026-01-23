@@ -2,14 +2,14 @@ import polars as pl
 import streamlit as st
 
 from utils.core.constants import (
-    STRATEGY_TYPE_TO_SERIES,
-    STRATEGY_TYPES,
+    TYPE_TO_SUBTYPE,
+    TYPES,
 )
 from utils.security import MAX_SEARCH_INPUT_LENGTH, validate_search_input
 
-# Series options derived from strategy type mapping
-SERIES_OPTIONS: list[str] = [
-    series for series_list in STRATEGY_TYPE_TO_SERIES.values() for series in series_list
+# Subtype options derived from type mapping
+SUBTYPE_OPTIONS: list[str] = [
+    subtype for subtype_list in TYPE_TO_SUBTYPE.values() for subtype in subtype_list
 ]
 
 
@@ -66,9 +66,9 @@ def _reset_filter_state() -> None:
     st.session_state["filter_private_markets"] = None
     st.session_state["min_strategy"] = None
     st.session_state["equity_allocation_range"] = (0, 100)
-    st.session_state["filter_strategy_type"] = []
-    st.session_state["filter_series"] = []
-    st.session_state["_previous_strategy_type"] = []
+    st.session_state["filter_type"] = []
+    st.session_state["filter_subtype"] = []
+    st.session_state["_previous_type"] = []
 
 
 def _clear_search_state() -> None:
@@ -176,65 +176,65 @@ def render_filters_inline(search_active: bool) -> None:
                 key="min_strategy",
             )
         
-        # Row 2: Strategy Type (multi-select), Series, Equity Allocation (only visible when Risk-Based selected)
-        selected_type = st.session_state.get("filter_strategy_type", [])
+        # Row 2: Type (multi-select), Subtype, Equity Allocation (only visible when Risk-Based selected)
+        selected_type = st.session_state.get("filter_type", [])
         if not isinstance(selected_type, list):
             selected_type = [selected_type] if selected_type else []
         
         is_risk_based = "Risk-Based" in selected_type if selected_type else False
         
         # Always use 3 columns for consistent alignment
-        col_type, col_series, col_equity = st.columns([2, 4, 2])
+        col_type, col_subtype, col_equity = st.columns([2, 4, 2])
         
         with col_type:
-            # Strategy Type: multi-select
+            # Type: multi-select
             # Note: Don't use default= when key is set - Streamlit automatically syncs with session state
             # The session state is initialized in utils.core.session_state, so the key will handle the value
             st.segmented_control(
-                ":material/stat_minus_1: Strategy Type",
-                options=STRATEGY_TYPES,
+                ":material/stat_minus_1: Type",
+                options=TYPES,
                 selection_mode="multi",
-                key="filter_strategy_type",
+                key="filter_type",
             )
         
-        with col_series:
+        with col_subtype:
             # Session state is initialized, so we can access directly
-            selected_type = st.session_state.get("filter_strategy_type", [])
+            selected_type = st.session_state.get("filter_type", [])
             if not isinstance(selected_type, list):
                 selected_type = [selected_type] if selected_type else []
             
-            previous_type_key = "_previous_strategy_type"
+            previous_type_key = "_previous_type"
             previous_type = st.session_state.get(previous_type_key, [])
             if not isinstance(previous_type, list):
                 previous_type = [previous_type] if previous_type else []
             
-            # Get all series options for selected strategy types
-            # If no strategy types selected, show all series options
+            # Get all subtype options for selected types
+            # If no types selected, show all subtype options
             type_options: list[str] = []
             if selected_type:
                 for st_type in selected_type:
-                    if st_type in STRATEGY_TYPE_TO_SERIES:
-                        type_options.extend(STRATEGY_TYPE_TO_SERIES[st_type])
+                    if st_type in TYPE_TO_SUBTYPE:
+                        type_options.extend(TYPE_TO_SUBTYPE[st_type])
                 # Remove duplicates while preserving order
                 type_options = list(dict.fromkeys(type_options))
             else:
-                # No strategy types selected - show all series options
-                type_options = SERIES_OPTIONS
+                # No types selected - show all subtype options
+                type_options = SUBTYPE_OPTIONS
 
-            # Handle strategy type changes by clearing series selections
+            # Handle type changes by clearing subtype selections
             if set(selected_type) != set(previous_type):
-                # When strategy types change, reset series to empty (show all)
-                st.session_state["filter_series"] = []
+                # When types change, reset subtypes to empty (show all)
+                st.session_state["filter_subtype"] = []
                 st.session_state[previous_type_key] = selected_type
             
-            # Use segmented control for multi-select Series
+            # Use segmented control for multi-select Subtype
             # Note: Don't use default= when key is set - Streamlit automatically syncs with session state
             # Empty list in session state means show all (none selected)
             st.segmented_control(
-                ":material/stat_minus_2: Series",
+                ":material/stat_minus_2: Subtype",
                 options=type_options,
                 selection_mode="multi",
-                key="filter_series",
+                key="filter_subtype",
             )
         
         # Equity Allocation range slider (only visible when Risk-Based is selected)
@@ -362,12 +362,12 @@ def _build_private_markets_filter(selection: str | None) -> pl.Expr | None:
     return None
 
 
-def _build_strategy_type_filter(selected_types: list[str] | str | None) -> pl.Expr | None:
-    """Build strategy type filter expression.
+def _build_type_filter(selected_types: list[str] | str | None) -> pl.Expr | None:
+    """Build type filter expression.
     
     Args:
-        selected_types: List of strategy types, single strategy type, or None
-        
+        selected_types: List of types, single type, or None
+    
     Returns:
         Polars expression or None if no filter needed
     """
@@ -380,12 +380,12 @@ def _build_strategy_type_filter(selected_types: list[str] | str | None) -> pl.Ex
     return pl.col("Strategy Type").is_in(selected_types)
 
 
-def _build_series_filter(selected_subtypes: list[str] | str | None) -> pl.Expr | None:
-    """Build series filter expression.
+def _build_subtype_filter(selected_subtypes: list[str] | str | None) -> pl.Expr | None:
+    """Build subtype filter expression.
     
     Args:
-        selected_subtypes: List of series, single series, or None
-        
+        selected_subtypes: List of subtypes, single subtype, or None
+    
     Returns:
         Polars expression or None if no filter needed
     """
@@ -449,7 +449,7 @@ def render_filters(search_active: bool) -> pl.Expr:
         expressions.append(account_value_expr)
     
     # Equity Allocation (only if Risk-Based is selected and equity_range is set)
-    selected_type = st.session_state.get("filter_strategy_type", [])
+    selected_type = st.session_state.get("filter_type", [])
     if not isinstance(selected_type, list):
         selected_type = [selected_type] if selected_type else []
     is_risk_based = "Risk-Based" in selected_type if selected_type else False
@@ -480,25 +480,25 @@ def render_filters(search_active: bool) -> pl.Expr:
     if private_markets_expr is not None:
         expressions.append(private_markets_expr)
     
-    # Strategy Type (multi-select)
+    # Type (multi-select)
     # Empty list means show all (none selected)
-    strategy_type_value = st.session_state.get("filter_strategy_type", [])
-    if not isinstance(strategy_type_value, list):
-        strategy_type_value = [strategy_type_value] if strategy_type_value else []
+    type_value = st.session_state.get("filter_type", [])
+    if not isinstance(type_value, list):
+        type_value = [type_value] if type_value else []
     # Only apply filter if list is not empty
-    if strategy_type_value:
-        strategy_type_expr = _build_strategy_type_filter(strategy_type_value)
-        if strategy_type_expr is not None:
-            expressions.append(strategy_type_expr)
+    if type_value:
+        type_expr = _build_type_filter(type_value)
+        if type_expr is not None:
+            expressions.append(type_expr)
     
-    # Series
+    # Subtype
     # Empty list means show all (none selected)
-    series_value = st.session_state.get("filter_series", [])
+    subtype_value = st.session_state.get("filter_subtype", [])
     # Only apply filter if list is not empty
-    if series_value:
-        series_expr = _build_series_filter(series_value)
-        if series_expr is not None:
-            expressions.append(series_expr)
+    if subtype_value:
+        subtype_expr = _build_subtype_filter(subtype_value)
+        if subtype_expr is not None:
+            expressions.append(subtype_expr)
     
     # Combine all filter expressions with AND logic
     return _combine_filter_expressions(expressions)

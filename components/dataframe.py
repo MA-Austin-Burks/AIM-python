@@ -4,7 +4,7 @@ import hashlib
 import polars as pl
 import streamlit as st
 
-from utils.styles.branding import SERIES_COLORS
+from utils.styles.branding import SUBTYPE_COLORS
 from utils.core.models import StrategySummary
 from utils.core.performance import track_performance
 
@@ -76,9 +76,9 @@ def render_dataframe_section(filtered_strategies: pl.DataFrame) -> tuple[Optiona
                 "Equity %", format="%d/100", width="medium"
             ),
             "Series": st.column_config.MultiselectColumn(
-                "Series",
-                options=list(SERIES_COLORS.keys()),
-                color=list(SERIES_COLORS.values()),
+                "Subtype",
+                options=list(SUBTYPE_COLORS.keys()),
+                color=list(SUBTYPE_COLORS.values()),
                 width="content",
             ),
             "Tax-Managed": st.column_config.CheckboxColumn(
