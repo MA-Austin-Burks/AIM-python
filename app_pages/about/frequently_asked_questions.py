@@ -43,8 +43,9 @@ with st.container(border=True, gap="small"):
     # Render each Q&A as an expander
     for idx, qa in enumerate(DEMO_QUESTIONS):
         with st.expander(
-            f":material/help_outline: **{qa['question']}**",
+            f"**{qa['question']}**",
             expanded=False,
+            icon=":material/help_outline:",
         ):
             st.markdown(qa["answer"])
 
