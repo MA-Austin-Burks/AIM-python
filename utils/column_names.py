@@ -44,6 +44,7 @@ RECOMMENDED = "ic_recommend"  # Updated: was "recommended"
 TAX_MANAGED = "has_tm"  # Updated: was "tax_managed"
 PRIVATE_MARKETS = "has_private_market"  # Updated: was "private_markets"
 HAS_SMA_MANAGER = "has_sma"  # Updated: was "has_sma_manager"
+HAS_VBI = "has_vbi"  # Values-Based Investing
 SERIES = "series"  # Updated: was "series" - list of ss_subtype values (aggregated)
 
 # Derived/cleaned columns
@@ -72,6 +73,7 @@ DISPLAY_CATEGORY = "Strategy Type"
 DISPLAY_TAX_MANAGED = "Tax-Managed"
 DISPLAY_PRIVATE_MARKETS = "Private Markets"
 DISPLAY_HAS_SMA_MANAGER = "Has SMA Manager"
+DISPLAY_HAS_VBI = "VBI"
 DISPLAY_SERIES = "Series"
 DISPLAY_WEIGHT = "Weight"
 
@@ -88,6 +90,7 @@ INTERNAL_TO_DISPLAY = {
     TAX_MANAGED: DISPLAY_TAX_MANAGED,
     PRIVATE_MARKETS: DISPLAY_PRIVATE_MARKETS,
     HAS_SMA_MANAGER: DISPLAY_HAS_SMA_MANAGER,
+    HAS_VBI: DISPLAY_HAS_VBI,
     SERIES: DISPLAY_SERIES,
     WEIGHT: DISPLAY_WEIGHT,
 }
@@ -141,5 +144,6 @@ STRATEGY_LIST_COLUMNS = [
     TAX_MANAGED,
     PRIVATE_MARKETS,
     HAS_SMA_MANAGER,
+    HAS_VBI,
     SERIES,
 ]

@@ -7,6 +7,7 @@ from utils.column_names import (
     TAX_MANAGED,
     HAS_SMA_MANAGER,
     PRIVATE_MARKETS,
+    HAS_VBI,
     MINIMUM,
     EQUITY_PCT,
     ALT_PCT,
@@ -46,13 +47,14 @@ def _reset_filter_state() -> None:
     st.session_state["filter_tm"] = None
     st.session_state["filter_sma"] = None
     st.session_state["filter_pm"] = None
-    st.session_state["filter_esg"] = None
+    st.session_state["filter_vbi"] = None
     st.session_state["min_strategy"] = None
-    st.session_state["equity_allocation_range"] = (0, 100)
+    st.session_state["equity_allocation_segmented"] = []
     st.session_state["filter_type"] = []
     st.session_state["filter_subtype"] = []
     st.session_state["_previous_type"] = []
     st.session_state["_previous_subtype"] = []
+    st.session_state["equity_allocation_segmented"] = []
 
 def _reset_all_state() -> None:
     """Reset all filter state."""
@@ -104,7 +106,7 @@ def render_filters() -> None:
         
         # Row 2
         st.space(1)
-        ic, tm, sma, pm, esg = st.columns([6, 3, 3, 3, 3])
+        ic, tm, sma, pm, vbi = st.columns([6, 3, 3, 3, 3])
         
         with ic:
             st.segmented_control(
@@ -138,17 +140,16 @@ def render_filters() -> None:
                 key="filter_pm",
             )
         
-        with esg:
+        with vbi:
             st.segmented_control(
                 label=":material/eco: Values-Based",
                 options=["Yes", "No"],
                 selection_mode="single",
-                key="filter_esg",
-                disabled=True,
+                key="filter_vbi",
             )
         
         # Row 3
-        type, min, empty, equity = st.columns([3, 2, 1, 3])
+        type, min, empty, equity = st.columns([1.5, 1, .15, 3])
         
         with type:
             st.segmented_control(
@@ -157,9 +158,6 @@ def render_filters() -> None:
                 selection_mode="multi",
                 key="filter_type",
             )
-        
-        with empty:
-            st.empty()
         
         with min:
             st.number_input(
@@ -170,16 +168,19 @@ def render_filters() -> None:
                 key="min_strategy",
             )
         
-        # Equity Allocation range slider (only visible when Risk-Based is selected)
+        # empty column for spacing
+        with empty:
+            st.empty()
+
+        # Equity Allocation segmented control (only visible when Risk-Based is selected)
         with equity:
             if "Risk-Based" in st.session_state.get("filter_type", []):
-                st.slider(
+                equity_options = [f"{i}%" for i in range(0, 101, 10)]
+                st.segmented_control(
                     "Equity Allocation (%)",
-                    min_value=0,
-                    max_value=100,
-                    value=(0, 100),
-                    step=10,
-                    key="equity_allocation_range",
+                    options=equity_options,
+                    selection_mode="multi",
+                    key="equity_allocation_segmented",
                 )
             else:
                 st.empty()
@@ -235,19 +236,6 @@ def render_filters() -> None:
             selection_mode="multi",
             key="filter_subtype",
         )
-        
-        # Demo Row: Equity Allocation as Segmented Control
-        st.space(1)
-        
-        # Generate options for 0-100 in increments of 10
-        equity_options = [f"{i}%" for i in range(0, 101, 10)]
-        
-        st.segmented_control(
-            "Equity Allocation (%)",
-            options=equity_options,
-            selection_mode="multi",
-            key="demo_equity_segmented",
-        )
 
 def build_filter_expression() -> pl.Expr:
     """Build filter expression from session state."""
@@ -291,6 +279,12 @@ def build_filter_expression() -> pl.Expr:
         elif private_markets_selection == "No":
             expressions.append(~pl.col(PRIVATE_MARKETS))
 
+    # TODO: update to use boolean filter once database is updated
+    # VBI filter
+    vbi_selection: str | None = st.session_state["filter_vbi"]
+    if vbi_selection:
+        expressions.append(pl.col(HAS_VBI) == (vbi_selection == "Yes"))
+
     # Account Value filter
     min_strategy: int | float | None = st.session_state["min_strategy"]
     if min_strategy is not None:
@@ -299,13 +293,14 @@ def build_filter_expression() -> pl.Expr:
     # Equity Allocation filter (only if Risk-Based is selected)
     # Combines equity allocation + alternative allocation (e.g., 65% equity + 15% alt = 80%)
     if "Risk-Based" in st.session_state.get("filter_type", []):
-        min_eq, max_eq = st.session_state.get("equity_allocation_range", (0, 100))
-        combined_allocation: pl.Expr = (
-            pl.col(EQUITY_PCT).fill_null(0) + pl.col(ALT_PCT).fill_null(0)
-        )
-        expressions.append(
-            combined_allocation.is_between(lower_bound=min_eq, upper_bound=max_eq, closed="both")
-        )
+        equity_selections: list[str] = st.session_state.get("equity_allocation_segmented", [])
+        if equity_selections:
+            # Convert selected percentages (e.g., "0%", "10%", "20%") to numeric values
+            equity_values = [int(val.rstrip("%")) for val in equity_selections]
+            combined_allocation: pl.Expr = (
+                pl.col(EQUITY_PCT).fill_null(0) + pl.col(ALT_PCT).fill_null(0)
+            )
+            expressions.append(combined_allocation.is_in(equity_values))
     
     # Type (multi-select) - Empty list means show all (none selected)
     type_value: list[str] = st.session_state.get("filter_type", [])

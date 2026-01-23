@@ -137,7 +137,18 @@ else:
             with col_response:
                 # Response text area
                 response_key = f"response_{question.get('s3_key', idx)}"
-                current_response = st.session_state.get(response_key, existing_response)
+                reset_flag_key = f"reset_response_{question.get('s3_key', idx)}"
+                
+                # Check if we should reset the form (after successful submit)
+                if st.session_state.get(reset_flag_key, False):
+                    # Clear the reset flag
+                    st.session_state[reset_flag_key] = False
+                    # Remove the widget's session state so it resets (use pop to avoid errors)
+                    st.session_state.pop(response_key, None)
+                    current_response = ""
+                else:
+                    current_response = st.session_state.get(response_key, existing_response)
+                
                 response_text = st.text_area(
                     "Your Response:",
                     value=current_response,
@@ -184,8 +195,9 @@ else:
                                 response=response_text.strip() if response_text.strip() else None
                             ):
                                 st.success("✅ Question updated successfully!")
-                                # Clear response text from session state after successful submit
-                                st.session_state[response_key] = ""
+                                # Set reset flag to clear form on next rerun
+                                reset_flag_key = f"reset_response_{s3_key}"
+                                st.session_state[reset_flag_key] = True
                                 # Cache is already cleared in update_question_fields, just rerun
                                 st.rerun()
                             else:
