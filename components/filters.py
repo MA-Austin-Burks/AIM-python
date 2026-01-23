@@ -52,6 +52,7 @@ def _reset_filter_state() -> None:
     st.session_state["filter_type"] = []
     st.session_state["filter_subtype"] = []
     st.session_state["_previous_type"] = []
+    st.session_state["_previous_subtype"] = []
 
 def _reset_all_state() -> None:
     """Reset all filter state."""
@@ -186,7 +187,9 @@ def render_filters() -> None:
         # Row 4
         selected_type: list[str] = st.session_state.get("filter_type", [])
         previous_type: list[str] = st.session_state.get("_previous_type", [])
-        
+        current_subtype: list[str] = st.session_state.get("filter_subtype", [])
+        previous_subtype: list[str] = st.session_state.get("_previous_subtype", [])
+
 
         if not selected_type:
             # Show all subtypes when no types are selected
@@ -207,8 +210,23 @@ def render_filters() -> None:
             [subtype for subtype in type_options if subtype not in priority_subtypes]
         )
         
+        # When types change, preserve eligible subtypes from previous selection
         if set(selected_type) != set(previous_type):
-            st.session_state["filter_subtype"] = []
+            # Combine current and previous subtypes to check (handles both first change and subsequent changes)
+            # This ensures we preserve subtypes that were selected before type changes
+            all_previous_subtypes = list(set(current_subtype + previous_subtype))
+            
+            # Find which previously selected subtypes are still eligible with new type selection
+            eligible_subtypes = [
+                subtype for subtype in all_previous_subtypes 
+                if subtype in type_options
+            ]
+            
+            # Save current subtype selection before updating (for next type change)
+            st.session_state["_previous_subtype"] = current_subtype.copy()
+            
+            # Restore eligible subtypes, or clear if none are eligible
+            st.session_state["filter_subtype"] = eligible_subtypes
             st.session_state["_previous_type"] = selected_type.copy()
         
         st.segmented_control(

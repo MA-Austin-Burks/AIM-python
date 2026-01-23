@@ -106,6 +106,10 @@ def initialize_session_state() -> None:
         # Reset to default empty list if validation fails (consistent with initial default)
         st.session_state["_previous_type"] = []
     
+    st.session_state.setdefault("_previous_subtype", [])  # Empty list for tracking previous subtype selections
+    if not isinstance(st.session_state["_previous_subtype"], list) or not all(isinstance(item, str) for item in st.session_state["_previous_subtype"]):
+        st.session_state["_previous_subtype"] = []
+    
     # =========================================================================
     # SEARCH STATE
     # =========================================================================
