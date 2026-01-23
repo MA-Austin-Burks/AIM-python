@@ -149,7 +149,7 @@ def render_filters() -> None:
             )
         
         # Row 3
-        type, min, empty, equity = st.columns([1.5, 1, .15, 3])
+        type, min, empty, equity = st.columns([1.75, .8, .15, 3])
         
         with type:
             st.segmented_control(

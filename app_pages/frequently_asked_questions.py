@@ -15,8 +15,8 @@ def _get_faq_questions():
     """Get FAQ questions list (cached for performance)."""
     return [
     {
-        "question": "What is the Aspen Investment Menu?",
-        "answer": "The Aspen Investment Menu is a comprehensive platform that provides detailed information about investment strategies, including performance metrics, expense ratios, minimum investments, and allocation details. It helps investment professionals and clients make informed decisions about strategy selection.",
+        "question": "What is the Aspen Investing Menu?",
+        "answer": "The Aspen Investing Menu is a comprehensive platform that provides detailed information about investment strategies, including performance metrics, expense ratios, minimum investments, and allocation details. It helps investment professionals and clients make informed decisions about strategy selection.",
     },
     {
         "question": "How often is the data updated?",
@@ -24,19 +24,19 @@ def _get_faq_questions():
     },
     {
         "question": "What do the different series types mean?",
-        "answer": "The platform includes several series types: **Market Series** for broad market exposure, **Multifactor Series** for factor-tilted portfolios, and **Income Series** for income-focused strategies. Each series is designed for different investment objectives and risk tolerances. See the 'About the Platform' page for detailed comparisons.",
+        "answer": "The platform includes several series types: Market Series for broad market exposure, Multifactor Series for factor-tilted portfolios, and Income Series for income-focused strategies. Each series is designed for different investment objectives and risk tolerances. See the 'About the Platform' page for detailed comparisons.",
     },
     {
         "question": "How do I filter strategies?",
         "answer": "Use the filters in the sidebar on the Search page to narrow down strategies by type, series, recommended status, and other criteria. You can combine multiple filters to find strategies that match your specific requirements.",
     },
     {
-        "question": "What is the difference between 'Recommended' and 'Recommended & Approved'?",
-        "answer": "**Recommended** strategies are those that have been reviewed and recommended by the Investment Committee for consideration. **Recommended & Approved** strategies are a subset of recommended strategies that have received additional approval for specific use cases or client types. When filtering strategies, you can select either option to see strategies matching that status. Currently, the platform shows all recommended strategies when 'Recommended' is selected, and the 'Recommended & Approved' filter option is available for future implementation.",
+        "question": "What is the difference between an approved strategy and a recommended strategy?",
+        "answer": "Recommended strategies represent the Investment Committee's best thinking. They adhere to Mercer's investment philosophy and asset allocation framework for a given set of investment objectives.\n\nIn some situations, because of a client's specific goals or preferences, our recommended strategies may not be a good fit, and approved strategies may be more appropriate. Approved strategies deviate from our investment philosophy in some way. For example, approved strategies may target a single asset class (Asset Class strategies) or specifically exclude an asset class (US Only strategies) or otherwise stray from our asset allocation framework. Of course, all approved strategies are subject to the same rigorous due diligence and monitoring as recommended strategies.\n\nBy default, Aspen Investing Menu search results will only include recommended strategies. However, any search can be expanded to also include approved strategies.",
     },
     {
-        "question": "What are strategy minimums and how do they work?",
-        "answer": "Strategy minimums refer to the **minimum investment amount** required to invest in a particular strategy. This is displayed as the 'Minimum' value on strategy cards and in search results. When filtering strategies, you can use the 'Current Account Value' filter to show only strategies where your account value meets or exceeds the strategy's minimum investment requirement. This helps ensure you're only viewing strategies that are accessible based on your account size.",
+        "question": "How are sleeve strategy minimums set?",
+        "answer": "Our sleeve strategy minimums provide the minimum investment required to fully invest in a strategy. The calculation of a sleeve strategy minimum considers our minimum trade size, the prices of any market-traded securities targeted in the strategy, and the investment minimums of any targeted SMA strategies. Sleeve strategy minimums also include a small buffer to prevent frequent changes in a strategy's minimum due to market movement.",
     },
     ]
 
@@ -45,12 +45,12 @@ def _get_faq_questions():
 DEMO_QUESTIONS = _get_faq_questions()
 
 
-st.markdown("# :material/help: Frequently Asked Questions")
+st.markdown("# :material/help: Aspen Investing Menu – FAQs")
 st.caption(f"last updated: {FAQ_UPDATE_DATE}")
 
 st.markdown(
     """
-    Find answers to common questions about the Aspen Investment Menu platform. 
+    Find answers to common questions about the Aspen Investing Menu platform. 
     Click on any question below to expand and view the answer.
     """
 )

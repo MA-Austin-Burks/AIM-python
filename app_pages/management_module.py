@@ -5,7 +5,7 @@ from datetime import datetime
 import streamlit as st
 
 from components import render_footer
-from utils.question_submission import fetch_all_questions, update_question_status, update_question_fields, delete_question
+from utils.question_submission import fetch_all_questions, update_question_fields, delete_question
 
 # Status options for questions
 STATUS_OPTIONS = ["unanswered", "in_progress", "answered", "archived"]
@@ -33,13 +33,6 @@ def get_status_badge(status: str) -> str:
 
 st.markdown("# :material/admin_panel_settings: Management Module")
 st.caption("Manage and update question submissions")
-
-st.markdown(
-    """
-    View and manage all submitted questions. Update their status to track progress 
-    from submission through to resolution.
-    """
-)
 
 # Fetch questions from S3 (cached, spinner only shows on cache miss)
 try:
