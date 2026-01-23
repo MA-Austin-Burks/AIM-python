@@ -44,7 +44,7 @@ RECOMMENDED = "ic_recommend"  # Updated: was "recommended"
 TAX_MANAGED = "has_tm"  # Updated: was "tax_managed"
 PRIVATE_MARKETS = "has_private_market"  # Updated: was "private_markets"
 HAS_SMA_MANAGER = "has_sma"  # Updated: was "has_sma_manager"
-HAS_VBI = "has_vbi"  # Values-Based Investing
+HAS_VBI = "has_VBI"  # Values-Based Investing
 SERIES = "series"  # Updated: was "series" - list of ss_subtype values (aggregated)
 
 # Derived/cleaned columns

@@ -226,7 +226,7 @@ def _derive_strategy_list_from_ss_all(ss_all_df: pl.LazyFrame) -> pl.DataFrame:
             pl.col("ic_recommend").first().alias(RECOMMENDED),  # ic_recommend
             pl.col("has_private_market").first().alias(PRIVATE_MARKETS),  # has_private_market
             pl.col("has_sma").first().alias(HAS_SMA_MANAGER),  # has_sma
-            pl.col("has_vbi").first().alias(HAS_VBI),  # has_vbi
+            pl.col("has_VBI").first().alias(HAS_VBI),  # has_VBI
             pl.col(MINIMUM).first().alias(MINIMUM),
             pl.col(YIELD).first().alias(YIELD),
             pl.col("fee").max().alias(EXPENSE_RATIO),  # fee -> expense_ratio
