@@ -19,6 +19,7 @@ pages = {
     ],
     "About": [
         st.Page("app_pages/about/about_platform.py", title="About the Platform", icon=":material/description:", url_path="about"),
+        st.Page("app_pages/about/frequently_asked_questions.py", title="Frequently Asked Questions", icon=":material/help:", url_path="faq"),
         st.Page("app_pages/about/abbreviations.py", title="Abbreviations", icon=":material/menu_book:", url_path="abbreviations"),
         st.Page("app_pages/about/tax_loss_harvesting.py", title="Tax-Loss Harvesting", icon=":material/money_off:", url_path="tax-loss-harvesting"),
         st.Page("app_pages/about/equivalents.py", title="Equivalents", icon=":material/equal:", url_path="equivalents"),
