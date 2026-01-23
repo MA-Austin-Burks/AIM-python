@@ -16,14 +16,14 @@ def _load_abbreviations() -> pl.DataFrame:
     return pl.read_csv("pages/about/data/abbreviations.csv")
 
 
-st.markdown("# Abbreviations")
+st.markdown("# :material/menu_book: Abbreviations")
 st.caption(f"last updated: {ABBREVIATIONS_UPDATE_DATE}")
 
 abbreviations_df: pl.DataFrame = _load_abbreviations()
 st.dataframe(
     abbreviations_df,
     height="content",
-    use_container_width=True,
+    width="stretch",
 )
 
 # Footer

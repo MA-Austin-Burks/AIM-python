@@ -81,7 +81,7 @@ def render_filters() -> None:
             st.button(
                 ":material/close: Clear search",
                 key="clear_search_btn",
-                use_container_width=True,
+                width="stretch",
                 on_click=_clear_search_state,
             )
 
@@ -89,7 +89,7 @@ def render_filters() -> None:
             st.button(
                 ":material/filter_alt_off: Clear filters",
                 key="clear_filters_btn",
-                use_container_width=True,
+                width="stretch",
                 on_click=_reset_filter_state,
             )
 
@@ -97,7 +97,7 @@ def render_filters() -> None:
             st.button(
                 ":material/restart_alt: Reset all",
                 key="reset_all_btn",
-                use_container_width=True,
+                width="stretch",
                 on_click=_reset_all_state,
             )
         

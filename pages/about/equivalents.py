@@ -16,14 +16,14 @@ def _load_equivalents() -> pl.DataFrame:
     return pl.read_csv("pages/about/data/equivalents.csv")
 
 
-st.markdown("# Equivalents")
+st.markdown("# :material/equal: Equivalents")
 st.caption(f"last updated: {EQUIVALENTS_UPDATE_DATE}")
 
 equivalents_df: pl.DataFrame = _load_equivalents()
 st.dataframe(
     equivalents_df,
     height="content",
-    use_container_width=True,
+    width="stretch",
 )
 
 # Footer

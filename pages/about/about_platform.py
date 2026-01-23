@@ -16,7 +16,7 @@ def _load_explanation_card() -> str:
         return f.read()
 
 
-st.markdown("# About the Platform")
+st.markdown("# :material/description: About the Platform")
 st.caption(f"last updated: {EXPLANATION_CARD_UPDATE_DATE}")
 
 # Display the About text directly (not in an expander)

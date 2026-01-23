@@ -30,7 +30,7 @@ def render_release(version: str, date: str, features: list[str], improvements: l
             st.markdown(f"- {fix}")
 
 
-st.markdown("# Release Notes")
+st.markdown("# :material/new_releases: Release Notes")
 st.caption(f"last updated: {RELEASE_NOTES_UPDATE_DATE}")
 
 st.markdown("Welcome to the Aspen Investment Menu (AIM)! This is our initial release, providing a comprehensive platform for exploring and discovering investment strategies.")

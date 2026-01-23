@@ -16,14 +16,14 @@ def _load_tlh() -> pl.DataFrame:
     return pl.read_csv("pages/about/data/tlh.csv")
 
 
-st.markdown("# Tax-Loss Harvesting (TLH)")
+st.markdown("# :material/money_off: Tax-Loss Harvesting (TLH)")
 st.caption(f"last updated: {TLH_UPDATE_DATE}")
 
 tlh_df: pl.DataFrame = _load_tlh()
 st.dataframe(
     tlh_df,
     height="content",
-    use_container_width=True,
+    width="stretch",
 )
 
 # Footer
