@@ -1,74 +1,92 @@
 """Data processing utilities for Polars."""
 
 import logging
-import os
 import re
 import time
-from io import BytesIO
-from urllib.parse import urlparse
+from typing import Any
 
 import polars as pl
-import requests
+import pyarrow.parquet as pq
+import s3fs
 import streamlit as st
-import urllib3
 
 from utils.models import StrategyDetail
 from utils.column_names import STRATEGY
-
-# Disable SSL warnings when verify=False
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Set up logger
 logger = logging.getLogger(__name__)
 
 
-def download_parquet(parquet_url: str) -> tuple[BytesIO, float]:
-    """Download Parquet file from URL and store in memory.
+@st.cache_data(ttl=3600)
+def _get_s3_filesystem() -> s3fs.S3FileSystem:
+    """Get S3 filesystem from secrets.toml connections.s3 section (cached).
+    
+    Returns:
+        s3fs.S3FileSystem: Configured S3 filesystem
+        
+    Raises:
+        ValueError: If S3 secrets are not configured
+    """
+    try:
+        s3: dict[str, Any] = st.secrets.connections.s3
+        logger.info(f"Connecting to S3 (region: {s3.AWS_DEFAULT_REGION})")
+        return s3fs.S3FileSystem(
+            key=s3.AWS_ACCESS_KEY_ID,
+            secret=s3.AWS_SECRET_ACCESS_KEY,
+            client_kwargs={"region_name": s3.AWS_DEFAULT_REGION},
+            token=None
+        )
+    except (AttributeError, KeyError, FileNotFoundError) as e:
+        raise ValueError(
+            "S3 credentials not found in secrets.toml. "
+            "Please configure [connections.s3] section with AWS_ACCESS_KEY_ID, "
+            "AWS_SECRET_ACCESS_KEY, and AWS_DEFAULT_REGION."
+        ) from e
+
+
+@st.cache_data(ttl=3600)
+def read_parquet_from_s3(parquet_name: str, bucket: str = "aspen-investing-menu") -> pl.LazyFrame:
+    """Read a Parquet file from S3 into a Polars LazyFrame (cached for 1 hour).
+    
+    Note: This function only executes on cache misses. On cache hits, Streamlit
+    returns the cached result without executing this function body.
     
     Args:
-        parquet_url: Full URL to the Parquet file (may include SAS token or other auth)
+        parquet_name: Name of the parquet file (without .parquet extension)
+        bucket: S3 bucket name (default: "aspen-investing-menu")
         
     Returns:
-        tuple: (BytesIO buffer, download_time_in_seconds)
+        pl.LazyFrame: LazyFrame loaded from S3 parquet file
+        
+    Raises:
+        ValueError: If S3 credentials are not configured
+        FileNotFoundError: If parquet file doesn't exist in S3
     """
-    # Log sanitized URL (without query parameters/tokens) for security
-    try:
-        parsed = urlparse(parquet_url)
-        # Only show scheme, netloc, and path - exclude query and fragment
-        safe_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
-        if len(safe_url) > 50:
-            safe_url = safe_url[:50] + "..."
-    except Exception:
-        safe_url = "[URL parsing failed]"
-    logger.info(f"Downloading parquet file: {safe_url}")
+    path = f"s3://{bucket}/{parquet_name}.parquet"
+    logger.info(f"[CACHE MISS] Loading {parquet_name} from S3: {path}")
     
     start_time = time.time()
-    response = requests.get(parquet_url, stream=True, verify=False)
-    response.raise_for_status()
-    
-    # Read into memory buffer with optimized chunk size (64KB for better network performance)
-    parquet_data = BytesIO()
-    for chunk in response.iter_content(chunk_size=65536):  # 64KB chunks
-        parquet_data.write(chunk)
-    
-    parquet_data.seek(0)  # Reset pointer to beginning
-    download_time = time.time() - start_time
-    
-    file_size_mb = len(parquet_data.getvalue()) / (1024 * 1024)
-    logger.info(f"Download complete! File size: {file_size_mb:.2f} MB | Time: {download_time:.2f}s")
-    
-    return parquet_data, download_time
-
-
-def _is_local_mode() -> bool:
-    """Check if running in local mode (using local parquet files).
-    
-    Checks for USE_LOCAL_DATA environment variable.
-    
-    Returns:
-        bool: True if local mode is enabled
-    """
-    return os.getenv("USE_LOCAL_DATA", "").lower() in ("true", "1", "yes")
+    try:
+        fs = _get_s3_filesystem()
+        
+        with fs.open(path, "rb") as f:
+            arrow_table = pq.read_table(f)
+        
+        # Convert Arrow to Polars
+        result: pl.DataFrame | pl.Series = pl.from_arrow(arrow_table)
+        df: pl.DataFrame = result.to_frame() if isinstance(result, pl.Series) else result
+        
+        download_time = time.time() - start_time
+        file_size_mb = len(df) * len(df.columns) * 8 / (1024 * 1024)  # Rough estimate
+        logger.info(
+            f"Loaded {parquet_name} from S3: shape={df.shape} | "
+            f"Size: ~{file_size_mb:.2f} MB | Time: {download_time:.2f}s"
+        )
+        
+        return df.lazy()
+    except Exception as e:
+        logger.error(f"Failed to load {parquet_name} from S3: {e}")
+        raise
 
 
 @st.cache_data(ttl=3600)
@@ -217,51 +235,9 @@ def _derive_strategy_list_from_ss_all(ss_all_df: pl.LazyFrame) -> pl.DataFrame:
     )
 
 
-def _get_cleaned_data_url() -> str:
-    """Get the cleaned-data parquet URL from Streamlit secrets or environment variable.
-    
-    Checks Streamlit secrets first (for Streamlit Cloud), then falls back to
-    environment variables (for Azure deployments).
-    
-    Returns:
-        str: The Azure Blob Storage URL for cleaned-data.parquet
-    
-    Raises:
-        ValueError: If URL is not found in secrets or environment variable
-    """
-    import os
-    
-    # Try Streamlit secrets first (for Streamlit Cloud)
-    try:
-        if hasattr(st, 'secrets'):
-            # Try attribute access first (st.secrets.CLEANED_DATA_PARQUET_URL)
-            url = getattr(st.secrets, 'CLEANED_DATA_PARQUET_URL', None)
-            # If not found, try dict-style access (st.secrets['CLEANED_DATA_PARQUET_URL'])
-            if url is None:
-                url = st.secrets.get('CLEANED_DATA_PARQUET_URL', None) if hasattr(st.secrets, 'get') else None
-            if url:
-                return str(url).strip().strip('"').strip("'")
-    except (AttributeError, KeyError, FileNotFoundError, TypeError):
-        # Secrets not available, fall back to environment variable
-        pass
-    
-    # Fall back to environment variable (for Azure deployments)
-    env_url = os.getenv('CLEANED_DATA_PARQUET_URL')
-    if env_url:
-        return env_url.strip().strip('"').strip("'")
-    
-    raise ValueError(
-        "Azure Blob Storage URL not found. "
-        "Please set CLEANED_DATA_PARQUET_URL in Streamlit secrets or environment variable."
-    )
-
-
 @st.cache_resource
-def load_cleaned_data(parquet_url: str | None = None) -> pl.LazyFrame:
-    """Load ss_all.parquet file as a Parquet LazyFrame from local file.
-    
-    Currently loads only from local file: archive/data/ss_all.parquet
-    Azure download functions are kept but not used (for future use).
+def load_cleaned_data() -> pl.LazyFrame:
+    """Load ss_all.parquet file as a Parquet LazyFrame from S3.
     
     Uses @st.cache_resource to keep the DataFrame in memory without serialization overhead.
     The download is cached per user session to avoid repeated downloads.
@@ -269,78 +245,32 @@ def load_cleaned_data(parquet_url: str | None = None) -> pl.LazyFrame:
     Parquet format provides faster loading and better compression than CSV.
     Derives target column from agg_target / 100 for calculations.
     
-    Args:
-        parquet_url: Optional URL (not used currently, kept for future Azure support).
-    
     Returns:
         pl.LazyFrame: A lazy Polars DataFrame ready for querying with new column names.
     
     Raises:
-        FileNotFoundError: If ss_all.parquet file doesn't exist.
+        ValueError: If S3 credentials are not configured
+        FileNotFoundError: If parquet file doesn't exist in S3
     """
-    # Load only from local file
-    local_path = "archive/data/ss_all.parquet"
-    if not os.path.exists(local_path):
-        raise FileNotFoundError(
-            f"ss_all.parquet not found at: {local_path}"
-        )
+    # Get bucket name from secrets or use default
+    bucket = "aspen-investing-menu"
+    try:
+        s3_config = st.secrets.connections.s3
+        if hasattr(s3_config, "BUCKET_NAME"):
+            bucket = s3_config.BUCKET_NAME
+    except (AttributeError, KeyError):
+        pass  # Use default bucket
     
-    # Load ss_all.parquet and apply transformations
-    ss_all_df = pl.scan_parquet(local_path)
+    logger.info(f"Loading ss_all from S3 bucket: {bucket}")
+    ss_all_df = read_parquet_from_s3("ss_all", bucket=bucket)
     return _map_ss_all_to_cleaned_data(ss_all_df)
 
 
-def _get_strategy_list_url() -> str | None:
-    """Get the strategy_list parquet URL from Streamlit secrets or environment variable.
-    
-    Checks Streamlit secrets first (for Streamlit Cloud), then falls back to
-    environment variables (for Azure deployments).
-    
-    Returns:
-        str | None: The Azure Blob Storage URL for strategy_list.parquet, or None if not set
-    """
-    import os
-    
-    # Try Streamlit secrets first (for Streamlit Cloud)
-    url = None
-    try:
-        if hasattr(st, 'secrets') and st.secrets is not None:
-            # Try attribute access first (st.secrets.STRATEGY_LIST_PARQUET)
-            try:
-                url = getattr(st.secrets, 'STRATEGY_LIST_PARQUET', None)
-            except (AttributeError, TypeError):
-                pass
-            
-            # If not found, try dict-style access (st.secrets['STRATEGY_LIST_PARQUET'])
-            if url is None:
-                try:
-                    if hasattr(st.secrets, 'get'):
-                        url = st.secrets.get('STRATEGY_LIST_PARQUET', None)
-                    elif hasattr(st.secrets, '__getitem__'):
-                        url = st.secrets['STRATEGY_LIST_PARQUET']
-                except (KeyError, AttributeError, TypeError):
-                    pass
-            
-            if url:
-                return str(url).strip().strip('"').strip("'")
-    except Exception:
-        # Any error accessing secrets, fall through to environment variable
-        pass
-    
-    # Fall back to environment variable (for Azure deployments)
-    env_url = os.getenv('STRATEGY_LIST_PARQUET')
-    if env_url:
-        return str(env_url).strip().strip('"').strip("'")
-    
-    return None
-
-
 @st.cache_data(ttl=3600)
-def load_strategy_list(parquet_url: str | None = None) -> pl.DataFrame:
+def load_strategy_list() -> pl.DataFrame:
     """Derive strategy_list DataFrame from ss_all.parquet by aggregating per strategy.
     
-    Currently loads only from local file: archive/data/ss_all.parquet
-    Azure download functions are kept but not used (for future use).
+    Loads ss_all.parquet from S3, then aggregates to create a strategy-level summary table.
     
     This function aggregates ss_all.parquet to create a strategy-level summary table.
     Use this for card filtering, sorting, and rendering.
@@ -348,24 +278,15 @@ def load_strategy_list(parquet_url: str | None = None) -> pl.DataFrame:
     Column names use new ss_all column names (no mapping to old names).
     Display names are handled separately at the presentation layer.
     
-    Args:
-        parquet_url: Optional URL (not used currently, kept for future Azure support).
-    
     Returns:
         pl.DataFrame: Strategy-level DataFrame with new column names.
     
     Raises:
-        FileNotFoundError: If ss_all.parquet file doesn't exist.
+        ValueError: If S3 credentials are not configured
+        FileNotFoundError: If parquet file doesn't exist in S3
     """
-    # Load only from local file
-    local_path = "archive/data/ss_all.parquet"
-    if not os.path.exists(local_path):
-        raise FileNotFoundError(
-            f"ss_all.parquet not found at: {local_path}"
-        )
-    
-    # Load ss_all.parquet and derive strategy_list
-    ss_all_df = pl.scan_parquet(local_path)
+    # Use load_cleaned_data which loads from S3
+    ss_all_df = load_cleaned_data()
     return _derive_strategy_list_from_ss_all(ss_all_df)
 
 

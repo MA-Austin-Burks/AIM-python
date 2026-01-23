@@ -1,5 +1,4 @@
 import hashlib
-import os
 from datetime import datetime
 
 import polars as pl
@@ -78,11 +77,7 @@ st.markdown("# Aspen Investing Menu (Development Version)")
 strats: pl.DataFrame = load_strategy_list()
 cleaned_data: pl.LazyFrame = load_cleaned_data()
 
-is_local_mode: bool = os.getenv("USE_LOCAL_DATA", "").lower() in ("true", "1", "yes")
-caption_text: str = f"last updated: {datetime.now().strftime('%Y-%m-%d')}"
-if is_local_mode:
-    caption_text += " • local mode"
-st.caption(caption_text)
+st.caption(f"last updated: {datetime.now().strftime('%Y-%m-%d')}")
 
 render_filters()
 st.space(1)
