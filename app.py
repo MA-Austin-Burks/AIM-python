@@ -25,6 +25,7 @@ pages = {
         st.Page("pages/about/tax_loss_harvesting.py", title="Tax-Loss Harvesting", icon=":material/money_off:", url_path="tax-loss-harvesting"),
         st.Page("pages/about/equivalents.py", title="Equivalents", icon=":material/equal:", url_path="equivalents"),
         st.Page("pages/about/under_development.py", title="Under Development", icon=":material/construction:", url_path="under-development"),
+        st.Page("pages/about/release_notes.py", title="Release Notes", icon=":material/new_releases:", url_path="release-notes"),
     ],
 }
 
