@@ -26,6 +26,9 @@ pages = {
         st.Page("app_pages/frequently_asked_questions.py", title="Frequently Asked Questions", icon=":material/help:", url_path="faq"),
         st.Page("app_pages/release_notes.py", title="Release Notes", icon=":material/new_releases:", url_path="release-notes"),
     ],
+    "Management": [
+        st.Page("app_pages/management_module.py", title="Question Management", icon=":material/admin_panel_settings:", url_path="management"),
+    ],
 }
 
 # Create navigation and run the current page

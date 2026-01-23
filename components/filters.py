@@ -140,7 +140,7 @@ def render_filters() -> None:
         
         with esg:
             st.segmented_control(
-                label=":material/eco: ESG Filtered",
+                label=":material/eco: Values-Based",
                 options=["Yes", "No"],
                 selection_mode="single",
                 key="filter_esg",
@@ -234,6 +234,19 @@ def render_filters() -> None:
             options=type_options,
             selection_mode="multi",
             key="filter_subtype",
+        )
+        
+        # Demo Row: Equity Allocation as Segmented Control
+        st.space(1)
+        
+        # Generate options for 0-100 in increments of 10
+        equity_options = [f"{i}%" for i in range(0, 101, 10)]
+        
+        st.segmented_control(
+            "Equity Allocation (%)",
+            options=equity_options,
+            selection_mode="multi",
+            key="demo_equity_segmented",
         )
 
 def build_filter_expression() -> pl.Expr:

@@ -5,12 +5,15 @@ from datetime import datetime
 import streamlit as st
 
 from components import render_footer
+from utils.question_submission import submit_question_to_s3
 
 FAQ_UPDATE_DATE = "2026-01-23"
 
 
-# Demo Q&A data structure (replace with actual content when ready)
-DEMO_QUESTIONS = [
+@st.cache_data  # Cache static FAQ data (never changes during runtime)
+def _get_faq_questions():
+    """Get FAQ questions list (cached for performance)."""
+    return [
     {
         "question": "What is the Aspen Investment Menu?",
         "answer": "The Aspen Investment Menu is a comprehensive platform that provides detailed information about investment strategies, including performance metrics, expense ratios, minimum investments, and allocation details. It helps investment professionals and clients make informed decisions about strategy selection.",
@@ -35,7 +38,11 @@ DEMO_QUESTIONS = [
         "question": "What are strategy minimums and how do they work?",
         "answer": "Strategy minimums refer to the **minimum investment amount** required to invest in a particular strategy. This is displayed as the 'Minimum' value on strategy cards and in search results. When filtering strategies, you can use the 'Current Account Value' filter to show only strategies where your account value meets or exceeds the strategy's minimum investment requirement. This helps ensure you're only viewing strategies that are accessible based on your account size.",
     },
-]
+    ]
+
+
+# Demo Q&A data structure (replace with actual content when ready)
+DEMO_QUESTIONS = _get_faq_questions()
 
 
 st.markdown("# :material/help: Frequently Asked Questions")
@@ -119,36 +126,33 @@ with st.form("submit_question_form", clear_on_submit=True):
         elif not question_text or not question_text.strip():
             st.error(":material/error: Please enter your question.")
         else:
-            # Store question data in session state (for now)
-            # In production, this would be sent to a backend service
-            if "submitted_questions" not in st.session_state:
-                st.session_state.submitted_questions = []
-            
+            # Prepare question data with status field
             question_data = {
                 "name": submitter_name.strip(),
                 "email": submitter_email.strip(),
                 "question": question_text.strip(),
                 "timestamp": datetime.now().isoformat(),
+                "status": "unanswered",  # Default status for easier tracking
             }
             
-            st.session_state.submitted_questions.append(question_data)
-            # Store the most recent submission for display
-            st.session_state.last_submitted_question = question_data
-            
-            # Show success message
-            st.success(
-                ":material/check_circle: **Thank you!** Your question has been submitted. "
-                "We'll review it and get back to you soon."
-            )
-            
-            # Note: In production, this data would be sent to AWS/backend here
-            # See implementation options below
-
-# Display submitted question JSON if available
-if "last_submitted_question" in st.session_state:
-    st.markdown("---")
-    st.markdown("### :material/code: Submitted Question Data")
-    st.json(st.session_state.last_submitted_question)
+            # Submit to S3
+            if submit_question_to_s3(question_data):
+                # Store in session state for display (optional)
+                if "submitted_questions" not in st.session_state:
+                    st.session_state.submitted_questions = []
+                
+                st.session_state.submitted_questions.append(question_data)
+                st.session_state.last_submitted_question = question_data
+                
+                # Show success message
+                st.success(
+                    ":material/check_circle: **Thank you!** Your question has been submitted. "
+                    "We'll review it and get back to you soon."
+                )
+            else:
+                st.error(
+                    ":material/error: **Submission failed.** Please try again later or contact support."
+                )
 
 # Footer
 render_footer()
