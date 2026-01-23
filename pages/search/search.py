@@ -72,7 +72,7 @@ def filter_and_sort_strategies(strats: pl.DataFrame, _filter_expr: pl.Expr, filt
 # Initialize session state explicitly at app start
 initialize_session_state()
 
-st.markdown("# Aspen Investing Menu (Development Version)")
+st.markdown("# Aspen Investing Menu (DEV - v2.0.0)")
 
 strats: pl.DataFrame = load_strategy_list()
 cleaned_data: pl.LazyFrame = load_cleaned_data()
