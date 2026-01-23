@@ -46,6 +46,7 @@ def _reset_filter_state() -> None:
     st.session_state["filter_tm"] = None
     st.session_state["filter_sma"] = None
     st.session_state["filter_pm"] = None
+    st.session_state["filter_esg"] = None
     st.session_state["min_strategy"] = None
     st.session_state["equity_allocation_range"] = (0, 100)
     st.session_state["filter_type"] = []
@@ -102,7 +103,7 @@ def render_filters() -> None:
         
         # Row 2
         st.space(1)
-        ic, tm, sma, pm, min = st.columns([6, 2.5, 2.5, 2.5, 4])
+        ic, tm, sma, pm, esg = st.columns([6, 3, 3, 3, 3])
         
         with ic:
             st.segmented_control(
@@ -122,7 +123,7 @@ def render_filters() -> None:
         
         with sma:
             st.segmented_control(
-                label=":material/tune: Has SMA Manager",
+                label=":material/tune: SMA Manager",
                 options=["Yes", "No"],
                 selection_mode="single",
                 key="filter_sma",
@@ -136,17 +137,17 @@ def render_filters() -> None:
                 key="filter_pm",
             )
         
-        with min:
-            st.number_input(
-                ":material/attach_money: Current Account Value",
-                min_value=0,
-                value=None,
-                step=10000,
-                key="min_strategy",
+        with esg:
+            st.segmented_control(
+                label=":material/eco: ESG Filtered",
+                options=["Yes", "No"],
+                selection_mode="single",
+                key="filter_esg",
+                disabled=True,
             )
         
         # Row 3
-        type, equity = st.columns([2, 2])
+        type, min, empty, equity = st.columns([3, 2, 1, 3])
         
         with type:
             st.segmented_control(
@@ -154,6 +155,18 @@ def render_filters() -> None:
                 options=["Risk-Based", "Asset Class"],
                 selection_mode="multi",
                 key="filter_type",
+            )
+        
+        with empty:
+            st.empty()
+        
+        with min:
+            st.number_input(
+                ":material/attach_money: Current Account Value",
+                min_value=0,
+                value=None,
+                step=10000,
+                key="min_strategy",
             )
         
         # Equity Allocation range slider (only visible when Risk-Based is selected)
@@ -174,20 +187,29 @@ def render_filters() -> None:
         selected_type: list[str] = st.session_state.get("filter_type", [])
         previous_type: list[str] = st.session_state.get("_previous_type", [])
         
+
         if not selected_type:
             # Show all subtypes when no types are selected
-            type_options: list[str] = [
+            all_subtypes: list[str] = [
                 subtype for subtype_list in TYPE_TO_SUBTYPE.values() for subtype in subtype_list
             ]
+            type_options: list[str] = all_subtypes
         else:
             type_options: list[str] = []
             for st_type in selected_type:
                 if st_type in TYPE_TO_SUBTYPE:
                     type_options.extend(TYPE_TO_SUBTYPE[st_type])
         
+        # Always sort with Multifactor Series, Market Series, Income Series first
+        priority_subtypes = ["Multifactor Series", "Market Series", "Income Series"]
+        type_options = (
+            [subtype for subtype in priority_subtypes if subtype in type_options] +
+            [subtype for subtype in type_options if subtype not in priority_subtypes]
+        )
+        
         if set(selected_type) != set(previous_type):
             st.session_state["filter_subtype"] = []
-            st.session_state["_previous_type"] = selected_type
+            st.session_state["_previous_type"] = selected_type.copy()
         
         st.segmented_control(
             ":material/stat_minus_2: Subtype",

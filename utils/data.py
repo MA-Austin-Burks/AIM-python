@@ -8,9 +8,9 @@ from io import BytesIO
 from urllib.parse import urlparse
 
 import polars as pl
-import requests  # type: ignore[import-untyped]
+import requests
 import streamlit as st
-import urllib3  # type: ignore[import-untyped]
+import urllib3
 
 from utils.models import StrategyDetail
 from utils.column_names import STRATEGY
