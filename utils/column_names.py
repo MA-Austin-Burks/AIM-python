@@ -39,6 +39,7 @@ CATEGORY = "ss_type"  # Updated: was "strategy_type"
 
 # Strategy list specific columns (normalized to lowercase)
 EQUITY_PCT = "equity_allo"  # Updated: was "equity_pct"
+ALT_PCT = "private_allo"  # Alternative allocation percentage
 RECOMMENDED = "ic_recommend"  # Updated: was "recommended"
 TAX_MANAGED = "has_tm"  # Updated: was "tax_managed"
 PRIVATE_MARKETS = "has_private_market"  # Updated: was "private_markets"

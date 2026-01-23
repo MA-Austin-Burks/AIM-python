@@ -210,7 +210,7 @@ def _derive_strategy_list_from_ss_all(ss_all_df: pl.LazyFrame) -> pl.DataFrame:
         DataFrame with strategy-level aggregated data using new column names
     """
     from utils.column_names import (
-        STRATEGY, EQUITY_PCT, TYPE, TAX_MANAGED, RECOMMENDED,
+        STRATEGY, EQUITY_PCT, ALT_PCT, TYPE, TAX_MANAGED, RECOMMENDED,
         PRIVATE_MARKETS, HAS_SMA_MANAGER, MINIMUM, YIELD,
         EXPENSE_RATIO, SERIES, CATEGORY
     )
@@ -220,6 +220,7 @@ def _derive_strategy_list_from_ss_all(ss_all_df: pl.LazyFrame) -> pl.DataFrame:
         .group_by(STRATEGY)
         .agg([
             pl.col("equity_allo").first().alias(EQUITY_PCT),  # equity_allo
+            pl.col("private_allo").first().alias(ALT_PCT),  # private_allo -> alt_pct
             pl.col("ss_subtype").first().alias(TYPE),  # ss_subtype -> type
             pl.col("has_tm").first().alias(TAX_MANAGED),  # has_tm
             pl.col("ic_recommend").first().alias(RECOMMENDED),  # ic_recommend

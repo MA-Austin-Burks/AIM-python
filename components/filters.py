@@ -9,6 +9,7 @@ from utils.column_names import (
     PRIVATE_MARKETS,
     MINIMUM,
     EQUITY_PCT,
+    ALT_PCT,
     CATEGORY,
     TYPE,
 )
@@ -266,12 +267,14 @@ def build_filter_expression() -> pl.Expr:
         expressions.append(pl.col(MINIMUM).le(min_strategy))
 
     # Equity Allocation filter (only if Risk-Based is selected)
+    # Combines equity allocation + alternative allocation (e.g., 65% equity + 15% alt = 80%)
     if "Risk-Based" in st.session_state.get("filter_type", []):
         min_eq, max_eq = st.session_state.get("equity_allocation_range", (0, 100))
+        combined_allocation: pl.Expr = (
+            pl.col(EQUITY_PCT).fill_null(0) + pl.col(ALT_PCT).fill_null(0)
+        )
         expressions.append(
-            (pl.col(EQUITY_PCT).is_not_null()) # TODO: check database if this is needed
-            & (pl.col(EQUITY_PCT).ge(min_eq))
-            & (pl.col(EQUITY_PCT).le(max_eq))
+            combined_allocation.is_between(lower_bound=min_eq, upper_bound=max_eq, closed="both")
         )
     
     # Type (multi-select) - Empty list means show all (none selected)
@@ -279,7 +282,7 @@ def build_filter_expression() -> pl.Expr:
     if type_value:
         expressions.append(pl.col(CATEGORY).is_in(type_value)) # TODO: check when database is updated
     
-    # Subtype - Empty list means show all (none selected)
+    # Subtype - Empty list means show all (none selected)   
     subtype_value: list[str] = st.session_state.get("filter_subtype", [])
     if subtype_value:
         expressions.append(pl.col(TYPE).is_in(subtype_value)) # TODO: check when database is updated

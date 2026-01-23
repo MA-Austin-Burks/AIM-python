@@ -140,6 +140,24 @@ CHART_COLORS_SEQUENTIAL_AZURE = [
 ]
 
 # =============================================================================
+# STRATEGY COLORS (Primary and Secondary)
+# =============================================================================
+STRATEGY_COLORS = {
+    "Fixed Income Strategies": {
+        "primary": "#00C48C",  # spring
+        "secondary": "#BDFFDF",  # pale spring
+    },
+    "Cash Strategies": {
+        "primary": "#FF0000",
+        "secondary": "#FFD5D5",
+    },
+    "Special Situation Strategies": {
+        "primary": "#274472",
+        "secondary": "#5885af",
+    },
+}
+
+# =============================================================================
 # SERIES/CATEGORY COLORS (for dataframe tags and filters)
 # =============================================================================
 SUBTYPE_COLORS = {
@@ -147,10 +165,10 @@ SUBTYPE_COLORS = {
     "Market Series": SECONDARY["iris"],
     "Income Series": PRIMARY["charcoal"],
     "Equity Strategies": TERTIARY["azure"],
-    "Fixed Income Strategies": TERTIARY["dark_azure"],
-    "Cash Strategies": PRIMARY["charcoal"],
+    "Fixed Income Strategies": STRATEGY_COLORS["Fixed Income Strategies"]["primary"],
+    "Cash Strategies": STRATEGY_COLORS["Cash Strategies"]["primary"],
     "Alternative Strategies": TERTIARY["gold"],
-    "Special Situation Strategies": TERTIARY["dark_gold"],
+    "Special Situation Strategies": STRATEGY_COLORS["Special Situation Strategies"]["primary"],
     "Blended Strategy": SPECIAL["gray"],
 }
 
@@ -264,6 +282,21 @@ def get_subtype_color_from_row(strategy_row: "StrategySummary | dict[str, Any]")
     if type_val:
         return SUBTYPE_COLORS.get(type_val, PRIMARY["light_gray"])
 
+    return PRIMARY["light_gray"]
+
+
+def get_strategy_primary_color(strategy_type: str) -> str:
+    """Get the primary color for a strategy type."""
+    if strategy_type in STRATEGY_COLORS:
+        return STRATEGY_COLORS[strategy_type]["primary"]
+    return SUBTYPE_COLORS.get(strategy_type, PRIMARY["raspberry"])
+
+
+def get_strategy_secondary_color(strategy_type: str) -> str:
+    """Get the secondary color for a strategy type."""
+    if strategy_type in STRATEGY_COLORS:
+        return STRATEGY_COLORS[strategy_type]["secondary"]
+    # Fallback to a light version of the primary color if not defined
     return PRIMARY["light_gray"]
 
 
