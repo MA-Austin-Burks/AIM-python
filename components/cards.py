@@ -4,9 +4,9 @@ import polars as pl
 import streamlit as st
 from components.model_card import CARD_FIXED_WIDTH, model_card
 
-from utils.core.models import StrategySummary
-from utils.styles.branding import get_subtype_color_from_row
-from utils.core.session_state import get_or_init
+from utils.models import StrategySummary
+from utils.branding import get_subtype_color_from_row
+from utils.session_state import get_or_init
 
 # Session state keys
 SELECTED_STRATEGY_MODAL_KEY = "selected_strategy_for_modal"

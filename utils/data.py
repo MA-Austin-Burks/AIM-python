@@ -1,14 +1,62 @@
 """Data processing utilities for Polars."""
 
+import logging
 import os
 import re
+import time
+from io import BytesIO
+from urllib.parse import urlparse
 
 import polars as pl
+import requests  # type: ignore[import-untyped]
 import streamlit as st
+import urllib3  # type: ignore[import-untyped]
 
-from utils.core.models import StrategyDetail
+from utils.models import StrategyDetail
 
-from utils.download_parquet_from_azure import download_parquet_from_azure
+# Disable SSL warnings when verify=False
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Set up logger
+logger = logging.getLogger(__name__)
+
+
+def download_parquet(parquet_url: str) -> tuple[BytesIO, float]:
+    """Download Parquet file from URL and store in memory.
+    
+    Args:
+        parquet_url: Full URL to the Parquet file (may include SAS token or other auth)
+        
+    Returns:
+        tuple: (BytesIO buffer, download_time_in_seconds)
+    """
+    # Log sanitized URL (without query parameters/tokens) for security
+    try:
+        parsed = urlparse(parquet_url)
+        # Only show scheme, netloc, and path - exclude query and fragment
+        safe_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+        if len(safe_url) > 50:
+            safe_url = safe_url[:50] + "..."
+    except Exception:
+        safe_url = "[URL parsing failed]"
+    logger.info(f"Downloading parquet file: {safe_url}")
+    
+    start_time = time.time()
+    response = requests.get(parquet_url, stream=True, verify=False)
+    response.raise_for_status()
+    
+    # Read into memory buffer with optimized chunk size (64KB for better network performance)
+    parquet_data = BytesIO()
+    for chunk in response.iter_content(chunk_size=65536):  # 64KB chunks
+        parquet_data.write(chunk)
+    
+    parquet_data.seek(0)  # Reset pointer to beginning
+    download_time = time.time() - start_time
+    
+    file_size_mb = len(parquet_data.getvalue()) / (1024 * 1024)
+    logger.info(f"Download complete! File size: {file_size_mb:.2f} MB | Time: {download_time:.2f}s")
+    
+    return parquet_data, download_time
 
 
 def _is_local_mode() -> bool:
@@ -175,7 +223,7 @@ def load_cleaned_data(parquet_url: str | None = None) -> pl.LazyFrame:
     """
     # Check for local mode first
     if _is_local_mode():
-        local_path = "utils/archive/data/cleaned-data.parquet"
+        local_path = "archive/data/cleaned-data.parquet"
         if os.path.exists(local_path):
             return pl.scan_parquet(local_path)
         
@@ -207,8 +255,8 @@ def load_cleaned_data(parquet_url: str | None = None) -> pl.LazyFrame:
         else:
             raise FileNotFoundError(f"Neither {parquet_path} nor {csv_path} found")
     
-    # Download from Azure Blob Storage
-    parquet_buffer, _ = download_parquet_from_azure(url)
+    # Download from URL
+    parquet_buffer, _ = download_parquet(url)
     
     # Optimize: Use scan_parquet for true lazy evaluation
     # Write to temp file since scan_parquet requires a file path
@@ -316,7 +364,7 @@ def load_strategy_list(parquet_url: str | None = None) -> pl.DataFrame:
     
     # Check for local mode first
     if _is_local_mode():
-        local_path = "utils/archive/data/strategy_list.parquet"
+        local_path = "archive/data/strategy_list.parquet"
         if os.path.exists(local_path):
             return pl.read_parquet(local_path)
         
@@ -358,8 +406,8 @@ def load_strategy_list(parquet_url: str | None = None) -> pl.DataFrame:
             "STRATEGY_LIST_PARQUET must be a valid HTTP/HTTPS URL to Azure Blob Storage."
         )
     
-    # Download from Azure Blob Storage
-    parquet_buffer, _ = download_parquet_from_azure(url)
+    # Download from URL
+    parquet_buffer, _ = download_parquet(url)
     
     # Write to temp file and read as DataFrame (not LazyFrame since it's small)
     tmp_path = None
@@ -408,5 +456,3 @@ def get_strategy_by_name(
         return None
     
     return StrategyDetail.from_row(strategy_row.row(0, named=True))
-
-

@@ -34,10 +34,10 @@ CARD_ORDER_OPTIONS = [
     "Strategy Name - A to Z",
     "Strategy Name - Z to A",
 ]
-from utils.core.data import load_strategy_list, load_cleaned_data
-from utils.core.models import StrategySummary
-from utils.styles.branding import get_subtype_color
-from utils.core.session_state import get_or_init, initialize_session_state, reset_if_changed
+from utils.data import load_strategy_list, load_cleaned_data
+from utils.models import StrategySummary
+from utils.branding import get_subtype_color
+from utils.session_state import get_or_init, initialize_session_state, reset_if_changed
 
 # Initialize session state explicitly at app start
 initialize_session_state()

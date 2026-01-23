@@ -6,19 +6,19 @@ import polars as pl
 import streamlit as st
 from great_tables import GT, loc, style
 
-from utils.styles.branding import (
+from utils.branding import (
     PRIMARY,
     hex_to_rgba,
     get_allocation_table_main_css,
     format_currency_compact,
     get_subtype_color,
 )
-from utils.core.session_state import get_or_init
+from utils.session_state import get_or_init
 import hashlib
 
 from components.filters import TYPE_TO_SUBTYPE
-from utils.core.data import get_model_agg_sort_order, get_strategy_by_name, hash_lazyframe
-from utils.core.models import StrategyDetail
+from utils.data import get_model_agg_sort_order, get_strategy_by_name, hash_lazyframe
+from utils.models import StrategyDetail
 
 # Session state keys
 ALLOCATION_COLLAPSE_SMA_KEY = "allocation_collapse_sma"

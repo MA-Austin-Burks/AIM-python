@@ -2,8 +2,8 @@ import polars as pl
 import streamlit as st
 
 from components.tab_overview import render_allocation_tab
-from utils.core.models import StrategySummary
-from utils.styles.branding import generate_badges
+from utils.models import StrategySummary
+from utils.branding import generate_badges
 
 
 @st.dialog("Strategy Details", width="large", icon=":material/process_chart:")

@@ -7,27 +7,6 @@ import streamlit as st
 T = TypeVar("T")
 
 
-def validate_session_state_value(
-    key: str, 
-    value: Any, 
-    expected_type: type | tuple[type, ...],
-    validator: Callable[[Any], bool] | None = None
-) -> bool:
-    """Validate a session state value."""
-    # Check type
-    if not isinstance(value, expected_type):
-        return False
-    
-    # Run custom validator if provided
-    if validator is not None:
-        try:
-            return validator(value)
-        except Exception:
-            return False
-    
-    return True
-
-
 # =============================================================================
 # FILTER VALIDATION FUNCTIONS
 # =============================================================================
@@ -89,96 +68,51 @@ def initialize_session_state() -> None:
     # IC Status filter
     if "filter_ic" not in st.session_state:
         st.session_state["filter_ic"] = "Recommended"
-    elif not validate_session_state_value(
-        "filter_ic", 
-        st.session_state["filter_ic"],
-        str,  # Only allow string, not None
-        _validate_filter_recommended
-    ):
+    elif not isinstance(st.session_state["filter_ic"], str) or not _validate_filter_recommended(st.session_state["filter_ic"]):
         st.session_state["filter_ic"] = "Recommended"
     
     # Yes/No filters (Tax-Managed, SMA Manager, Private Markets)
     if "filter_tm" not in st.session_state:
         st.session_state["filter_tm"] = None
-    elif not validate_session_state_value(
-        "filter_tm",
-        st.session_state["filter_tm"],
-        (str, type(None)),
-        _validate_filter_yes_no
-    ):
+    elif not isinstance(st.session_state["filter_tm"], (str, type(None))) or not _validate_filter_yes_no(st.session_state["filter_tm"]):
         st.session_state["filter_tm"] = None
     
     if "filter_sma" not in st.session_state:
         st.session_state["filter_sma"] = None
-    elif not validate_session_state_value(
-        "filter_sma",
-        st.session_state["filter_sma"],
-        (str, type(None)),
-        _validate_filter_yes_no
-    ):
+    elif not isinstance(st.session_state["filter_sma"], (str, type(None))) or not _validate_filter_yes_no(st.session_state["filter_sma"]):
         st.session_state["filter_sma"] = None
     
     if "filter_pm" not in st.session_state:
         st.session_state["filter_pm"] = None
-    elif not validate_session_state_value(
-        "filter_pm",
-        st.session_state["filter_pm"],
-        (str, type(None)),
-        _validate_filter_yes_no
-    ):
+    elif not isinstance(st.session_state["filter_pm"], (str, type(None))) or not _validate_filter_yes_no(st.session_state["filter_pm"]):
         st.session_state["filter_pm"] = None
     
     # Numeric filters
     if "min_strategy" not in st.session_state:
         st.session_state["min_strategy"] = None
-    elif not validate_session_state_value(
-        "min_strategy",
-        st.session_state["min_strategy"],
-        (int, float, type(None)),
-        lambda v: v is None or _validate_min_strategy(v)
-    ):
+    elif not isinstance(st.session_state["min_strategy"], (int, float, type(None))) or (st.session_state["min_strategy"] is not None and not _validate_min_strategy(st.session_state["min_strategy"])):
         st.session_state["min_strategy"] = None
     
     if "equity_allocation_range" not in st.session_state:
         st.session_state["equity_allocation_range"] = (0, 100)
-    elif not validate_session_state_value(
-        "equity_allocation_range",
-        st.session_state["equity_allocation_range"],
-        tuple,
-        lambda v: isinstance(v, tuple) and len(v) == 2 and all(isinstance(x, (int, float)) and 0 <= x <= 100 for x in v) and v[0] <= v[1]
-    ):
+    elif not isinstance(st.session_state["equity_allocation_range"], tuple) or not (isinstance(st.session_state["equity_allocation_range"], tuple) and len(st.session_state["equity_allocation_range"]) == 2 and all(isinstance(x, (int, float)) and 0 <= x <= 100 for x in st.session_state["equity_allocation_range"]) and st.session_state["equity_allocation_range"][0] <= st.session_state["equity_allocation_range"][1]):
         st.session_state["equity_allocation_range"] = (0, 100)
     
     # Multi-select filters (Type, Subtype)
     if "filter_type" not in st.session_state:
         st.session_state["filter_type"] = []  # Empty list means show all (none selected)
-    elif not validate_session_state_value(
-        "filter_type",
-        st.session_state["filter_type"],
-        (list, str),
-        lambda v: (isinstance(v, list) and all(_validate_type(t) for t in v)) or _validate_type(v)
-    ):
+    elif not isinstance(st.session_state["filter_type"], (list, str)) or not ((isinstance(st.session_state["filter_type"], list) and all(_validate_type(t) for t in st.session_state["filter_type"])) or _validate_type(st.session_state["filter_type"])):
         st.session_state["filter_type"] = []
     
     if "filter_subtype" not in st.session_state:
         # Empty list means show all subtypes (none selected)
         st.session_state["filter_subtype"] = []
-    elif not validate_session_state_value(
-        "filter_subtype",
-        st.session_state["filter_subtype"],
-        (list, str, type(None)),
-        _validate_filter_subtype
-    ):
+    elif not isinstance(st.session_state["filter_subtype"], (list, str, type(None))) or not _validate_filter_subtype(st.session_state["filter_subtype"]):
         st.session_state["filter_subtype"] = []
     
     if "_previous_type" not in st.session_state:
         st.session_state["_previous_type"] = []  # Empty list for no selection
-    elif not validate_session_state_value(
-        "_previous_type",
-        st.session_state["_previous_type"],
-        (list, str),
-        lambda v: (isinstance(v, list) and all(_validate_type(t) for t in v)) or _validate_type(v)
-    ):
+    elif not isinstance(st.session_state["_previous_type"], (list, str)) or not ((isinstance(st.session_state["_previous_type"], list) and all(_validate_type(t) for t in st.session_state["_previous_type"])) or _validate_type(st.session_state["_previous_type"])):
         # Reset to default empty list if validation fails (consistent with initial default)
         st.session_state["_previous_type"] = []
     
@@ -187,12 +121,7 @@ def initialize_session_state() -> None:
     # =========================================================================
     if "strategy_search_input" not in st.session_state:
         st.session_state["strategy_search_input"] = ""
-    elif not validate_session_state_value(
-        "strategy_search_input",
-        st.session_state["strategy_search_input"],
-        (str, type(None)),
-        _validate_search_input
-    ):
+    elif not isinstance(st.session_state["strategy_search_input"], (str, type(None))) or not _validate_search_input(st.session_state["strategy_search_input"]):
         st.session_state["strategy_search_input"] = ""
     
     if "_clear_search_flag" not in st.session_state:

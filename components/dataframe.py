@@ -4,8 +4,8 @@ import hashlib
 import polars as pl
 import streamlit as st
 
-from utils.styles.branding import SUBTYPE_COLORS
-from utils.core.models import StrategySummary
+from utils.branding import SUBTYPE_COLORS
+from utils.models import StrategySummary
 
 
 def _hash_filter_expression(filter_expr: pl.Expr) -> str:

@@ -11,7 +11,7 @@ This module provides programmatic access to brand colors and chart color sequenc
 from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from utils.core.models import StrategySummary
+    from utils.models import StrategySummary
 
 # =============================================================================
 # PRIMARY PALETTE
