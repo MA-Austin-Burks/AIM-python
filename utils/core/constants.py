@@ -42,28 +42,6 @@ CARD_ORDER_OPTIONS: Final[list[str]] = [
 ]
 
 # =============================================================================
-# FILTER CONSTANTS
-# =============================================================================
-TYPES: Final[list[str]] = ["Risk-Based", "Asset-Class", "Special Situation"]
-
-TYPE_TO_SUBTYPE: Final[dict[str, list[str]]] = {
-    "Risk-Based": [
-        "Multifactor Series",
-        "Market Series",
-        "Income Series",
-    ],
-    "Asset-Class": [
-        "Equity Strategies",
-        "Fixed Income Strategies",
-        "Cash Strategies",
-        "Alternative Strategies",
-    ],
-    "Special Situation": [
-        "Special Situation Strategies",
-    ],
-}
-
-# =============================================================================
 # ALLOCATION TAB CONSTANTS
 # =============================================================================
 DEFAULT_COLLAPSE_SMA: Final[bool] = True

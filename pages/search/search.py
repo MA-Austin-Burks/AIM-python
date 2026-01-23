@@ -5,8 +5,8 @@ import streamlit as st
 
 from components import (
     render_card_view,
+    build_filter_expression,
     render_filters,
-    render_filters_inline,
     render_footer,
     render_strategy_modal,
 )
@@ -16,7 +16,6 @@ from components.cards import (
     SELECTED_STRATEGY_MODAL_KEY,
 )
 from components.dataframe import filter_and_sort_strategies, _hash_filter_expression
-from components.filters import render_search_bar
 from utils.core.constants import (
     CARD_ORDER_KEY,
     CARD_ORDER_OPTIONS,
@@ -59,8 +58,7 @@ if st.session_state["_clear_search_flag"]:
 
 # Render filters inline (search bar is now inside the filters expander)
 with track_step("Render Filters"):
-    search_active, strategy_search = render_search_bar()
-    render_filters_inline(search_active)
+    render_filters()
 
 # Small space between filters and order by
 st.space(1)
@@ -83,7 +81,7 @@ with col_empty:
 
 # Get filter expression from session state
 with track_step("Build Filter Expression"):
-    filter_expr: pl.Expr = render_filters(search_active)
+    filter_expr: pl.Expr = build_filter_expression()
     filter_hash: str = _hash_filter_expression(filter_expr)
 
 with track_step("Filter and Sort Strategies"):

@@ -20,8 +20,8 @@ from utils.core.constants import (
     ALLOCATION_COLLAPSE_SMA_KEY,
     DEFAULT_COLLAPSE_SMA,
     SMA_COLLAPSE_THRESHOLD,
-    TYPE_TO_SUBTYPE,
 )
+from components.filters import TYPE_TO_SUBTYPE
 from utils.core.data import get_model_agg_sort_order, get_strategy_by_name, hash_lazyframe
 from utils.core.models import StrategyDetail
 

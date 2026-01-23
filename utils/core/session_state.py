@@ -14,7 +14,7 @@ T = TypeVar("T")
 # =============================================================================
 
 def _validate_filter_recommended(value: Any) -> bool:
-    """Validate filter_recommended_only value."""
+    """Validate filter_ic value."""
     return value in ("Recommended", "Recommended & Approved")
 
 
@@ -68,46 +68,46 @@ def initialize_session_state() -> None:
     # =========================================================================
     
     # IC Status filter
-    if "filter_recommended_only" not in st.session_state:
-        st.session_state["filter_recommended_only"] = "Recommended"
+    if "filter_ic" not in st.session_state:
+        st.session_state["filter_ic"] = "Recommended"
     elif not validate_session_state_value(
-        "filter_recommended_only", 
-        st.session_state["filter_recommended_only"],
+        "filter_ic", 
+        st.session_state["filter_ic"],
         str,  # Only allow string, not None
         _validate_filter_recommended
     ):
-        st.session_state["filter_recommended_only"] = "Recommended"
+        st.session_state["filter_ic"] = "Recommended"
     
     # Yes/No filters (Tax-Managed, SMA Manager, Private Markets)
-    if "filter_tax_managed" not in st.session_state:
-        st.session_state["filter_tax_managed"] = None
+    if "filter_tm" not in st.session_state:
+        st.session_state["filter_tm"] = None
     elif not validate_session_state_value(
-        "filter_tax_managed",
-        st.session_state["filter_tax_managed"],
+        "filter_tm",
+        st.session_state["filter_tm"],
         (str, type(None)),
         _validate_filter_yes_no
     ):
-        st.session_state["filter_tax_managed"] = None
+        st.session_state["filter_tm"] = None
     
-    if "filter_sma_manager" not in st.session_state:
-        st.session_state["filter_sma_manager"] = None
+    if "filter_sma" not in st.session_state:
+        st.session_state["filter_sma"] = None
     elif not validate_session_state_value(
-        "filter_sma_manager",
-        st.session_state["filter_sma_manager"],
+        "filter_sma",
+        st.session_state["filter_sma"],
         (str, type(None)),
         _validate_filter_yes_no
     ):
-        st.session_state["filter_sma_manager"] = None
+        st.session_state["filter_sma"] = None
     
-    if "filter_private_markets" not in st.session_state:
-        st.session_state["filter_private_markets"] = None
+    if "filter_pm" not in st.session_state:
+        st.session_state["filter_pm"] = None
     elif not validate_session_state_value(
-        "filter_private_markets",
-        st.session_state["filter_private_markets"],
+        "filter_pm",
+        st.session_state["filter_pm"],
         (str, type(None)),
         _validate_filter_yes_no
     ):
-        st.session_state["filter_private_markets"] = None
+        st.session_state["filter_pm"] = None
     
     # Numeric filters
     if "min_strategy" not in st.session_state:

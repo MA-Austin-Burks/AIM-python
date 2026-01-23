@@ -2,38 +2,6 @@
 
 from typing import Any, Callable
 
-
-# Maximum length for search input to prevent DoS attacks
-MAX_SEARCH_INPUT_LENGTH = 500
-
-
-def validate_search_input(search_text: str | None) -> str | None:
-    """Validate and sanitize search input.
-    
-    Args:
-        search_text: Raw search input from user
-        
-    Returns:
-        Sanitized search text (trimmed, length-limited) or None if invalid
-        
-    Raises:
-        ValueError: If input exceeds maximum length
-    """
-    if not search_text:
-        return None
-    
-    # Strip whitespace
-    sanitized = search_text.strip()
-    
-    # Check length limit
-    if len(sanitized) > MAX_SEARCH_INPUT_LENGTH:
-        raise ValueError(
-            f"Search input exceeds maximum length of {MAX_SEARCH_INPUT_LENGTH} characters"
-        )
-    
-    return sanitized if sanitized else None
-
-
 def sanitize_url_for_logging(url: str, max_length: int = 50) -> str:
     """Sanitize URL for logging to prevent exposing sensitive tokens.
     
