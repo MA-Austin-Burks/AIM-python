@@ -1,5 +1,3 @@
-import os
-
 import streamlit as st
 
 st.set_page_config(
@@ -17,15 +15,15 @@ st.logo("utils/logo.png", size="large")
 # Set up navigation with pages
 pages = {
     "Aspen Investing Menu": [
-        st.Page("pages/search/search.py", title="Search", icon=":material/dashboard:", url_path="search", default=True),
+        st.Page("app_pages/search/search.py", title="Search", icon=":material/dashboard:", url_path="search", default=True),
     ],
     "About": [
-        st.Page("pages/about/about_platform.py", title="About the Platform", icon=":material/description:", url_path="about"),
-        st.Page("pages/about/abbreviations.py", title="Abbreviations", icon=":material/menu_book:", url_path="abbreviations"),
-        st.Page("pages/about/tax_loss_harvesting.py", title="Tax-Loss Harvesting", icon=":material/money_off:", url_path="tax-loss-harvesting"),
-        st.Page("pages/about/equivalents.py", title="Equivalents", icon=":material/equal:", url_path="equivalents"),
-        st.Page("pages/about/under_development.py", title="Under Development", icon=":material/construction:", url_path="under-development"),
-        st.Page("pages/about/release_notes.py", title="Release Notes", icon=":material/new_releases:", url_path="release-notes"),
+        st.Page("app_pages/about/about_platform.py", title="About the Platform", icon=":material/description:", url_path="about"),
+        st.Page("app_pages/about/abbreviations.py", title="Abbreviations", icon=":material/menu_book:", url_path="abbreviations"),
+        st.Page("app_pages/about/tax_loss_harvesting.py", title="Tax-Loss Harvesting", icon=":material/money_off:", url_path="tax-loss-harvesting"),
+        st.Page("app_pages/about/equivalents.py", title="Equivalents", icon=":material/equal:", url_path="equivalents"),
+        st.Page("app_pages/about/under_development.py", title="Under Development", icon=":material/construction:", url_path="under-development"),
+        st.Page("app_pages/about/release_notes.py", title="Release Notes", icon=":material/new_releases:", url_path="release-notes"),
     ],
 }
 

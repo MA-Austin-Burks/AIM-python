@@ -7,13 +7,11 @@ from components import render_footer
 
 ABBREVIATIONS_UPDATE_DATE = "2026-01-17"
 
-st.set_page_config(page_title="Abbreviations", layout="wide")
-
 
 @st.cache_data(ttl=3600)
 def _load_abbreviations() -> pl.DataFrame:
     """Load abbreviations CSV file (cached for 1 hour)."""
-    return pl.read_csv("pages/about/data/abbreviations.csv")
+    return pl.read_csv("app_pages/about/data/abbreviations.csv")
 
 
 st.markdown("# :material/menu_book: Abbreviations")

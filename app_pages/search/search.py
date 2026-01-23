@@ -63,7 +63,7 @@ def filter_and_sort_strategies(strats: pl.DataFrame, _filter_expr: pl.Expr, filt
         strats.filter(_filter_expr)
         .sort(
             by=[RECOMMENDED, EQUITY_PCT, STRATEGY],
-            descending=[True, True, True],
+            descending=[True, True, False],
             nulls_last=True,
         )
     )

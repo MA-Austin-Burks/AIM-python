@@ -4,13 +4,11 @@ import streamlit as st
 
 from components import render_footer
 
-st.set_page_config(page_title="Under Development", layout="wide")
-
 
 @st.cache_data(ttl=3600)
 def _load_under_development() -> dict[str, list[str]]:
     """Load under development text file and parse into sections (cached for 1 hour)."""
-    with open("pages/about/data/under_development.txt", "r", encoding="utf-8") as f:
+    with open("app_pages/about/data/under_development.txt", "r", encoding="utf-8") as f:
         content = f.read()
     
     sections = {}

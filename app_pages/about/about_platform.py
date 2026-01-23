@@ -6,13 +6,11 @@ from components import render_footer
 
 EXPLANATION_CARD_UPDATE_DATE = "2026-01-17"
 
-st.set_page_config(page_title="About the Platform", layout="wide")
-
 
 @st.cache_data(ttl=3600)
 def _load_explanation_card() -> str:
     """Load explanation card text file (cached for 1 hour)."""
-    with open("pages/about/data/explanation_card.txt", "r", encoding="utf-8") as f:
+    with open("app_pages/about/data/explanation_card.txt", "r", encoding="utf-8") as f:
         return f.read()
 
 

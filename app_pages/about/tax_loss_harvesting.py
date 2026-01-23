@@ -7,13 +7,11 @@ from components import render_footer
 
 TLH_UPDATE_DATE = "2026-01-17"
 
-st.set_page_config(page_title="Tax-Loss Harvesting", layout="wide")
-
 
 @st.cache_data(ttl=3600)
 def _load_tlh() -> pl.DataFrame:
     """Load TLH CSV file (cached for 1 hour)."""
-    return pl.read_csv("pages/about/data/tlh.csv")
+    return pl.read_csv("app_pages/about/data/tlh.csv")
 
 
 st.markdown("# :material/money_off: Tax-Loss Harvesting (TLH)")

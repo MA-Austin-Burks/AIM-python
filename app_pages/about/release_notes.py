@@ -6,8 +6,6 @@ from components import render_footer
 
 RELEASE_NOTES_UPDATE_DATE = "2026-01-24"
 
-st.set_page_config(page_title="Release Notes", layout="wide")
-
 
 def render_release(version: str, date: str, features: list[str], improvements: list[str] = None, fixes: list[str] = None) -> None:
     """Render a release section with version, date, and changes."""

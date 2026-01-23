@@ -66,67 +66,55 @@ def initialize_session_state() -> None:
     # =========================================================================
     
     # IC Status filter
-    if "filter_ic" not in st.session_state:
-        st.session_state["filter_ic"] = "Recommended"
-    elif not isinstance(st.session_state["filter_ic"], str) or not _validate_filter_recommended(st.session_state["filter_ic"]):
+    st.session_state.setdefault("filter_ic", "Recommended")
+    if not isinstance(st.session_state["filter_ic"], str) or not _validate_filter_recommended(st.session_state["filter_ic"]):
         st.session_state["filter_ic"] = "Recommended"
     
     # Yes/No filters (Tax-Managed, SMA Manager, Private Markets)
-    if "filter_tm" not in st.session_state:
-        st.session_state["filter_tm"] = None
-    elif not isinstance(st.session_state["filter_tm"], (str, type(None))) or not _validate_filter_yes_no(st.session_state["filter_tm"]):
+    st.session_state.setdefault("filter_tm", None)
+    if not isinstance(st.session_state["filter_tm"], (str, type(None))) or not _validate_filter_yes_no(st.session_state["filter_tm"]):
         st.session_state["filter_tm"] = None
     
-    if "filter_sma" not in st.session_state:
-        st.session_state["filter_sma"] = None
-    elif not isinstance(st.session_state["filter_sma"], (str, type(None))) or not _validate_filter_yes_no(st.session_state["filter_sma"]):
+    st.session_state.setdefault("filter_sma", None)
+    if not isinstance(st.session_state["filter_sma"], (str, type(None))) or not _validate_filter_yes_no(st.session_state["filter_sma"]):
         st.session_state["filter_sma"] = None
     
-    if "filter_pm" not in st.session_state:
-        st.session_state["filter_pm"] = None
-    elif not isinstance(st.session_state["filter_pm"], (str, type(None))) or not _validate_filter_yes_no(st.session_state["filter_pm"]):
+    st.session_state.setdefault("filter_pm", None)
+    if not isinstance(st.session_state["filter_pm"], (str, type(None))) or not _validate_filter_yes_no(st.session_state["filter_pm"]):
         st.session_state["filter_pm"] = None
     
     # Numeric filters
-    if "min_strategy" not in st.session_state:
-        st.session_state["min_strategy"] = None
-    elif not isinstance(st.session_state["min_strategy"], (int, float, type(None))) or (st.session_state["min_strategy"] is not None and not _validate_min_strategy(st.session_state["min_strategy"])):
+    st.session_state.setdefault("min_strategy", None)
+    if not isinstance(st.session_state["min_strategy"], (int, float, type(None))) or (st.session_state["min_strategy"] is not None and not _validate_min_strategy(st.session_state["min_strategy"])):
         st.session_state["min_strategy"] = None
     
-    if "equity_allocation_range" not in st.session_state:
-        st.session_state["equity_allocation_range"] = (0, 100)
-    elif not isinstance(st.session_state["equity_allocation_range"], tuple) or not (isinstance(st.session_state["equity_allocation_range"], tuple) and len(st.session_state["equity_allocation_range"]) == 2 and all(isinstance(x, (int, float)) and 0 <= x <= 100 for x in st.session_state["equity_allocation_range"]) and st.session_state["equity_allocation_range"][0] <= st.session_state["equity_allocation_range"][1]):
+    st.session_state.setdefault("equity_allocation_range", (0, 100))
+    if not isinstance(st.session_state["equity_allocation_range"], tuple) or not (isinstance(st.session_state["equity_allocation_range"], tuple) and len(st.session_state["equity_allocation_range"]) == 2 and all(isinstance(x, (int, float)) and 0 <= x <= 100 for x in st.session_state["equity_allocation_range"]) and st.session_state["equity_allocation_range"][0] <= st.session_state["equity_allocation_range"][1]):
         st.session_state["equity_allocation_range"] = (0, 100)
     
     # Multi-select filters (Type, Subtype)
-    if "filter_type" not in st.session_state:
-        st.session_state["filter_type"] = []  # Empty list means show all (none selected)
-    elif not isinstance(st.session_state["filter_type"], (list, str)) or not ((isinstance(st.session_state["filter_type"], list) and all(_validate_type(t) for t in st.session_state["filter_type"])) or _validate_type(st.session_state["filter_type"])):
+    st.session_state.setdefault("filter_type", [])  # Empty list means show all (none selected)
+    if not isinstance(st.session_state["filter_type"], (list, str)) or not ((isinstance(st.session_state["filter_type"], list) and all(_validate_type(t) for t in st.session_state["filter_type"])) or _validate_type(st.session_state["filter_type"])):
         st.session_state["filter_type"] = []
     
-    if "filter_subtype" not in st.session_state:
-        # Empty list means show all subtypes (none selected)
-        st.session_state["filter_subtype"] = []
-    elif not isinstance(st.session_state["filter_subtype"], (list, str, type(None))) or not _validate_filter_subtype(st.session_state["filter_subtype"]):
+    st.session_state.setdefault("filter_subtype", [])  # Empty list means show all subtypes (none selected)
+    if not isinstance(st.session_state["filter_subtype"], (list, str, type(None))) or not _validate_filter_subtype(st.session_state["filter_subtype"]):
         st.session_state["filter_subtype"] = []
     
-    if "_previous_type" not in st.session_state:
-        st.session_state["_previous_type"] = []  # Empty list for no selection
-    elif not isinstance(st.session_state["_previous_type"], (list, str)) or not ((isinstance(st.session_state["_previous_type"], list) and all(_validate_type(t) for t in st.session_state["_previous_type"])) or _validate_type(st.session_state["_previous_type"])):
+    st.session_state.setdefault("_previous_type", [])  # Empty list for no selection
+    if not isinstance(st.session_state["_previous_type"], (list, str)) or not ((isinstance(st.session_state["_previous_type"], list) and all(_validate_type(t) for t in st.session_state["_previous_type"])) or _validate_type(st.session_state["_previous_type"])):
         # Reset to default empty list if validation fails (consistent with initial default)
         st.session_state["_previous_type"] = []
     
     # =========================================================================
     # SEARCH STATE
     # =========================================================================
-    if "strategy_search_input" not in st.session_state:
-        st.session_state["strategy_search_input"] = ""
-    elif not isinstance(st.session_state["strategy_search_input"], (str, type(None))) or not _validate_search_input(st.session_state["strategy_search_input"]):
+    st.session_state.setdefault("strategy_search_input", "")
+    if not isinstance(st.session_state["strategy_search_input"], (str, type(None))) or not _validate_search_input(st.session_state["strategy_search_input"]):
         st.session_state["strategy_search_input"] = ""
     
-    if "_clear_search_flag" not in st.session_state:
-        st.session_state["_clear_search_flag"] = False
-    elif not isinstance(st.session_state["_clear_search_flag"], bool):
+    st.session_state.setdefault("_clear_search_flag", False)
+    if not isinstance(st.session_state["_clear_search_flag"], bool):
         st.session_state["_clear_search_flag"] = False
 
 
@@ -136,16 +124,16 @@ def get_or_init(key: str, default: T, init_fn: Callable[[], T] | None = None) ->
     Note: This should only be used for UI state (like card order, pagination).
     Filter state should be initialized via initialize_session_state().
     """
-    if key not in st.session_state:
-        st.session_state[key] = init_fn() if init_fn else default
+    if init_fn:
+        if key not in st.session_state:
+            st.session_state[key] = init_fn()
+    else:
+        st.session_state.setdefault(key, default)
     return st.session_state[key]
 
 
 def reset_if_changed(key: str, new_value: Any, reset_key: str, reset_value: Any) -> None:
     """Reset a state key when another key's value changes."""
-    if key not in st.session_state:
-        st.session_state[key] = new_value
-        st.session_state[reset_key] = reset_value
-    elif st.session_state[key] != new_value:
+    if key not in st.session_state or st.session_state[key] != new_value:
         st.session_state[key] = new_value
         st.session_state[reset_key] = reset_value

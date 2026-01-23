@@ -29,7 +29,7 @@ CARDS_PER_LOAD = 20
 @st.cache_data(ttl=3600)
 def _load_explanation_card() -> str:
     """Load explanation card text file (cached for 1 hour)."""
-    with open("pages/about/data/explanation_card.txt", "r", encoding="utf-8") as f:
+    with open("app_pages/about/data/explanation_card.txt", "r", encoding="utf-8") as f:
         return f.read()
 
 
@@ -270,6 +270,7 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
                 f"Load {next_load} More ({remaining} remaining)",
                 width="stretch",
                 type="primary",
+                key="load_more_cards_btn",
             ):
                 st.session_state[CARDS_DISPLAYED_KEY] += CARDS_PER_LOAD
                 st.rerun()
