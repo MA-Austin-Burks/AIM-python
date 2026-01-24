@@ -5,22 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from utils.column_names import (
-    STRATEGY,
-    RECOMMENDED,
-    EQUITY_PCT,
-    YIELD,
-    EXPENSE_RATIO,
-    MINIMUM,
-    SERIES,
-    TYPE,
-    CATEGORY,
-    TAX_MANAGED,
-    PRIVATE_MARKETS,
-    MODEL,
-    PORTFOLIO,
-)
-
 
 def _normalize_bool(value: Any) -> bool:
     """Normalize mixed truthy values into a bool."""
@@ -44,7 +28,7 @@ def _get_row_value(row: dict[str, Any], *keys: str, default: Any = None) -> Any:
     """Get the first matching key from a row dict.
     
     DEPRECATED: After column name normalization, this helper is no longer needed.
-    Use direct dictionary access with constants from utils.column_names instead.
+    Use direct dictionary access with column name strings instead.
     Kept for backward compatibility during migration.
     """
     for key in keys:
@@ -77,17 +61,17 @@ class StrategySummary:
         direct dictionary access with constants.
         """
         return cls(
-            strategy=str(row.get(STRATEGY, "")),
-            recommended=_normalize_bool(row.get(RECOMMENDED, False)),
-            equity_pct=float(row.get(EQUITY_PCT, 0) or 0),
-            yield_decimal=row.get(YIELD, None),
-            expense_ratio_decimal=float(row.get(EXPENSE_RATIO, 0) or 0),
-            minimum=float(row.get(MINIMUM, 0) or 0),
-            subtype=_normalize_subtype(row.get(SERIES, [])),  # SERIES maps to ss_subtype
-            type=str(row.get(TYPE, "")),  # TYPE maps to ss_subtype
-            category=row.get(CATEGORY, None),  # CATEGORY maps to ss_type
-            tax_managed=_normalize_bool(row.get(TAX_MANAGED, False)),  # TAX_MANAGED maps to has_tm
-            private_markets=_normalize_bool(row.get(PRIVATE_MARKETS, False)),  # PRIVATE_MARKETS maps to has_private_market
+            strategy=str(row.get("strategy", "")),
+            recommended=_normalize_bool(row.get("ic_recommend", False)),
+            equity_pct=float(row.get("equity_allo", 0) or 0),
+            yield_decimal=row.get("yield", None),
+            expense_ratio_decimal=float(row.get("fee", 0) or 0),
+            minimum=float(row.get("minimum", 0) or 0),
+            subtype=_normalize_subtype(row.get("series", [])),  # SERIES maps to ss_subtype
+            type=str(row.get("ss_subtype", "")),  # TYPE maps to ss_subtype
+            category=row.get("ss_type", None),  # CATEGORY maps to ss_type
+            tax_managed=_normalize_bool(row.get("has_tm", False)),  # TAX_MANAGED maps to has_tm
+            private_markets=_normalize_bool(row.get("has_private_market", False)),  # PRIVATE_MARKETS maps to has_private_market
         )
 
     @property
@@ -127,12 +111,12 @@ class StrategyDetail:
         direct dictionary access with constants.
         """
         return cls(
-            strategy=str(row.get(STRATEGY, "")),
-            model=str(row.get(MODEL, "")),  # MODEL maps to ss_suite
-            type=str(row.get(TYPE, "")),  # TYPE maps to ss_subtype
-            category=row.get(CATEGORY, None),  # CATEGORY maps to ss_type
-            portfolio=row.get(PORTFOLIO, None),
-            expense_ratio=row.get(EXPENSE_RATIO, None),
-            yield_val=row.get(YIELD, None),
-            minimum=row.get(MINIMUM, None),
+            strategy=str(row.get("strategy", "")),
+            model=str(row.get("ss_suite", "")),  # MODEL maps to ss_suite
+            type=str(row.get("ss_subtype", "")),  # TYPE maps to ss_subtype
+            category=row.get("ss_type", None),  # CATEGORY maps to ss_type
+            portfolio=row.get("portfolio", None),
+            expense_ratio=row.get("fee", None),
+            yield_val=row.get("yield", None),
+            minimum=row.get("minimum", None),
         )

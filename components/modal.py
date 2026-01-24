@@ -6,7 +6,6 @@ import streamlit as st
 from components.tab_overview import render_allocation_tab
 from utils.models import StrategySummary
 from utils.branding import generate_badges
-from utils.column_names import STRATEGY
 
 
 @st.dialog("Strategy Details", width="large", icon=":material/process_chart:")
@@ -23,7 +22,7 @@ def render_strategy_modal(
     normalized_strategy = strategy_name.strip().lower()
     allocation_row = (
         cleaned_data
-        .filter(pl.col(STRATEGY).str.strip_chars().str.to_lowercase() == normalized_strategy)
+        .filter(pl.col("strategy").str.strip_chars().str.to_lowercase() == normalized_strategy)
         .select(["equity_allo", "fixed_allo", "private_allo", "cash_allo"])
         .first()
         .collect()

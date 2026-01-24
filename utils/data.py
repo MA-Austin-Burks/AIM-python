@@ -11,7 +11,6 @@ import s3fs
 import streamlit as st
 
 from utils.models import StrategyDetail
-from utils.column_names import STRATEGY
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -201,7 +200,7 @@ def _derive_strategy_list_from_ss_all(ss_all_df: pl.LazyFrame) -> pl.DataFrame:
     """Derive strategy_list DataFrame from ss_all by aggregating per strategy.
     
     Groups by strategy and aggregates all strategy-level fields.
-    Uses new column names matching constants from utils.column_names.
+    Uses new column names directly as strings.
     
     Args:
         ss_all_df: LazyFrame loaded from ss_all.parquet
@@ -209,29 +208,23 @@ def _derive_strategy_list_from_ss_all(ss_all_df: pl.LazyFrame) -> pl.DataFrame:
     Returns:
         DataFrame with strategy-level aggregated data using new column names
     """
-    from utils.column_names import (
-        STRATEGY, EQUITY_PCT, ALT_PCT, TYPE, TAX_MANAGED, RECOMMENDED,
-        PRIVATE_MARKETS, HAS_SMA_MANAGER, HAS_VBI, MINIMUM, YIELD,
-        EXPENSE_RATIO, SERIES, CATEGORY
-    )
-    
     return (
         ss_all_df
-        .group_by(STRATEGY)
+        .group_by("strategy")
         .agg([
-            pl.col("equity_allo").first().alias(EQUITY_PCT),  # equity_allo
-            pl.col("private_allo").first().alias(ALT_PCT),  # private_allo -> alt_pct
-            pl.col("ss_subtype").first().alias(TYPE),  # ss_subtype -> type
-            pl.col("has_tm").first().alias(TAX_MANAGED),  # has_tm
-            pl.col("ic_recommend").first().alias(RECOMMENDED),  # ic_recommend
-            pl.col("has_private_market").first().alias(PRIVATE_MARKETS),  # has_private_market
-            pl.col("has_sma").first().alias(HAS_SMA_MANAGER),  # has_sma
-            pl.col("has_VBI").first().alias(HAS_VBI),  # has_VBI
-            pl.col(MINIMUM).first().alias(MINIMUM),
-            pl.col(YIELD).first().alias(YIELD),
-            pl.col("fee").max().alias(EXPENSE_RATIO),  # fee -> expense_ratio
-            pl.col("ss_subtype").unique().alias(SERIES),  # ss_subtype -> series (as list)
-            pl.col("ss_type").first().alias(CATEGORY),  # ss_type -> category
+            pl.col("equity_allo").first().alias("equity_allo"),  # equity_allo
+            pl.col("private_allo").first().alias("private_allo"),  # private_allo -> alt_pct
+            pl.col("ss_subtype").first().alias("ss_subtype"),  # ss_subtype -> type
+            pl.col("has_tm").first().alias("has_tm"),  # has_tm
+            pl.col("ic_recommend").first().alias("ic_recommend"),  # ic_recommend
+            pl.col("has_private_market").first().alias("has_private_market"),  # has_private_market
+            pl.col("has_sma").first().alias("has_sma"),  # has_sma
+            pl.col("has_VBI").first().alias("has_VBI"),  # has_VBI
+            pl.col("minimum").first().alias("minimum"),
+            pl.col("yield").first().alias("yield"),
+            pl.col("fee").max().alias("fee"),  # fee -> expense_ratio
+            pl.col("ss_subtype").unique().alias("series"),  # ss_subtype -> series (as list)
+            pl.col("ss_type").first().alias("ss_type"),  # ss_type -> category
         ])
         .collect()
     )
@@ -312,7 +305,7 @@ def get_strategy_by_name(
     """
     strategy_row = (
         cleaned_data
-        .filter(pl.col(STRATEGY) == strategy_name)
+        .filter(pl.col("strategy") == strategy_name)
         .head(1)
         .collect()
     )

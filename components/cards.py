@@ -7,14 +7,6 @@ from components.model_card import CARD_FIXED_WIDTH, model_card
 from utils.models import StrategySummary
 from utils.branding import get_subtype_color_from_row
 from utils.session_state import get_or_init
-from utils.column_names import (
-    MINIMUM,
-    EXPENSE_RATIO,
-    YIELD,
-    EQUITY_PCT,
-    STRATEGY,
-    RECOMMENDED,
-)
 
 # Session state keys
 SELECTED_STRATEGY_MODAL_KEY = "selected_strategy_for_modal"
@@ -71,22 +63,22 @@ def _apply_sort_order(strategies: pl.DataFrame, sort_order: str) -> pl.DataFrame
     # Mapping of sort order options to (column, descending) tuples
     # Special case for "Recommended (Default)" uses multi-column sort
     sort_configs: dict[str, tuple[list[str], list[bool]] | tuple[str, bool]] = {
-        "Acct Min - Highest to Lowest": (MINIMUM, True),
-        "Acct Min - Lowest to Highest": (MINIMUM, False),
-        "Expense Ratio - Highest to Lowest": (EXPENSE_RATIO, True),
-        "Expense Ratio - Lowest to Highest": (EXPENSE_RATIO, False),
-        "Yield - High to Low": (YIELD, True),
-        "Yield - Low to High": (YIELD, False),
-        "Equity % - High to Low": (EQUITY_PCT, True),
-        "Equity % - Low to High": (EQUITY_PCT, False),
-        "Strategy Name - A to Z": (STRATEGY, False),
-        "Strategy Name - Z to A": (STRATEGY, True),
+        "Acct Min - Highest to Lowest": ("minimum", True),
+        "Acct Min - Lowest to Highest": ("minimum", False),
+        "Expense Ratio - Highest to Lowest": ("fee", True),
+        "Expense Ratio - Lowest to Highest": ("fee", False),
+        "Yield - High to Low": ("yield", True),
+        "Yield - Low to High": ("yield", False),
+        "Equity % - High to Low": ("equity_allo", True),
+        "Equity % - Low to High": ("equity_allo", False),
+        "Strategy Name - A to Z": ("strategy", False),
+        "Strategy Name - Z to A": ("strategy", True),
     }
     
-    # Default sort: Investment Committee recommendations prioritized, then by equity allocation
+    # Default sort: Investment Committee recommendations prioritized, then by equity allocation, then by strategy name (A to Z)
     default_sort = (
-        [RECOMMENDED, EQUITY_PCT, STRATEGY],
-        [True, True, True]
+        ["ic_recommend", "equity_allo", "strategy"],
+        [True, True, False]
     )
     
     # Get sort configuration
