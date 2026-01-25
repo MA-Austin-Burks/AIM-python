@@ -6,7 +6,7 @@ CARD_FIXED_WIDTH = "375px"  # Fixed width for each card
 # INLINE CSS (scoped)
 # ======================
 # Minimal CSS to keep hover behavior and shared class rules.
-CSS = f"""
+CSS = """
 .mc-card{{
   overflow:hidden;
   cursor:pointer;

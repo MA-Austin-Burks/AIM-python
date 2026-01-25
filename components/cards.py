@@ -120,7 +120,6 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
     # ============================================================================
     total_count = filtered_strategies.height
     
-    card_order = get_or_init(CARD_ORDER_KEY, DEFAULT_CARD_ORDER)
     cards_displayed = get_or_init(CARDS_DISPLAYED_KEY, CARDS_PER_LOAD)
     
     # ============================================================================
