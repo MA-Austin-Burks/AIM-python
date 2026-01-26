@@ -143,7 +143,7 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
     st.markdown(f"**Showing {cards_to_show} of {total_count} strategies**")
     
     # ============================================================================
-    # STEP 4: Render cards in flex container (fixed width, dynamic wrapping)
+    # STEP 4: Render cards in grid layout (fixed width, responsive columns)
     # ============================================================================
     clicked_strategy = None
     
@@ -153,34 +153,34 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
         for row in display_strategies.iter_rows(named=True)
     ]
     
-    # Add CSS to ensure cards spread evenly even in the last row
+    # Add CSS to use CSS Grid for automatic responsive card layout
+    # Grid handles last-row alignment naturally without placeholder cards
     # Streamlit adds 'st-key-' prefix to key-based classes
     st.markdown(
-        """
+        f"""
         <style>
-        /* Target the cards container to ensure even distribution */
-        .st-key-cards-flex-container {
+        /* Convert flex container to CSS Grid for better last-row handling */
+        .st-key-cards-flex-container {{
+            display: grid !important;
+            grid-template-columns: repeat(auto-fill, {CARD_FIXED_WIDTH}) !important;
             justify-content: space-evenly !important;
-        }
-        /* Ensure card containers don't shrink */
-        .st-key-cards-flex-container > div {
-            flex: 0 0 auto;
-        }
+            gap: 10px !important;
+        }}
         /* Ensure card containers don't override card border-radius */
-        .st-key-cards-flex-container > div > div {
+        .st-key-cards-flex-container > div > div {{
             border-radius: inherit !important;
-        }
+        }}
         /* Ensure the card component itself maintains border-radius */
-        .st-key-cards-flex-container .mc-card {
+        .st-key-cards-flex-container .mc-card {{
             border-radius: 12px !important;
-        }
+        }}
         </style>
         """,
         unsafe_allow_html=True,
     )
     
-    # Use st.container with horizontal=True for automatic flexbox wrapping
-    # Each card is wrapped in a fixed-width container to ensure consistent sizing
+    # Use st.container with horizontal=True, then CSS overrides to Grid layout
+    # Grid ensures last row stays left-aligned while other rows are evenly distributed
     with st.container(horizontal=True, gap="small", key="cards-flex-container"):
         # Render all cards sequentially, each wrapped in a fixed-width container
         for card_idx, strategy_row in enumerate(strategy_rows):
@@ -191,65 +191,6 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
                 clicked, strategy_name = _render_strategy_card(strategy_row, card_idx)
                 if clicked:
                     clicked_strategy = strategy_name
-        
-        # Add empty placeholder cards to fill incomplete last row
-        # Calculate cards per row dynamically based on viewport width estimates
-        num_cards = len(strategy_rows)
-        
-        if num_cards > 0:
-            card_width_px = int(CARD_FIXED_WIDTH.replace("px", ""))
-            
-            # Calculate cards per row dynamically based on container width
-            # Streamlit main content area can be quite wide (up to ~1800px+ in wide mode)
-            # Card width: 350px, gap: ~8-12px (small gap in Streamlit)
-            # Account for container padding/margins (~40-80px total)
-            
-            # Calculate for different viewport widths and use the maximum
-            # This ensures we add enough placeholders for wider screens
-            # Using wider viewport estimates to handle modern wide screens and ultra-wide displays
-            viewport_scenarios = [1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400]  # Common viewport widths
-            gap_size = 10  # Conservative gap estimate (Streamlit's "small" gap is typically 8-12px)
-            container_padding = 50  # Conservative padding estimate for Streamlit containers
-            max_cards_per_row = 1
-            
-            for viewport_width in viewport_scenarios:
-                # Available width = viewport - padding
-                available_width = viewport_width - container_padding
-                # Cards that fit = (available_width + gap) / (card_width + gap)
-                # Using floor division to get maximum cards that fit
-                cards_fit = int((available_width + gap_size) / (card_width_px + gap_size))
-                max_cards_per_row = max(max_cards_per_row, cards_fit)
-            
-            # Use the maximum cards per row from all scenarios
-            # This ensures we handle wide viewports correctly (e.g., 5-6 cards per row)
-            # Cap at 6 to avoid excessive placeholders on ultra-wide screens
-            cards_per_row = min(max_cards_per_row, 6)
-            
-            # Calculate remainder: how many cards are in the incomplete last row
-            remainder = num_cards % cards_per_row
-            
-            # Add empty placeholder cards only when there's an incomplete last row
-            # Edge cases handled:
-            # - num_cards == 0: Skipped by outer if ✓
-            # - remainder == 0: Complete rows, no empty cards needed ✓
-            # - remainder > 0: Incomplete last row, add empty cards to complete it ✓
-            if remainder > 0:
-                # Calculate how many empty cards needed to complete the row
-                empty_cards_needed = cards_per_row - remainder
-                
-                # Safety check: ensure we don't add more placeholders than needed
-                # empty_cards_needed should always be between 1 and (cards_per_row - 1)
-                empty_cards_needed = max(1, min(empty_cards_needed, cards_per_row - 1))
-                
-                # Render empty placeholder cards (transparent, same dimensions as real cards)
-                for _ in range(empty_cards_needed):
-                    with st.container(width=card_width_px):
-                        # Render transparent placeholder with approximate card height
-                        # Card height: ~60px header + ~120px body = ~180px total
-                        st.markdown(
-                            '<div style="width:100%;min-height:180px;opacity:0;pointer-events:none;"></div>',
-                            unsafe_allow_html=True
-                        )
     
     # Handle click after all cards are rendered to preserve layout
     if clicked_strategy:
