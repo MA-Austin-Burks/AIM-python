@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import streamlit as st
 
 CARD_FIXED_WIDTH = "375px"  # Fixed width for each card
@@ -168,7 +170,7 @@ export default function(component) {
 @st.cache_resource
 def _get_model_card_component():
     """Register and cache the inline model card component."""
-    return st.components.v2.component(
+    return st.components.v2.component(  # type: ignore[attr-defined]
         "model_card_inline",
         js=JS,
         css=CSS,
@@ -212,8 +214,8 @@ def model_card(
     star_badge_radius: str = "10px",
     star_badge_padding: str = "6px 8px",
     key: str | None = None,
-    on_click: callable = lambda: None,
-    on_select: callable = lambda: None,
+    on_click: Callable[[], None] = lambda: None,
+    on_select: Callable[[], None] = lambda: None,
 ):
     """
     Render a model card and return the result object.
