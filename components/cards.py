@@ -42,7 +42,7 @@ def _render_strategy_card(strategy_row: StrategySummary, index: int) -> tuple[bo
     minimum = strategy_row.minimum
     
     card_key = f"strategy_card_{index}_{strategy_name}"
-    clicked_id = model_card(
+    result = model_card(
         id=strategy_name,
         name=strategy_name,
         yield_pct=yield_pct_display,
@@ -53,8 +53,8 @@ def _render_strategy_card(strategy_row: StrategySummary, index: int) -> tuple[bo
         key=card_key,
     )
     
-    # Return True if this card was clicked (clicked_id matches strategy_name)
-    clicked = clicked_id == strategy_name
+    # Return True if this card was clicked (result.clicked is one-time trigger)
+    clicked = getattr(result, "clicked", None) == strategy_name
     return clicked, strategy_name
 
 

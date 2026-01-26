@@ -7,7 +7,7 @@ CARD_FIXED_WIDTH = "375px"  # Fixed width for each card
 # ======================
 # Minimal CSS to keep hover behavior and shared class rules.
 CSS = """
-.mc-card{{
+.mc-card{
   overflow:hidden;
   cursor:pointer;
   transition:box-shadow .15s ease,transform .06s ease;
@@ -16,24 +16,27 @@ CSS = """
   border-radius:12px;
   will-change:box-shadow,transform;
   position:relative;
-}}
-.mc-card:hover{{
+}
+.mc-card:hover{
   box-shadow:var(--mc-card-hover-shadow, 0 8px 28px rgba(0,0,0,.12)) !important;
   transform:translateY(-1px) !important;
-}}
-.mc-row-last{{border-bottom:none}}
+}
+.mc-row-last{border-bottom:none}
 """
 
 # ======================
 # INLINE JS (V2 Component)
 # ======================
-# Uses Streamlit's V2 mounting API: setTriggerValue('clicked', id)
+# Uses Streamlit's V2 mounting API: setTriggerValue('clicked', id) and setStateValue('selected', id)
 # Docs: https://docs.streamlit.io/develop/api-reference/custom-components/st.components.v2.component
 JS = r"""
 export default function(component) {
-  // Grab the host element, data payload, and trigger callback
-  const { parentElement, data, setTriggerValue } = component;
+  // Grab the host element, data payload, key, and state/trigger callbacks
+  const { parentElement, data, key, setTriggerValue, setStateValue } = component;
   const m = data || {};
+  
+  // Use frontend key for unique DOM IDs (avoids collisions across component instances)
+  const cardId = `mc-card-${key}`;
   
   // Ensure featured is a boolean
   const isFeatured = Boolean(m.featured);
@@ -60,7 +63,6 @@ export default function(component) {
   const valueWeight = style.valueWeight || "400";
   const labelColor = style.labelColor || "#374151";
   const valueColor = style.valueColor || "#111827";
-  const accentColor = style.accentColor || "#188038";
   const starBadgeBg = style.starBadgeBg || "rgba(255,255,255,.2)";
   const starBadgeColor = style.starBadgeColor || "#facc15";
   const starBadgeRadius = style.starBadgeRadius || "10px";
@@ -78,8 +80,9 @@ export default function(component) {
 
   // Build the HTML with inline styles for reliable rendering
   // Note: CSS variable is set via JavaScript after mount for better compatibility
+  // Uses unique cardId from frontend key to avoid DOM collisions
   const html = `
-    <div class="mc-card" role="button"
+    <div id="${cardId}" class="mc-card" role="button" tabindex="0"
          style="border-radius:${cardRadius};box-shadow:${cardShadow};background:#fff;">
       <div style="background:${color};padding:${headerPadding};height:${headerHeight};
                   display:flex;align-items:center;">
@@ -126,8 +129,8 @@ export default function(component) {
   node.innerHTML = html;
   parentElement.appendChild(node);
 
-  // Get the card element and ensure styles are applied
-  const cardElement = node.querySelector(".mc-card");
+  // Get the card element by unique ID and ensure styles are applied
+  const cardElement = node.querySelector(`#${cardId}`);
   if (cardElement) {
     // Set CSS variable for hover shadow effect (must be set on element for :hover to work)
     cardElement.style.setProperty("--mc-card-hover-shadow", cardHoverShadow);
@@ -136,9 +139,23 @@ export default function(component) {
     // Ensure initial box-shadow is set
     cardElement.style.setProperty("box-shadow", cardShadow);
     
+    // Handler to notify Python of selection
+    const handleSelect = () => {
+      const cardId = m.id || m.name || null;
+      setStateValue("selected", cardId);    // Persistent state (survives reruns)
+      setTriggerValue("clicked", cardId);   // One-time trigger (resets after rerun)
+    };
+    
     // Click handler -> notify Python
-    cardElement.onclick = () =>
-        setTriggerValue("clicked", m.id || m.name || null);
+    cardElement.onclick = handleSelect;
+    
+    // Keyboard accessibility: Enter or Space triggers selection
+    cardElement.onkeydown = (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        handleSelect();
+      }
+    };
   }
 
   // Cleanup on unmount
@@ -195,8 +212,17 @@ def model_card(
     star_badge_radius: str = "10px",
     star_badge_padding: str = "6px 8px",
     key: str | None = None,
+    on_click: callable = lambda: None,
+    on_select: callable = lambda: None,
 ):
-    """Render a model card and return the clicked ID (or None)."""
+    """
+    Render a model card and return the result object.
+    
+    Returns:
+        result: Object with two attributes:
+            - clicked (str | None): One-time trigger, resets to None after rerun
+            - selected (str | None): Persistent state, survives across reruns
+    """
     result = _model_card(
         data={
             "id": id,
@@ -230,13 +256,17 @@ def model_card(
                 "starBadgePadding": star_badge_padding,
             },
         },
+        default={"selected": None},       # Default state value for persistent selection
         key=key,
-        on_clicked_change=lambda: None,  # register the JS -> Python trigger
+        on_clicked_change=on_click,       # One-time trigger callback
+        on_selected_change=on_select,     # Persistent state callback
     )
-    return getattr(result, "clicked", None)
+    return result
 
 
 # ======================
 # Slim readable version (reference)
 # ======================
-# JS: use `data`, append HTML to `parentElement`, call setTriggerValue on click.
+# JS: use `data`, `key` for unique IDs, append HTML to `parentElement`
+# On click/keypress: setStateValue("selected", id) for persistent state
+#                    setTriggerValue("clicked", id) for one-time trigger
