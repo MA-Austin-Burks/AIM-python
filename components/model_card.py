@@ -10,13 +10,16 @@ CSS = """
 .mc-card{{
   overflow:hidden;
   cursor:pointer;
-  transition:box-shadow .15s,transform .06s;
+  transition:box-shadow .15s ease,transform .06s ease;
   width:100%;
   flex-shrink:0;
+  border-radius:12px;
+  will-change:box-shadow,transform;
+  position:relative;
 }}
 .mc-card:hover{{
-  box-shadow:var(--mc-card-hover-shadow);
-  transform:translateY(-1px)
+  box-shadow:var(--mc-card-hover-shadow, 0 8px 28px rgba(0,0,0,.12)) !important;
+  transform:translateY(-1px) !important;
 }}
 .mc-row-last{{border-bottom:none}}
 """
@@ -74,10 +77,10 @@ export default function(component) {
   };
 
   // Build the HTML with inline styles for reliable rendering
+  // Note: CSS variable is set via JavaScript after mount for better compatibility
   const html = `
     <div class="mc-card" role="button"
-         style="border-radius:${cardRadius};box-shadow:${cardShadow};
-                --mc-card-hover-shadow:${cardHoverShadow};background:#fff;">
+         style="border-radius:${cardRadius};box-shadow:${cardShadow};background:#fff;">
       <div style="background:${color};padding:${headerPadding};height:${headerHeight};
                   display:flex;align-items:center;">
         <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;">
@@ -123,9 +126,20 @@ export default function(component) {
   node.innerHTML = html;
   parentElement.appendChild(node);
 
-  // Click handler -> notify Python
-  node.querySelector(".mc-card").onclick = () =>
-      setTriggerValue("clicked", m.id || m.name || null);
+  // Get the card element and ensure styles are applied
+  const cardElement = node.querySelector(".mc-card");
+  if (cardElement) {
+    // Set CSS variable for hover shadow effect (must be set on element for :hover to work)
+    cardElement.style.setProperty("--mc-card-hover-shadow", cardHoverShadow);
+    // Ensure border-radius is applied with !important via inline style
+    cardElement.style.setProperty("border-radius", cardRadius, "important");
+    // Ensure initial box-shadow is set
+    cardElement.style.setProperty("box-shadow", cardShadow);
+    
+    // Click handler -> notify Python
+    cardElement.onclick = () =>
+        setTriggerValue("clicked", m.id || m.name || null);
+  }
 
   // Cleanup on unmount
   return () => {

@@ -92,7 +92,7 @@ def render_filters() -> None:
         
         # Row 2
         st.space(1)
-        ic, tm, sma, pm, vbi = st.columns([6, 3, 3, 3, 3])
+        ic, tm, sma, pm, vbi, min = st.columns([6, 3, 3, 3, 3, 4])
         
         with ic:
             st.segmented_control(
@@ -100,6 +100,9 @@ def render_filters() -> None:
                 options=["Recommended", "Recommended & Approved"],
                 selection_mode="single",
                 key="filter_ic",
+                help=(
+                    "Recommended strategies reflect the Investment Committee’s best thinking and adhere to our philosophy, while approved strategies may differ in asset allocation but remain rigorously reviewed; see FAQ for more information."
+                ),
             )
         
         with tm:
@@ -134,8 +137,18 @@ def render_filters() -> None:
                 key="filter_vbi",
             )
         
+        with min:
+            st.number_input(
+                ":material/attach_money: Current Account Value",
+                min_value=0,
+                value=None,
+                step=10000,
+                key="min_strategy",
+                help="Input your current account value to show only strategies it qualifies for.",
+            )
+        
         # Row 3
-        type, min, empty, equity = st.columns([1.75, .8, .15, 3])
+        type, equity = st.columns([1.75, 3])
         
         with type:
             st.segmented_control(
@@ -144,23 +157,14 @@ def render_filters() -> None:
                 selection_mode="multi",
                 key="filter_type",
             )
-        
-        with min:
-            st.number_input(
-                ":material/attach_money: Current Account Value",
-                min_value=0,
-                value=None,
-                step=10000,
-                key="min_strategy",
-            )
-        
-        # empty column for spacing
-        with empty:
-            st.empty()
 
-        # Equity Allocation segmented control (only visible when Risk-Based is selected)
+        # Equity Allocation segmented control (visible when Risk-Based is selected OR when Multifactor/Market/Income Series subtypes are selected)
         with equity:
-            if "Risk-Based" in st.session_state.get("filter_type", []):
+            filter_type = st.session_state.get("filter_type", [])
+            filter_subtype = st.session_state.get("filter_subtype", [])
+            risk_based_subtypes = ["Multifactor Series", "Market Series", "Income Series"]
+            
+            if "Risk-Based" in filter_type or any(subtype in filter_subtype for subtype in risk_based_subtypes):
                 equity_options = [f"{i}%" for i in range(0, 101, 10)]
                 st.segmented_control(
                     "Equity Allocation (%)",
@@ -244,19 +248,22 @@ def build_filter_expression() -> pl.Expr:
     if recommended_selection == "Recommended":
         expressions.append(pl.col("ic_recommend"))
 
-    # TODO: update to use boolean filter once database is updated
     # Tax-Managed filter
     tax_managed_selection: str | None = st.session_state["filter_tm"]
     if tax_managed_selection:
-        expressions.append(pl.col("has_tm") == (tax_managed_selection == "Yes"))
+        if tax_managed_selection == "Yes":
+            expressions.append(pl.col("has_tm"))
+        elif tax_managed_selection == "No":
+            expressions.append(~pl.col("has_tm"))
 
-    # TODO: update to use boolean filter once database is updated
     # Has SMA Manager filter
     sma_selection: str | None = st.session_state["filter_sma"]
     if sma_selection:
-        expressions.append(pl.col("has_sma") == (sma_selection == "Yes"))
+        if sma_selection == "Yes":
+            expressions.append(pl.col("has_sma"))
+        elif sma_selection == "No":
+            expressions.append(~pl.col("has_sma"))
     
-    # TODO: update to use boolean filter once database is updated
     # Private Markets filter
     private_markets_selection: str | None = st.session_state["filter_pm"]
     if private_markets_selection:
@@ -265,20 +272,26 @@ def build_filter_expression() -> pl.Expr:
         elif private_markets_selection == "No":
             expressions.append(~pl.col("has_private_market"))
 
-    # TODO: update to use boolean filter once database is updated
     # VBI filter
     vbi_selection: str | None = st.session_state["filter_vbi"]
     if vbi_selection:
-        expressions.append(pl.col("has_VBI") == (vbi_selection == "Yes"))
+        if vbi_selection == "Yes":
+            expressions.append(pl.col("has_VBI"))
+        elif vbi_selection == "No":
+            expressions.append(~pl.col("has_VBI"))
 
     # Account Value filter
     min_strategy: int | float | None = st.session_state["min_strategy"]
     if min_strategy is not None:
         expressions.append(pl.col("minimum").le(min_strategy))
 
-    # Equity Allocation filter (only if Risk-Based is selected)
+    # Equity Allocation filter (only if Risk-Based is selected OR Multifactor/Market/Income Series subtypes are selected)
     # Combines equity allocation + alternative allocation (e.g., 65% equity + 15% alt = 80%)
-    if "Risk-Based" in st.session_state.get("filter_type", []):
+    filter_type = st.session_state.get("filter_type", [])
+    filter_subtype = st.session_state.get("filter_subtype", [])
+    risk_based_subtypes = ["Multifactor Series", "Market Series", "Income Series"]
+    
+    if "Risk-Based" in filter_type or any(subtype in filter_subtype for subtype in risk_based_subtypes):
         equity_selections: list[str] = st.session_state.get("equity_allocation_segmented", [])
         if equity_selections:
             # Convert selected percentages (e.g., "0%", "10%", "20%") to numeric values

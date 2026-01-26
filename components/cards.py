@@ -166,6 +166,14 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
         .st-key-cards-flex-container > div {
             flex: 0 0 auto;
         }
+        /* Ensure card containers don't override card border-radius */
+        .st-key-cards-flex-container > div > div {
+            border-radius: inherit !important;
+        }
+        /* Ensure the card component itself maintains border-radius */
+        .st-key-cards-flex-container .mc-card {
+            border-radius: 12px !important;
+        }
         </style>
         """,
         unsafe_allow_html=True,
