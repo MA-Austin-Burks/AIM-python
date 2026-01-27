@@ -4,7 +4,7 @@ import streamlit as st
 
 from components import render_footer
 
-RELEASE_NOTES_UPDATE_DATE = "2026-01-24"
+RELEASE_NOTES_UPDATE_DATE = "2026-01-27"
 
 
 def render_release(
@@ -41,10 +41,10 @@ st.markdown(
     "Welcome to the Aspen Investment Menu (AIM)! This is our initial release, providing a comprehensive platform for exploring and discovering investment strategies."
 )
 
-# AIM 2.0.0 Release
+# AIM 2.0 Release
 render_release(
-    version="2.0.0",
-    date="January 24, 2026",
+    version="2.0",
+    date="January 27, 2026",
     features=[
         "Initial release of the Aspen Investment Menu (AIM 2.0) with goal of 1-to-1 conversion from existing Excel spreadsheet",
         "Combined search, filter, and card-based navigation for existing Orion strategies",
