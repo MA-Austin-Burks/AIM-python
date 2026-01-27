@@ -1476,7 +1476,7 @@ def _render_collapse_toggle(
     if _has_collapsible_smas(all_model_data, strategy_name):
         st.toggle(
             "Collapse SMAs",
-            value=get_or_init(ALLOCATION_COLLAPSE_SMA_KEY, DEFAULT_COLLAPSE_SMA),
+            value=st.session_state.get(ALLOCATION_COLLAPSE_SMA_KEY, DEFAULT_COLLAPSE_SMA),
             key=ALLOCATION_COLLAPSE_SMA_KEY
         )
 
