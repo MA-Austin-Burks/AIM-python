@@ -90,8 +90,8 @@ export default function(component) {
                      overflow:hidden;">
             ${m.name ?? ""}
           </h3>
-          <span style="color:${isRecommended ? starBadgeColor : 'rgba(255,255,255,0.5)'};font-size:25px;line-height:1;
-                            display:flex;align-items:center;justify-content:center;min-width:25px;">${isRecommended ? '★' : '☆'}</span>
+          <span style="color:${isRecommended ? starBadgeColor : 'rgba(255,255,255,0.5)'};font-size:46px;line-height:1;
+                            display:flex;align-items:center;justify-content:center;min-width:46px;">${isRecommended ? '★' : '☆'}</span>
         </div>
       </div>
 
