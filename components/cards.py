@@ -2,10 +2,13 @@ from typing import Optional
 
 import polars as pl
 import streamlit as st
-from components.model_card import CARD_FIXED_WIDTH, model_card
 
-from utils.models import StrategySummary
-from utils.branding import get_subtype_color_from_row
+from components.model_card import CARD_FIXED_WIDTH, model_card
+from utils.branding import (
+    SUBTYPE_COLORS,
+    get_subtype_color_from_row,
+)
+from utils.models import CAISSummary, StrategySummary
 from utils.session_state import get_or_init
 
 # Session state keys
@@ -33,7 +36,9 @@ def render_explanation_card() -> None:
         st.markdown(explanation_text)
 
 
-def _render_strategy_card(strategy_row: StrategySummary, index: int) -> tuple[bool, str, str]:
+def _render_strategy_card(
+    strategy_row: StrategySummary, index: int
+) -> tuple[bool, str, str]:
     """Render a single strategy card using the custom investment card component, return (clicked, strategy_name, modal_type)."""
     strategy_name = strategy_row.strategy
     subtype_color = get_subtype_color_from_row(strategy_row)
@@ -42,7 +47,7 @@ def _render_strategy_card(strategy_row: StrategySummary, index: int) -> tuple[bo
     expense_ratio_display = strategy_row.expense_ratio_pct_display
     minimum = strategy_row.minimum
     modal_type = "strategy"
-    
+
     card_key = f"strategy_card_{index}_{strategy_name}"
     result = model_card(
         id=strategy_name,
@@ -61,7 +66,39 @@ def _render_strategy_card(strategy_row: StrategySummary, index: int) -> tuple[bo
         modal_type=modal_type,
         key=card_key,
     )
-    
+
+    # Return True if this card was clicked (result.clicked is one-time trigger)
+    clicked = getattr(result, "clicked", None) == strategy_name
+    return clicked, strategy_name, modal_type
+
+
+def _render_cais_card(cais_row: CAISSummary, index: int) -> tuple[bool, str, str]:
+    """Render a single CAIS card using the custom investment card component, return (clicked, strategy_name, modal_type)."""
+    strategy_name = cais_row.strategy
+    # Use "Alternative Strategies" color from branding
+    color = SUBTYPE_COLORS.get("Alternative Strategies", "#F9A602")
+    recommended = False  # CAIS strategies are not recommended
+    modal_type = "cais"
+
+    card_key = f"cais_card_{index}_{strategy_name}"
+    result = model_card(
+        id=strategy_name,
+        name=strategy_name,
+        color=color,
+        recommended=recommended,
+        metric_label_1="CAIS Type",
+        metric_value_1=cais_row.cais_type,
+        metric_format_1="STRING",
+        metric_label_2="Client Type",
+        metric_value_2=cais_row.client_type,
+        metric_format_2="STRING",
+        metric_label_3="Minimum",
+        metric_value_3=cais_row.minimum,
+        metric_format_3="DOLLAR",  # Use built-in DOLLAR formatting (handles K/M)
+        modal_type=modal_type,
+        key=card_key,
+    )
+
     # Return True if this card was clicked (result.clicked is one-time trigger)
     clicked = getattr(result, "clicked", None) == strategy_name
     return clicked, strategy_name, modal_type
@@ -83,16 +120,13 @@ def _apply_sort_order(strategies: pl.DataFrame, sort_order: str) -> pl.DataFrame
         "Strategy Name - A to Z": ("strategy", False),
         "Strategy Name - Z to A": ("strategy", True),
     }
-    
+
     # Default sort: Investment Committee recommendations prioritized, then by equity allocation, then by strategy name (A to Z)
-    default_sort = (
-        ["ic_recommend", "equity_allo", "strategy"],
-        [True, True, False]
-    )
-    
+    default_sort = (["ic_recommend", "equity_allo", "strategy"], [True, True, False])
+
     # Get sort configuration
     sort_config = sort_configs.get(sort_order)
-    
+
     if sort_config is None or sort_order == "Recommended (Default)":
         # Use default multi-column sort
         return strategies.sort(
@@ -100,7 +134,7 @@ def _apply_sort_order(strategies: pl.DataFrame, sort_order: str) -> pl.DataFrame
             descending=default_sort[1],
             nulls_last=True,
         )
-    
+
     # Single column sort
     column, descending = sort_config
     return strategies.sort(column, descending=descending, nulls_last=True)
@@ -111,16 +145,18 @@ def _reset_cards_displayed() -> None:
     st.session_state[CARDS_DISPLAYED_KEY] = CARDS_PER_LOAD
 
 
-def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], Optional[StrategySummary]]:
+def render_card_view(
+    filtered_strategies: pl.DataFrame,
+) -> tuple[Optional[str], Optional[StrategySummary]]:
     """Render the card view with filtered strategies.
-    
+
     Steps:
     1. Initialize session state for card ordering and pagination
     2. Render sort order selector
     3. Apply sorting and check for empty results
     4. Render cards in grid layout
     5. Render "Load More" button if more cards available
-    
+
     Args:
         filtered_strategies: Filtered strategy DataFrame
     """
@@ -128,41 +164,44 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
     # STEP 1: Initialize session state for card ordering and pagination
     # ============================================================================
     total_count = filtered_strategies.height
-    
+
     cards_displayed = get_or_init(CARDS_DISPLAYED_KEY, CARDS_PER_LOAD)
-    
+
     # ============================================================================
     # STEP 2: Get sort order from session state (rendered above filters in search.py)
     # ============================================================================
     selected_order = st.session_state.get(CARD_ORDER_KEY, DEFAULT_CARD_ORDER)
-    
+
     # ============================================================================
     # STEP 3: Apply sorting and check for empty results
     # ============================================================================
     filtered_strategies = _apply_sort_order(filtered_strategies, selected_order)
-    
+
     if filtered_strategies.height == 0:
         st.info("No strategies match the current filters.")
         return None, None
-    
+
     # Pagination: load cards incrementally to improve initial render performance
     cards_to_show = min(cards_displayed, total_count)
     display_strategies = filtered_strategies.head(cards_to_show)
-    
+
     st.markdown(f"**Showing {cards_to_show} of {total_count} strategies**")
-    
+
     # ============================================================================
     # STEP 4: Render cards in grid layout (fixed width, responsive columns)
     # ============================================================================
     clicked_strategy = None
     clicked_modal_type = None
-    
-    # Convert to list for easier rendering
-    strategy_rows = [
-        StrategySummary.from_row(row)
-        for row in display_strategies.iter_rows(named=True)
-    ]
-    
+
+    # Convert to list for easier rendering, detecting CAIS rows
+    card_rows = []
+    for row in display_strategies.iter_rows(named=True):
+        # Check if this is a CAIS row by looking for cais_type column
+        if "cais_type" in row and row["cais_type"] is not None:
+            card_rows.append(("cais", CAISSummary.from_row(row)))
+        else:
+            card_rows.append(("strategy", StrategySummary.from_row(row)))
+
     # Add CSS to use CSS Grid for automatic responsive card layout
     # Grid handles last-row alignment naturally without placeholder cards
     # Streamlit adds 'st-key-' prefix to key-based classes
@@ -188,27 +227,34 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
         """,
         unsafe_allow_html=True,
     )
-    
+
     # Use st.container with horizontal=True, then CSS overrides to Grid layout
     # Grid ensures last row stays left-aligned while other rows are evenly distributed
     with st.container(horizontal=True, gap="small", key="cards-flex-container"):
         # Render all cards sequentially, each wrapped in a fixed-width container
-        for card_idx, strategy_row in enumerate(strategy_rows):
+        for card_idx, (card_type, card_row) in enumerate(card_rows):
             # Wrap each card in a fixed-width container
             # Convert "350px" to integer for width parameter
             card_width_px = int(CARD_FIXED_WIDTH.replace("px", ""))
             with st.container(width=card_width_px):
-                clicked, strategy_name, modal_type = _render_strategy_card(strategy_row, card_idx)
+                if card_type == "cais":
+                    clicked, strategy_name, modal_type = _render_cais_card(
+                        card_row, card_idx
+                    )
+                else:
+                    clicked, strategy_name, modal_type = _render_strategy_card(
+                        card_row, card_idx
+                    )
                 if clicked:
                     clicked_strategy = strategy_name
                     clicked_modal_type = modal_type
-    
+
     # Handle click after all cards are rendered to preserve layout
     if clicked_strategy:
         st.session_state[SELECTED_STRATEGY_MODAL_KEY] = clicked_strategy
         st.session_state[SELECTED_MODAL_TYPE_KEY] = clicked_modal_type
         st.rerun()
-    
+
     # ============================================================================
     # STEP 5: Render "Load More" button if more cards available
     # ============================================================================
@@ -226,5 +272,5 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
             ):
                 st.session_state[CARDS_DISPLAYED_KEY] += CARDS_PER_LOAD
                 st.rerun()
-    
+
     return None, None
