@@ -10,11 +10,11 @@ def _load_under_development() -> dict[str, list[str]]:
     """Load under development text file and parse into sections (cached for 1 hour)."""
     with open("app_pages/data/under_development.txt", "r", encoding="utf-8") as f:
         content = f.read()
-    
+
     sections = {}
     current_section = None
     current_items = []
-    
+
     for line in content.split("\n"):
         line = line.strip()
         if line.startswith("###"):
@@ -26,11 +26,11 @@ def _load_under_development() -> dict[str, list[str]]:
             current_items = []
         elif line.startswith("-") and current_section:
             current_items.append(line.replace("-", "").strip())
-    
+
     # Save last section
     if current_section:
         sections[current_section] = current_items
-    
+
     return sections
 
 

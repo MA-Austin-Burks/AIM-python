@@ -30,26 +30,42 @@ col1, col2, col3 = st.columns(3)
 with col1:
     st.markdown("#### Market Series")
     st.markdown("**What Does it Do?**")
-    st.markdown("Portfolios are designed to provide low-cost, highly diversified global market exposure.")
+    st.markdown(
+        "Portfolios are designed to provide low-cost, highly diversified global market exposure."
+    )
     st.markdown("**Who is it For?**")
-    st.markdown("Investors looking for performance and investment exposure that closely resembles the broad market, or those that do not like to see performance diverging from the market.")
-    st.markdown("**Client Examples:** ERISA plans (Defined Contribution), clients adverse to tracking error.")
+    st.markdown(
+        "Investors looking for performance and investment exposure that closely resembles the broad market, or those that do not like to see performance diverging from the market."
+    )
+    st.markdown(
+        "**Client Examples:** ERISA plans (Defined Contribution), clients adverse to tracking error."
+    )
 
 with col2:
     st.markdown("#### Multifactor Series")
     st.markdown("**What Does it Do?**")
-    st.markdown("Portfolios are designed to utilize the latest academic investment research to systematically capture higher expected returns through a factor tilted globally diversified portfolio.")
+    st.markdown(
+        "Portfolios are designed to utilize the latest academic investment research to systematically capture higher expected returns through a factor tilted globally diversified portfolio."
+    )
     st.markdown("**Who is it For?**")
-    st.markdown('Long-term investors willing to tolerate performance deviations from the market (tracking error) in pursuit of greater long-term returns.')
-    st.markdown('**Client Examples:** "Engineering" types, those seeking long-term outperformance.')
+    st.markdown(
+        "Long-term investors willing to tolerate performance deviations from the market (tracking error) in pursuit of greater long-term returns."
+    )
+    st.markdown(
+        '**Client Examples:** "Engineering" types, those seeking long-term outperformance.'
+    )
 
 with col3:
     st.markdown("#### Income Series")
     st.markdown("**What Does it Do?**")
-    st.markdown("Portfolios are designed to provide enhanced and consistent income through exposure to high dividend global equities and high yielding global fixed income.")
+    st.markdown(
+        "Portfolios are designed to provide enhanced and consistent income through exposure to high dividend global equities and high yielding global fixed income."
+    )
     st.markdown("**Who is it For?**")
     st.markdown("Investors requiring income for current or specified cash flow needs.")
-    st.markdown('**Client Examples:** Retirees, "Red Zone" clients, and certain Trusts/Institutions')
+    st.markdown(
+        '**Client Examples:** Retirees, "Red Zone" clients, and certain Trusts/Institutions'
+    )
 
 # Footer
 render_footer()
