@@ -10,6 +10,7 @@ from utils.session_state import get_or_init
 
 # Session state keys
 SELECTED_STRATEGY_MODAL_KEY = "selected_strategy_for_modal"
+SELECTED_MODAL_TYPE_KEY = "selected_modal_type"
 CARD_ORDER_KEY = "card_order_by"
 CARDS_DISPLAYED_KEY = "cards_displayed"
 
@@ -32,30 +33,38 @@ def render_explanation_card() -> None:
         st.markdown(explanation_text)
 
 
-def _render_strategy_card(strategy_row: StrategySummary, index: int) -> tuple[bool, str]:
-    """Render a single strategy card using the custom investment card component, return (clicked, strategy_name)."""
+def _render_strategy_card(strategy_row: StrategySummary, index: int) -> tuple[bool, str, str]:
+    """Render a single strategy card using the custom investment card component, return (clicked, strategy_name, modal_type)."""
     strategy_name = strategy_row.strategy
     subtype_color = get_subtype_color_from_row(strategy_row)
     recommended = strategy_row.recommended
     yield_pct_display = strategy_row.yield_pct_display
     expense_ratio_display = strategy_row.expense_ratio_pct_display
     minimum = strategy_row.minimum
+    modal_type = "strategy"
     
     card_key = f"strategy_card_{index}_{strategy_name}"
     result = model_card(
         id=strategy_name,
         name=strategy_name,
-        yield_pct=yield_pct_display,
-        expense_ratio=expense_ratio_display,
-        minimum=minimum,
         color=subtype_color,
-        featured=recommended,
+        recommended=recommended,
+        metric_label_1="Yield",
+        metric_value_1=yield_pct_display,
+        metric_format_1="PERCENT",
+        metric_label_2="Expense Ratio",
+        metric_value_2=expense_ratio_display,
+        metric_format_2="PERCENT",
+        metric_label_3="Minimum",
+        metric_value_3=minimum,
+        metric_format_3="DOLLAR",
+        modal_type=modal_type,
         key=card_key,
     )
     
     # Return True if this card was clicked (result.clicked is one-time trigger)
     clicked = getattr(result, "clicked", None) == strategy_name
-    return clicked, strategy_name
+    return clicked, strategy_name, modal_type
 
 
 def _apply_sort_order(strategies: pl.DataFrame, sort_order: str) -> pl.DataFrame:
@@ -146,6 +155,7 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
     # STEP 4: Render cards in grid layout (fixed width, responsive columns)
     # ============================================================================
     clicked_strategy = None
+    clicked_modal_type = None
     
     # Convert to list for easier rendering
     strategy_rows = [
@@ -188,13 +198,15 @@ def render_card_view(filtered_strategies: pl.DataFrame) -> tuple[Optional[str], 
             # Convert "350px" to integer for width parameter
             card_width_px = int(CARD_FIXED_WIDTH.replace("px", ""))
             with st.container(width=card_width_px):
-                clicked, strategy_name = _render_strategy_card(strategy_row, card_idx)
+                clicked, strategy_name, modal_type = _render_strategy_card(strategy_row, card_idx)
                 if clicked:
                     clicked_strategy = strategy_name
+                    clicked_modal_type = modal_type
     
     # Handle click after all cards are rendered to preserve layout
     if clicked_strategy:
         st.session_state[SELECTED_STRATEGY_MODAL_KEY] = clicked_strategy
+        st.session_state[SELECTED_MODAL_TYPE_KEY] = clicked_modal_type
         st.rerun()
     
     # ============================================================================

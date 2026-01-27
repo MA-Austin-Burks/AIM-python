@@ -13,7 +13,6 @@ from components import (
     build_filter_expression,
     render_filters,
     render_footer,
-    render_strategy_modal,
 )
 from components.cards import (
     CARD_ORDER_KEY,
@@ -21,7 +20,9 @@ from components.cards import (
     CARDS_PER_LOAD,
     DEFAULT_CARD_ORDER,
     SELECTED_STRATEGY_MODAL_KEY,
+    SELECTED_MODAL_TYPE_KEY,
 )
+from components.modal import render_modal_by_type
 
 CARD_ORDER_OPTIONS = [
     "Recommended (Default)",
@@ -99,12 +100,14 @@ reset_if_changed("last_filter_hash", filter_hash, CARDS_DISPLAYED_KEY, CARDS_PER
 render_card_view(filtered_strategies)
 
 strategy_name: str | None = st.session_state.get(SELECTED_STRATEGY_MODAL_KEY)
-if strategy_name:
+modal_type: str | None = st.session_state.get(SELECTED_MODAL_TYPE_KEY)
+if strategy_name and modal_type:
     strategy_row: pl.DataFrame = filtered_strategies.filter(pl.col("strategy") == strategy_name)
     if strategy_row.height > 0:
         strategy_data = StrategySummary.from_row(strategy_row.row(0, named=True))
         strategy_color: str = get_subtype_color(strategy_data.type)
-        render_strategy_modal(strategy_name, strategy_data, strategy_color, cleaned_data)
+        render_modal_by_type(modal_type, strategy_name, strategy_data, strategy_color, cleaned_data)
     del st.session_state[SELECTED_STRATEGY_MODAL_KEY]
+    del st.session_state[SELECTED_MODAL_TYPE_KEY]
 
 render_footer()

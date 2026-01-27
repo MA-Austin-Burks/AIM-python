@@ -1,0 +1,15 @@
+.mc-card{
+  overflow:hidden;
+  cursor:pointer;
+  transition:box-shadow .15s ease,transform .06s ease;
+  width:100%;
+  flex-shrink:0;
+  border-radius:12px;
+  will-change:box-shadow,transform;
+  position:relative;
+}
+.mc-card:hover{
+  box-shadow:var(--mc-card-hover-shadow, 0 8px 28px rgba(0,0,0,.12)) !important;
+  transform:translateY(-1px) !important;
+}
+.mc-row-last{border-bottom:none}
