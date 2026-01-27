@@ -1,5 +1,3 @@
-from typing import Optional
-
 import polars as pl
 import streamlit as st
 
@@ -22,33 +20,19 @@ DEFAULT_CARD_ORDER = "Recommended (Default)"
 CARDS_PER_LOAD = 20
 
 
-@st.cache_data(ttl=3600)
-def _load_explanation_card() -> str:
-    """Load explanation card text file (cached for 1 hour)."""
-    with open("app_pages/about/data/explanation_card.txt", "r", encoding="utf-8") as f:
-        return f.read()
-
-
-def render_explanation_card() -> None:
-    """Render an explanation card describing the site's intent and how to use it."""
-    with st.expander("About the Aspen Investment Menu", icon=":material/book:"):
-        explanation_text: str = _load_explanation_card()
-        st.markdown(explanation_text)
-
-
 def _render_strategy_card(
     strategy_row: StrategySummary, index: int
 ) -> tuple[bool, str, str]:
     """Render a single strategy card using the custom investment card component, return (clicked, strategy_name, modal_type)."""
-    strategy_name = strategy_row.strategy
-    subtype_color = get_subtype_color_from_row(strategy_row)
-    recommended = strategy_row.recommended
-    yield_pct_display = strategy_row.yield_pct_display
-    expense_ratio_display = strategy_row.expense_ratio_pct_display
-    minimum = strategy_row.minimum
-    modal_type = "strategy"
+    strategy_name: str = strategy_row.strategy
+    subtype_color: str = get_subtype_color_from_row(strategy_row)
+    recommended: bool = strategy_row.recommended
+    yield_pct_display: float = strategy_row.yield_pct_display
+    expense_ratio_display: float = strategy_row.expense_ratio_pct_display
+    minimum: float = strategy_row.minimum
+    modal_type: str = "strategy"
 
-    card_key = f"strategy_card_{index}_{strategy_name}"
+    card_key: str = f"strategy_card_{index}_{strategy_name}"
     result = model_card(
         id=strategy_name,
         name=strategy_name,
@@ -140,14 +124,9 @@ def _apply_sort_order(strategies: pl.DataFrame, sort_order: str) -> pl.DataFrame
     return strategies.sort(column, descending=descending, nulls_last=True)
 
 
-def _reset_cards_displayed() -> None:
-    """Reset the number of cards displayed when filters change."""
-    st.session_state[CARDS_DISPLAYED_KEY] = CARDS_PER_LOAD
-
-
 def render_card_view(
     filtered_strategies: pl.DataFrame,
-) -> tuple[Optional[str], Optional[StrategySummary]]:
+) -> None:
     """Render the card view with filtered strategies.
 
     Steps:
@@ -163,27 +142,31 @@ def render_card_view(
     # ============================================================================
     # STEP 1: Initialize session state for card ordering and pagination
     # ============================================================================
-    total_count = filtered_strategies.height
+    total_count: int = filtered_strategies.height
 
-    cards_displayed = get_or_init(CARDS_DISPLAYED_KEY, CARDS_PER_LOAD)
+    cards_displayed: int = get_or_init(CARDS_DISPLAYED_KEY, CARDS_PER_LOAD)
 
     # ============================================================================
     # STEP 2: Get sort order from session state (rendered above filters in search.py)
     # ============================================================================
-    selected_order = st.session_state.get(CARD_ORDER_KEY, DEFAULT_CARD_ORDER)
+    selected_order: str = st.session_state.get(CARD_ORDER_KEY, DEFAULT_CARD_ORDER)
 
     # ============================================================================
     # STEP 3: Apply sorting and check for empty results
     # ============================================================================
-    filtered_strategies = _apply_sort_order(filtered_strategies, selected_order)
+    filtered_strategies: pl.DataFrame = _apply_sort_order(
+        filtered_strategies, selected_order
+    )
 
     if filtered_strategies.height == 0:
-        st.info("No strategies match the current filters.")
-        return None, None
+        st.warning(
+            ":material/search_off: No strategies match the current filters. Please try different filters."
+        )
+        return
 
     # Pagination: load cards incrementally to improve initial render performance
-    cards_to_show = min(cards_displayed, total_count)
-    display_strategies = filtered_strategies.head(cards_to_show)
+    cards_to_show: int = min(cards_displayed, total_count)
+    display_strategies: pl.DataFrame = filtered_strategies.head(cards_to_show)
 
     st.markdown(f"**Showing {cards_to_show} of {total_count} strategies**")
 
@@ -194,7 +177,7 @@ def render_card_view(
     clicked_modal_type = None
 
     # Convert to list for easier rendering, detecting CAIS rows
-    card_rows = []
+    card_rows: list = []
     for row in display_strategies.iter_rows(named=True):
         # Check if this is a CAIS row by looking for cais_type column
         if "cais_type" in row and row["cais_type"] is not None:
@@ -272,5 +255,3 @@ def render_card_view(
             ):
                 st.session_state[CARDS_DISPLAYED_KEY] += CARDS_PER_LOAD
                 st.rerun()
-
-    return None, None

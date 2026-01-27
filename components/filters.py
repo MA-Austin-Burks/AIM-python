@@ -43,7 +43,6 @@ def _reset_filter_state() -> None:
     st.session_state["filter_subtype"] = []
     st.session_state["_previous_type"] = []
     st.session_state["_previous_subtype"] = []
-    st.session_state["equity_allocation_segmented"] = []
 
 
 def _reset_all_state() -> None:

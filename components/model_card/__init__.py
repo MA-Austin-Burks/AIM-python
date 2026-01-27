@@ -67,7 +67,7 @@ def model_card(
 ):
     """
     Render a model card with dynamic metrics and return the result object.
-    
+
     Args:
         id: Unique identifier for the card
         name: Strategy/card name displayed in header
@@ -80,7 +80,7 @@ def model_card(
         key: Streamlit component key
         on_click: Callback for click events
         on_select: Callback for selection events
-    
+
     Returns:
         result: Object with two attributes:
             - clicked (str | None): One-time trigger, resets to None after rerun
@@ -92,7 +92,7 @@ def model_card(
         {"label": metric_label_2, "value": metric_value_2, "format": metric_format_2},
         {"label": metric_label_3, "value": metric_value_3, "format": metric_format_3},
     ]
-    
+
     result = _model_card(
         data={
             "id": id,
@@ -102,9 +102,9 @@ def model_card(
             "metrics": metrics,
             "modal_type": modal_type,
         },
-        default={"selected": None},       # Default state value for persistent selection
+        default={"selected": None},  # Default state value for persistent selection
         key=key,
-        on_clicked_change=on_click,       # One-time trigger callback
-        on_selected_change=on_select,     # Persistent state callback
+        on_clicked_change=on_click,  # One-time trigger callback
+        on_selected_change=on_select,  # Persistent state callback
     )
     return result
