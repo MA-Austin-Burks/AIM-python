@@ -6,32 +6,34 @@ import polars as pl
 import streamlit as st
 
 from components.tab_overview import render_allocation_tab
-from utils.models import StrategySummary
+from utils.models.base import _normalize_bool
 
 
-def _generate_badges(strategy_data: StrategySummary) -> list[str]:
-    """Generate badge strings for a strategy based on its data."""
+def _generate_badges(row: dict[str, Any]) -> list[str]:
+    """Generate badge strings for a strategy based on row data."""
     badges: list[str] = []
 
-    if strategy_data.recommended:
+    if _normalize_bool(row.get("ic_recommend", False)):
         badges.append(":primary-badge[Recommend]")
 
-    if strategy_data.type:
-        badges.append(f":orange-badge[{strategy_data.type}]")
+    strategy_type = row.get("ss_type", "")
+    if strategy_type:
+        badges.append(f":orange-badge[{strategy_type}]")
 
-    if strategy_data.subtype_primary:
-        badges.append(f":blue-badge[{strategy_data.subtype_primary}]")
+    subtype_primary = row.get("ss_subtype", "")
+    if subtype_primary:
+        badges.append(f":blue-badge[{subtype_primary}]")
 
-    if strategy_data.tax_managed:
+    if _normalize_bool(row.get("has_tm", False)):
         badges.append(":green-badge[Tax-Managed]")
 
-    if strategy_data.private_markets:
+    if _normalize_bool(row.get("has_private_market", False)):
         badges.append(":gray-badge[Private Markets]")
 
-    if strategy_data.sma:
+    if _normalize_bool(row.get("has_sma", False)):
         badges.append(":violet-badge[SMA Manager]")
 
-    if strategy_data.vbi:
+    if _normalize_bool(row.get("has_VBI", False)):
         badges.append(":teal-badge[VBI]")
 
     return badges
@@ -40,7 +42,7 @@ def _generate_badges(strategy_data: StrategySummary) -> list[str]:
 @st.dialog("Strategy Details", width="large", icon=":material/process_chart:")
 def render_strategy_modal(
     strategy_name: str,
-    strategy_data: StrategySummary,
+    strategy_row: dict[str, Any],
     strategy_color: str,
     cleaned_data: pl.LazyFrame,
 ) -> None:
@@ -73,16 +75,16 @@ def render_strategy_modal(
     else:
         allocations = {}
 
-    # Build parts list for allocations > 0
+    # Build parts list for allocations > 0 (round instead of truncate)
     parts: list[str] = [
-        f"{int(value)}% {name}" for name, value in allocations.items() if value > 0
+        f"{round(value)}% {name}" for name, value in allocations.items() if value > 0
     ]
 
     if parts:
         exposure_display_text: str = " - ".join(parts)
         st.markdown(f"### {exposure_display_text}")
 
-    badges: list[str] = _generate_badges(strategy_data)
+    badges: list[str] = _generate_badges(strategy_row)
     if badges:
         st.markdown(" &nbsp; ".join(badges) + " &nbsp;")
 

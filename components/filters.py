@@ -309,9 +309,14 @@ def build_filter_expression() -> pl.Expr:
         if equity_selections:
             # Convert selected percentages (e.g., "0%", "10%", "20%") to numeric values
             equity_values = [int(val.rstrip("%")) for val in equity_selections]
-            combined_allocation: pl.Expr = pl.col("equity_allo").fill_null(0) + pl.col(
-                "private_allo"
-            ).fill_null(0)
+            # Round combined allocation to nearest 10 to match filter options
+            combined_allocation: pl.Expr = (
+                (
+                    pl.col("equity_allo").fill_null(0)
+                    + pl.col("private_allo").fill_null(0)
+                )
+                / 10
+            ).round(0) * 10
             expressions.append(combined_allocation.is_in(equity_values))
 
     # Type (multi-select) - Empty list means show all (none selected)

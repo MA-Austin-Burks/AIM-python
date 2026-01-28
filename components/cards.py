@@ -1,9 +1,10 @@
+from typing import Any
+
 import polars as pl
 import streamlit as st
 
 from components.model_card import CARD_FIXED_WIDTH, model_card
 from utils.branding import PRIMARY, SUBTYPE_COLORS
-from utils.models import CAISSummary, StrategySummary
 from utils.models.base import _normalize_bool, _normalize_subtype
 from utils.session_state import get_or_init
 
@@ -18,26 +19,27 @@ DEFAULT_CARD_ORDER = "Recommended (Default)"
 CARDS_PER_LOAD = 20
 
 
-def _get_subtype_color_from_row(strategy_row: StrategySummary) -> str:
-    """Get the color for a strategy based on its subtype."""
-    if strategy_row.subtype_primary:
-        return SUBTYPE_COLORS.get(strategy_row.subtype_primary, PRIMARY["light_gray"])
-    if strategy_row.subtype and len(strategy_row.subtype) > 0:
-        return SUBTYPE_COLORS.get(strategy_row.subtype[0], PRIMARY["light_gray"])
+def _get_subtype_color(row: dict[str, Any]) -> str:
+    """Get the color for a strategy based on its subtype from a row dict."""
+    subtype_primary = row.get("ss_subtype", "")
+    if subtype_primary:
+        return SUBTYPE_COLORS.get(subtype_primary, PRIMARY["light_gray"])
+    series = row.get("series")
+    subtype = _normalize_subtype(series) if series else []
+    if subtype:
+        return SUBTYPE_COLORS.get(subtype[0], PRIMARY["light_gray"])
     return PRIMARY["light_gray"]
 
 
-def _render_strategy_card(
-    strategy_row: StrategySummary, index: int
-) -> tuple[bool, str, str]:
-    """Render a single strategy card using the custom investment card component, return (clicked, strategy_name, modal_type)."""
-    strategy_name: str = strategy_row.strategy
-    subtype_color: str = _get_subtype_color_from_row(strategy_row)
-    recommended: bool = strategy_row.recommended
+def _render_strategy_card(row: dict[str, Any], index: int) -> tuple[bool, str, str]:
+    """Render a single strategy card from a row dict, return (clicked, strategy_name, modal_type)."""
+    strategy_name: str = str(row.get("strategy", ""))
+    subtype_color: str = _get_subtype_color(row)
+    recommended: bool = _normalize_bool(row.get("ic_recommend", False))
     # Convert decimals to percentages for display (component expects 0-100 range)
-    yield_pct_display: float = strategy_row.yield_decimal * 100
-    expense_ratio_display: float = strategy_row.expense_ratio_decimal * 100
-    minimum: float = strategy_row.minimum
+    yield_pct_display: float = float(row.get("yield", 0) or 0) * 100
+    expense_ratio_display: float = float(row.get("fee", 0) or 0) * 100
+    minimum: float = float(row.get("minimum", 0) or 0)
     modal_type: str = "strategy"
 
     card_key: str = f"strategy_card_{index}_{strategy_name}"
@@ -64,9 +66,9 @@ def _render_strategy_card(
     return clicked, strategy_name, modal_type
 
 
-def _render_cais_card(cais_row: CAISSummary, index: int) -> tuple[bool, str, str]:
-    """Render a single CAIS card using the custom investment card component, return (clicked, strategy_name, modal_type)."""
-    strategy_name = cais_row.strategy
+def _render_cais_card(row: dict[str, Any], index: int) -> tuple[bool, str, str]:
+    """Render a single CAIS card from a row dict, return (clicked, strategy_name, modal_type)."""
+    strategy_name = str(row.get("strategy", ""))
     # Use "Alternative Strategies" color from branding
     color = SUBTYPE_COLORS.get("Alternative Strategies", "#F9A602")
     recommended = False  # CAIS strategies are not recommended
@@ -79,13 +81,13 @@ def _render_cais_card(cais_row: CAISSummary, index: int) -> tuple[bool, str, str
         color=color,
         recommended=recommended,
         metric_label_1="CAIS Type",
-        metric_value_1=cais_row.cais_type,
+        metric_value_1=str(row.get("cais_type", "")),
         metric_format_1="STRING",
         metric_label_2="Client Type",
-        metric_value_2=cais_row.client_type,
+        metric_value_2=str(row.get("client_type", "")),
         metric_format_2="STRING",
         metric_label_3="Minimum",
-        metric_value_3=cais_row.minimum,
+        metric_value_3=float(row.get("minimum", 0) or 0),
         metric_format_3="DOLLAR",  # Use built-in DOLLAR formatting (handles K/M)
         modal_type=modal_type,
         key=card_key,
@@ -184,36 +186,8 @@ def render_card_view(
     clicked_strategy = None
     clicked_modal_type = None
 
-    # Convert to list for easier rendering, detecting CAIS rows
-    card_rows: list = []
-    for row in display_strategies.iter_rows(named=True):
-        # Check if this is a CAIS row by looking for cais_type column
-        if "cais_type" in row and row["cais_type"] is not None:
-            card_rows.append(("cais", CAISSummary.from_row(row)))
-        else:
-            # Create StrategySummary directly from row dict
-            card_rows.append(
-                (
-                    "strategy",
-                    StrategySummary(
-                        strategy=str(row.get("strategy", "")),
-                        recommended=_normalize_bool(row.get("ic_recommend", False)),
-                        equity_pct=float(row.get("equity_allo", 0) or 0),
-                        yield_decimal=float(row.get("yield", 0) or 0),
-                        expense_ratio_decimal=float(row.get("fee", 0) or 0),
-                        minimum=float(row.get("minimum", 0) or 0),
-                        subtype=_normalize_subtype(row.get("series", [])),
-                        subtype_primary=str(row.get("ss_subtype", "")),
-                        type=str(row.get("ss_type", "")),
-                        tax_managed=_normalize_bool(row.get("has_tm", False)),
-                        private_markets=_normalize_bool(
-                            row.get("has_private_market", False)
-                        ),
-                        sma=_normalize_bool(row.get("has_sma", False)),
-                        vbi=_normalize_bool(row.get("has_VBI", False)),
-                    ),
-                )
-            )
+    # Convert DataFrame to list of dicts - no intermediate objects needed
+    card_rows: list[dict[str, Any]] = display_strategies.to_dicts()
 
     # Add CSS to use CSS Grid for automatic responsive card layout
     # Grid handles last-row alignment naturally without placeholder cards
@@ -245,18 +219,20 @@ def render_card_view(
     # Grid ensures last row stays left-aligned while other rows are evenly distributed
     with st.container(horizontal=True, gap="small", key="cards-flex-container"):
         # Render all cards sequentially, each wrapped in a fixed-width container
-        for card_idx, (card_type, card_row) in enumerate(card_rows):
+        for card_idx, row in enumerate(card_rows):
             # Wrap each card in a fixed-width container
             # Convert "350px" to integer for width parameter
             card_width_px = int(CARD_FIXED_WIDTH.replace("px", ""))
             with st.container(width=card_width_px):
-                if card_type == "cais":
+                # Detect CAIS rows by checking for non-null cais_type
+                is_cais = row.get("cais_type") is not None
+                if is_cais:
                     clicked, strategy_name, modal_type = _render_cais_card(
-                        card_row, card_idx
+                        row, card_idx
                     )
                 else:
                     clicked, strategy_name, modal_type = _render_strategy_card(
-                        card_row, card_idx
+                        row, card_idx
                     )
                 if clicked:
                     clicked_strategy = strategy_name

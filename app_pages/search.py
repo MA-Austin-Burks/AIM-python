@@ -21,8 +21,6 @@ from components.cards import (
 from components.modals import render_modal_by_type
 from utils.branding import SUBTYPE_COLORS, get_subtype_color
 from utils.data import load_cleaned_data, load_strategy_list
-from utils.models import CAISSummary, StrategySummary
-from utils.models.base import _normalize_bool, _normalize_subtype
 from utils.session_state import get_or_init, initialize_session_state, reset_if_changed
 
 CARD_ORDER_OPTIONS = [
@@ -110,59 +108,19 @@ if strategy_name and modal_type:
         pl.col("strategy") == strategy_name
     )
     if strategy_row.height > 0:
+        # Pass row dict directly - no intermediate objects needed
         row_dict = strategy_row.row(0, named=True)
 
-        # Check if this is a CAIS row
-        if (
-            modal_type == "cais"
-            and "cais_type" in row_dict
-            and row_dict["cais_type"] is not None
-        ):
-            # For CAIS modals, create a minimal StrategySummary from CAIS data
-            # The modal will use the CAIS-specific data internally if needed
-            cais_data = CAISSummary.from_row(row_dict)
-            # Create a minimal StrategySummary for modal compatibility
-            strategy_data = StrategySummary(
-                strategy=cais_data.strategy,
-                recommended=False,
-                equity_pct=0.0,
-                yield_decimal=0.0,
-                expense_ratio_decimal=0.0,
-                minimum=cais_data.minimum,
-                subtype=["Alternative Strategies"],
-                subtype_primary="Alternative Strategies",
-                type="Asset Class",
-                tax_managed=False,
-                private_markets=True,
-                sma=False,
-                vbi=False,
-            )
+        # Determine color based on modal type
+        if modal_type == "cais":
             strategy_color: str = SUBTYPE_COLORS.get(
                 "Alternative Strategies", "#F9A602"
             )
         else:
-            # Regular strategy modal - create StrategySummary directly from row dict
-            strategy_data = StrategySummary(
-                strategy=str(row_dict.get("strategy", "")),
-                recommended=_normalize_bool(row_dict.get("ic_recommend", False)),
-                equity_pct=float(row_dict.get("equity_allo", 0) or 0),
-                yield_decimal=float(row_dict.get("yield", 0) or 0),
-                expense_ratio_decimal=float(row_dict.get("fee", 0) or 0),
-                minimum=float(row_dict.get("minimum", 0) or 0),
-                subtype=_normalize_subtype(row_dict.get("series", [])),
-                subtype_primary=str(row_dict.get("ss_subtype", "")),
-                type=str(row_dict.get("ss_type", "")),
-                tax_managed=_normalize_bool(row_dict.get("has_tm", False)),
-                private_markets=_normalize_bool(
-                    row_dict.get("has_private_market", False)
-                ),
-                sma=_normalize_bool(row_dict.get("has_sma", False)),
-                vbi=_normalize_bool(row_dict.get("has_VBI", False)),
-            )
-            strategy_color: str = get_subtype_color(strategy_data.subtype_primary)
+            strategy_color = get_subtype_color(row_dict.get("ss_subtype", ""))
 
         render_modal_by_type(
-            modal_type, strategy_name, strategy_data, strategy_color, cleaned_data
+            modal_type, strategy_name, row_dict, strategy_color, cleaned_data
         )
     del st.session_state[SELECTED_STRATEGY_MODAL_KEY]
     del st.session_state[SELECTED_MODAL_TYPE_KEY]

@@ -9,8 +9,6 @@ import pyarrow.parquet as pq
 import s3fs
 import streamlit as st
 
-from utils.models import StrategyDetail
-
 # Set up logger
 logger = logging.getLogger(__name__)
 
@@ -338,10 +336,10 @@ def get_strategy_by_name(
     cleaned_data: pl.LazyFrame,
     strategy_name: str,
     cache_version: int = 1,
-) -> StrategyDetail | None:
-    """Get a strategy row as a dataclass by name (cached).
+) -> dict[str, Any] | None:
+    """Get a strategy row as a dict by name (cached).
 
-    Returns the full strategy row as a StrategyDetail for use in allocation tabs.
+    Returns the full strategy row as a dict for use in allocation tabs.
     Optimized to use head(1) instead of first() for better performance.
 
     Args:
@@ -349,7 +347,7 @@ def get_strategy_by_name(
         strategy_name: Name of the strategy
 
     Returns:
-        StrategyDetail with core fields, or None if not found
+        Row dict with strategy fields, or None if not found
     """
     strategy_row = (
         cleaned_data.filter(pl.col("strategy") == strategy_name).head(1).collect()
@@ -358,14 +356,4 @@ def get_strategy_by_name(
     if strategy_row.height == 0:
         return None
 
-    row = strategy_row.row(0, named=True)
-    return StrategyDetail(
-        strategy=row.get("strategy", ""),
-        suite=row.get("ss_suite", ""),
-        subtype=row.get("ss_subtype", ""),
-        type=row.get("ss_type", ""),
-        portfolio=row.get("portfolio", 0.0),
-        expense_ratio=row.get("fee", 0.0),
-        yield_val=row.get("yield", 0.0),
-        minimum=row.get("minimum", 0.0),
-    )
+    return strategy_row.row(0, named=True)

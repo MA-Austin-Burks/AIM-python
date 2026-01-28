@@ -13,7 +13,6 @@ from utils.branding import (
     hex_to_rgba,
 )
 from utils.data import get_strategy_by_name, hash_lazyframe
-from utils.models import StrategyDetail
 from utils.session_state import get_or_init
 
 # Session state keys
@@ -607,11 +606,11 @@ def _get_equity_matrix_data(
     # ============================================================================
     # STEP 1: Load strategy data and get model information
     # ============================================================================
-    strategy_data: StrategyDetail | None = get_strategy_by_name(
+    strategy_data: dict[str, Any] | None = get_strategy_by_name(
         cleaned_data, strategy_name, cache_version=3
     )
-    strategy_suite: str = strategy_data.suite
-    subtype_val: str = strategy_data.subtype
+    strategy_suite: str = strategy_data.get("ss_suite", "")
+    subtype_val: str = strategy_data.get("ss_subtype", "")
     strategy_color: str = get_subtype_color(subtype_val)
 
     all_model_data: pl.DataFrame = _get_model_data(cleaned_data, strategy_suite)
@@ -1304,7 +1303,7 @@ def _build_allocation_tables(
     return combined_table
 
 
-def _is_asset_class_strategy(strategy_data: StrategyDetail | None) -> bool:
+def _is_asset_class_strategy(strategy_data: dict[str, Any] | None) -> bool:
     """Check if a strategy is an Asset Class strategy.
 
     Asset Class strategies are identified by:
@@ -1312,7 +1311,7 @@ def _is_asset_class_strategy(strategy_data: StrategyDetail | None) -> bool:
     - ss_subtype contains values like "Equity Strategies", "Fixed Income Strategies", etc.
 
     Args:
-        strategy_data: Strategy detail data
+        strategy_data: Strategy row dict
 
     Returns:
         True if this is an Asset Class strategy, False otherwise
@@ -1320,15 +1319,16 @@ def _is_asset_class_strategy(strategy_data: StrategyDetail | None) -> bool:
     if not strategy_data:
         return False
 
-    # Check if ss_type (type) is "Asset Class"
+    # Check if ss_type is "Asset Class"
+    strategy_type = strategy_data.get("ss_type", "")
     is_asset_class_type = (
-        strategy_data.type and str(strategy_data.type).strip().lower() == "asset class"
+        strategy_type and str(strategy_type).strip().lower() == "asset class"
     )
 
     if not is_asset_class_type:
         return False
 
-    # Check if ss_subtype (subtype) contains expected Asset Class subtype values
+    # Check if ss_subtype contains expected Asset Class subtype values
     asset_class_subtypes = [
         "equity strategies",
         "fixed income strategies",
@@ -1337,14 +1337,14 @@ def _is_asset_class_strategy(strategy_data: StrategyDetail | None) -> bool:
         "special situation strategies",
     ]
 
-    subtype_str = str(strategy_data.subtype or "").strip().lower()
+    subtype_str = str(strategy_data.get("ss_subtype", "") or "").strip().lower()
     return any(subtype in subtype_str for subtype in asset_class_subtypes)
 
 
 def _load_strategy_allocation_data(
     cleaned_data: pl.LazyFrame,
     strategy_name: str,
-) -> tuple[StrategyDetail | None, int | None, str | None, pl.DataFrame]:
+) -> tuple[dict[str, Any] | None, int | None, str | None, pl.DataFrame]:
     """Load strategy data and prepare model data.
 
     Args:
@@ -1354,27 +1354,21 @@ def _load_strategy_allocation_data(
     Returns:
         Tuple of (strategy_data, strategy_equity_pct, model_name, all_model_data)
     """
-    strategy_data: StrategyDetail | None = get_strategy_by_name(
+    strategy_data: dict[str, Any] | None = get_strategy_by_name(
         cleaned_data, strategy_name, cache_version=3
     )
     strategy_equity_pct: int | None = None
     model_name: str | None = None
 
     if strategy_data:
-        strategy_equity_pct = (
-            int(strategy_data.portfolio) if strategy_data.portfolio > 0 else None
-        )
+        portfolio = strategy_data.get("portfolio", 0) or 0
+        strategy_equity_pct = int(portfolio) if portfolio > 0 else None
 
     # Get model data for summary table (cached)
-    # Asset Class strategies don't have ss_suite (suite), so filter by strategy name directly
-    if (
-        strategy_data
-        and strategy_data.suite
-        and not _is_asset_class_strategy(strategy_data)
-    ):
-        all_model_data: pl.DataFrame = _get_model_data(
-            cleaned_data, strategy_data.suite
-        )
+    # Asset Class strategies don't have ss_suite, so filter by strategy name directly
+    suite = strategy_data.get("ss_suite", "") if strategy_data else ""
+    if strategy_data and suite and not _is_asset_class_strategy(strategy_data):
+        all_model_data: pl.DataFrame = _get_model_data(cleaned_data, suite)
     elif strategy_data:
         # Asset Class strategies: filter by strategy name directly
         normalized_strategy = strategy_name.strip().lower()
@@ -1730,14 +1724,14 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
     normalized_strategy = strategy_name.strip().lower()
     with row1_col1:
         # Get minimum from strategy data
-        minimum = strategy_data.minimum or 0
+        minimum = strategy_data.get("minimum", 0) or 0
         st.metric(
             "ACCOUNT MINIMUM",
             _format_currency_compact(float(minimum)) if minimum else "$0.0",
         )
     with row1_col2:
         # Get expense ratio from strategy data (cleaned_data has lowercase column names)
-        expense_ratio = strategy_data.expense_ratio or 0
+        expense_ratio = strategy_data.get("fee", 0) or 0
         # If not found, calculate weighted expense ratio from model data
         if expense_ratio == 0 and all_model_data.height > 0:
             strategy_model_data = all_model_data.filter(
@@ -1754,7 +1748,7 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
         st.metric("WEIGHTED AVG EXP RATIO", f"{expense_ratio * 100:.2f}%")
     with row1_col3:
         # Get yield from strategy data
-        y: float = strategy_data.yield_val
+        y: float = strategy_data.get("yield", 0) or 0
         # If not found, calculate weighted yield from model data
         if y == 0.0 and all_model_data.height > 0:
             strategy_model_data = all_model_data.filter(
@@ -1788,12 +1782,13 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
 
     # Check if this is a Special Situation strategy
     is_special_situation = False
-    subtype_label = strategy_data.subtype if strategy_data else None
+    subtype_label = strategy_data.get("ss_subtype", "") if strategy_data else None
     if strategy_data:
         # Check both type (ss_type) and subtype (ss_subtype) for Special Situation
         check_fields = []
-        if strategy_data.type:
-            check_fields.append(str(strategy_data.type).strip().lower())
+        strategy_type = strategy_data.get("ss_type", "")
+        if strategy_type:
+            check_fields.append(str(strategy_type).strip().lower())
         if subtype_label:
             check_fields.append(str(subtype_label).strip().lower())
 
