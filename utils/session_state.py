@@ -8,7 +8,7 @@ T = TypeVar("T")
 
 
 def initialize_session_state() -> None:
-    """Initialize all session state variables at app start."""
+    """Sets default values in Streamlit's session state."""
     defaults = {
         "filter_ic": "Recommended",
         "filter_tm": None,
@@ -27,11 +27,7 @@ def initialize_session_state() -> None:
 
 
 def get_or_init(key: str, default: T, init_fn: Callable[[], T] | None = None) -> T:
-    """Get session state value or initialize with default or init function.
-
-    Note: This should only be used for UI state (like card order, pagination).
-    Filter state should be initialized via initialize_session_state().
-    """
+    """Gets a value or initializes it if missing."""
     if init_fn:
         if key not in st.session_state:
             st.session_state[key] = init_fn()
@@ -43,7 +39,7 @@ def get_or_init(key: str, default: T, init_fn: Callable[[], T] | None = None) ->
 def reset_if_changed(
     key: str, new_value: Any, reset_key: str, reset_value: Any
 ) -> None:
-    """Reset a state key when another key's value changes."""
+    """Resets one value when another changes."""
     if key not in st.session_state or st.session_state[key] != new_value:
         st.session_state[key] = new_value
         st.session_state[reset_key] = reset_value

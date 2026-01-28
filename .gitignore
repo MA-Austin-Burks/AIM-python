@@ -47,4 +47,15 @@ debug.log
 # Streamlit secrets
 .streamlit/secrets.toml
 
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.hypothesis/
+*.cover
+.cache
+
+# Archive
 /archive
