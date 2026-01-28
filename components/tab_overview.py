@@ -1688,8 +1688,7 @@ def _render_collapse_toggle(
         strategy_name: Name of the strategy
     """
     if _has_collapsible_smas(all_model_data, strategy_name):
-        # Value is already initialized via get_or_init() in render_allocation_tab()
-        # Using only key parameter lets Streamlit use the session state value automatically
+        st.session_state.setdefault(ALLOCATION_COLLAPSE_SMA_KEY, DEFAULT_COLLAPSE_SMA)
         st.toggle("Collapse SMAs", key=ALLOCATION_COLLAPSE_SMA_KEY)
 
 
