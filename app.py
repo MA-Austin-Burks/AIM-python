@@ -58,14 +58,14 @@ pages: dict[str, list[st.Page]] = {
             url_path="release-notes",
         ),
     ],
-    "Management": [
-        st.Page(
-            "app_pages/management_module.py",
-            title="Question Management",
-            icon=":material/admin_panel_settings:",
-            url_path="management",
-        ),
-    ],
+    # "Management": [
+    #     st.Page(
+    #         "app_pages/management_module.py",
+    #         title="Question Management",
+    #         icon=":material/admin_panel_settings:",
+    #         url_path="management",
+    #     ),
+    # ],
 }
 
 pg = st.navigation(pages, position="top", expanded=True)
