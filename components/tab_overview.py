@@ -12,7 +12,7 @@ from utils.branding import (
     get_subtype_color,
     hex_to_rgba,
 )
-from utils.data import get_model_agg_sort_order, get_strategy_by_name, hash_lazyframe
+from utils.data import get_strategy_by_name, hash_lazyframe
 from utils.models import StrategyDetail
 from utils.session_state import get_or_init
 
@@ -266,6 +266,7 @@ def _get_model_data(cleaned_data: pl.LazyFrame, strategy_model: str) -> pl.DataF
                 "strategy",
                 "portfolio",
                 "model_agg",
+                "for_order",
                 "product",
                 "ticker",
                 "target",
@@ -629,10 +630,14 @@ def _get_equity_matrix_data(
     agg_target_lookup = _build_agg_target_lookup(all_model_data)
     product_weight_lookup = _build_product_weight_lookup(all_model_data)
 
-    model_aggs: list[str | None] = sorted(
-        [ma for ma in all_model_data["model_agg"].unique().to_list() if ma is not None],
-        key=get_model_agg_sort_order,
+    # Get unique model_aggs with their pre-computed sort order from ETL
+    model_agg_order: pl.DataFrame = (
+        all_model_data.select(["model_agg", "for_order"])
+        .filter(pl.col("model_agg").is_not_null())
+        .unique()
+        .sort("for_order")
     )
+    model_aggs: list[str | None] = model_agg_order["model_agg"].to_list()
 
     # Pre-process model agg names: remove "Portfolio" suffix
     model_agg_names: dict[str | None, str] = {

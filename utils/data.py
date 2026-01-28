@@ -1,7 +1,6 @@
 """Data processing utilities for Polars."""
 
 import logging
-import re
 import time
 from typing import Any
 
@@ -92,27 +91,6 @@ def read_parquet_from_s3(
         raise
 
 
-@st.cache_data(ttl=3600)
-def _load_model_agg_sort_order() -> dict[str, int]:
-    """Load model aggregate sort order from CSV (cached for 1 hour).
-
-    Returns:
-        Dictionary mapping model aggregate names to sort order integers
-    """
-    model_agg_sort_df: pl.DataFrame = pl.read_csv(
-        "app_pages/data/model_agg_sort_order.csv"
-    )
-    return dict(
-        zip(
-            model_agg_sort_df["ModelAggregate"].to_list(),
-            model_agg_sort_df["SortOrder"].to_list(),
-        )
-    )
-
-
-MODEL_AGG_SORT_DEFAULT: int = 99
-
-
 def hash_lazyframe(lf: pl.LazyFrame) -> str:
     """Create a stable hash for a LazyFrame based on its schema.
 
@@ -122,67 +100,6 @@ def hash_lazyframe(lf: pl.LazyFrame) -> str:
     Uses collect_schema() to avoid performance warnings about schema resolution.
     """
     return str(sorted(lf.collect_schema().items()))
-
-
-@st.cache_data(ttl=3600)
-def get_model_agg_sort_order(model_agg: str | None) -> int:
-    """Get sort order for model aggregate based on name patterns.
-
-    Matches the ordering logic from the R spreadsheet creation tool.
-    Lower numbers appear first in the table.
-
-    Uses substring matching: checks if each pattern appears anywhere in the
-    model aggregate name (case-insensitive). Prefers longer/more specific patterns
-    to avoid substring issues (e.g., "ALL CAP" matching in "SMALL CAP").
-
-    Cached to avoid repeated regex operations on the same model aggregate names.
-
-    Args:
-        model_agg: Model aggregate name (can be None)
-
-    Returns:
-        Sort order integer (lower = appears first)
-    """
-    if model_agg is None:
-        return MODEL_AGG_SORT_DEFAULT
-
-    # Load sort order dictionary (cached)
-    model_agg_sort_order: dict[str, int] = _load_model_agg_sort_order()
-
-    model_agg_upper = str(model_agg).upper()
-
-    # Check each pattern in sort order dictionary
-    # Use word boundary matching to ensure whole words/phrases are matched
-    # (e.g., "ALL CAP" should NOT match inside "SMALL CAP")
-    best_match = MODEL_AGG_SORT_DEFAULT
-    best_pattern_length = 0
-
-    # Sort patterns by length (longest first) to check more specific patterns first
-    # This ensures "SMALL CAP" is checked before "ALL CAP"
-    sorted_patterns: list[tuple[str, int]] = sorted(
-        model_agg_sort_order.items(), key=lambda x: len(x[0]), reverse=True
-    )
-
-    for pattern, sort_order in sorted_patterns:
-        # Escape special regex characters in the pattern
-        pattern_escaped = re.escape(pattern)
-        # Use word boundaries to match whole words/phrases
-        # \b matches word boundaries, but we also want to match multi-word phrases
-        # So we'll use a pattern that matches the phrase as a whole unit
-        pattern_regex = r"\b" + pattern_escaped + r"\b"
-
-        if re.search(pattern_regex, model_agg_upper):
-            pattern_length = len(pattern)
-            # Always prefer longer (more specific) patterns
-            # Only update if this pattern is longer, or same length with lower sort order
-            if pattern_length > best_pattern_length:
-                best_match = sort_order
-                best_pattern_length = pattern_length
-            elif pattern_length == best_pattern_length and sort_order < best_match:
-                # Same length, prefer lower sort order
-                best_match = sort_order
-
-    return best_match
 
 
 def _map_ss_all_to_cleaned_data(ss_all_df: pl.LazyFrame) -> pl.LazyFrame:
