@@ -255,7 +255,7 @@ def _apply_row_styling(
     return table
 
 
-@st.cache_data(hash_funcs={pl.LazyFrame: hash_lazyframe})
+@st.cache_data(ttl=3600, hash_funcs={pl.LazyFrame: hash_lazyframe})
 def _get_model_data(cleaned_data: pl.LazyFrame, strategy_model: str) -> pl.DataFrame:
     """Get and cache all data for a specific model."""
     return (
@@ -560,7 +560,7 @@ def _has_collapsible_smas(all_model_data: pl.DataFrame, strategy_name: str) -> b
     )
 
 
-@st.cache_data
+@st.cache_data(max_entries=100)
 def _generate_allocation_table_html_cached(
     table_html: str, table_data_hash: str
 ) -> str:
@@ -586,7 +586,7 @@ def _generate_allocation_table_html_cached(
     """
 
 
-@st.cache_data(hash_funcs={pl.LazyFrame: hash_lazyframe})
+@st.cache_data(ttl=3600, hash_funcs={pl.LazyFrame: hash_lazyframe})
 def _get_equity_matrix_data(
     cleaned_data: pl.LazyFrame,
     strategy_name: str,

@@ -45,7 +45,7 @@ def _hash_filter_expression(filter_expr: pl.Expr) -> str:
     return hashlib.md5(filter_str.encode()).hexdigest()
 
 
-@st.cache_data
+@st.cache_data(max_entries=50)
 def filter_and_sort_strategies(
     strats: pl.DataFrame, _filter_expr: pl.Expr, filter_hash: str
 ) -> pl.DataFrame:

@@ -13,7 +13,7 @@ import streamlit as st
 logger = logging.getLogger(__name__)
 
 
-@st.cache_data(ttl=3600)
+@st.cache_resource
 def _get_s3_filesystem() -> s3fs.S3FileSystem:
     """Get S3 filesystem from secrets.toml connections.s3 section (cached).
 
@@ -164,12 +164,12 @@ def _derive_strategy_list_from_ss_all(ss_all_df: pl.LazyFrame) -> pl.DataFrame:
     )
 
 
-@st.cache_resource
+@st.cache_data(ttl=3600)
 def load_cleaned_data() -> pl.LazyFrame:
     """Load ss_all.parquet file as a Parquet LazyFrame from S3.
 
-    Uses @st.cache_resource to keep the DataFrame in memory without serialization overhead.
-    The download is cached per user session to avoid repeated downloads.
+    Uses @st.cache_data with 1-hour TTL to match data refresh cycle.
+    The underlying S3 download is also cached via read_parquet_from_s3().
 
     Parquet format provides faster loading and better compression than CSV.
     Derives target column from agg_target / 100 for calculations.
