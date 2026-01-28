@@ -164,7 +164,7 @@ def _derive_strategy_list_from_ss_all(ss_all_df: pl.LazyFrame) -> pl.DataFrame:
     )
 
 
-@st.cache_data(ttl=3600)
+@st.cache_resource
 def load_cleaned_data() -> pl.LazyFrame:
     """Load ss_all.parquet file as a Parquet LazyFrame from S3.
 
