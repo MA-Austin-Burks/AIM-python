@@ -1,7 +1,7 @@
 import hashlib
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 import polars as pl
 import streamlit as st
@@ -9,8 +9,6 @@ from great_tables import GT, loc, style
 
 from utils.branding import (
     PRIMARY,
-    format_currency_compact,
-    get_allocation_table_main_css,
     get_subtype_color,
     hex_to_rgba,
 )
@@ -24,6 +22,73 @@ ALLOCATION_COLLAPSE_SMA_KEY = "allocation_collapse_sma"
 # Allocation tab constants
 DEFAULT_COLLAPSE_SMA = True
 SMA_COLLAPSE_THRESHOLD = 10
+
+
+# =============================================================================
+# FORMATTING UTILITIES
+# =============================================================================
+def _format_currency_compact(value: float | None) -> str:
+    """Format currency value with K (thousands) and M (millions) suffixes."""
+    if value is None or value == 0:
+        return "$0.0"
+
+    abs_value: float = abs(value)
+    sign: str = "-" if value < 0 else ""
+
+    if abs_value >= 1_000_000:
+        millions: float = abs_value / 1_000_000
+        return f"{sign}${millions:.1f}M"
+    elif abs_value >= 1_000:
+        thousands: float = abs_value / 1_000
+        return f"{sign}${thousands:.1f}K"
+    else:
+        return f"{sign}${abs_value:.1f}"
+
+
+# =============================================================================
+# TABLE STYLING
+# =============================================================================
+def get_allocation_table_main_css() -> str:
+    """Generate CSS for the main allocation table.
+
+    Note: Column widths are now handled via Great Tables cols_width() API.
+    """
+    return """
+        #allocation-table-main { margin: 0 !important; padding: 0 !important; border: none !important; }
+        #allocation-table-main .gt_table { width: 100% !important; table-layout: fixed !important; margin: 0 !important; padding: 0 !important; border: none !important; }
+        #allocation-table-main .gt_table table { width: 100% !important; table-layout: fixed !important; margin: 0 !important; border-collapse: collapse !important; border: none !important; border-spacing: 0 !important; }
+        #allocation-table-main .gt_table thead { border: none !important; }
+        #allocation-table-main .gt_table thead th { padding-top: 12px !important; padding-bottom: 12px !important; padding-left: 12px !important; padding-right: 12px !important; border: none !important; border-bottom: none !important; border-top: none !important; border-left: none !important; border-right: none !important; }
+        #allocation-table-main .gt_table tbody { border: none !important; }
+        #allocation-table-main .gt_table tbody tr td { padding-top: 5px !important; padding-bottom: 5px !important; border: none !important; border-bottom: none !important; border-top: none !important; border-left: none !important; border-right: none !important; }
+        #allocation-table-main .gt_table thead th:first-child { padding-top: 8px !important; }
+        #allocation-table-main .gt_table tbody tr:last-child td { padding-bottom: 8px !important; }
+        #allocation-table-main .gt_table tbody tr { height: auto !important; border: none !important; }
+        #allocation-table-main .gt_table table td, #allocation-table-main .gt_table table th { border: none !important; border-width: 0 !important; outline: none !important; }
+        #allocation-table-main .gt_table * { border: none !important; border-width: 0 !important; outline: none !important; }
+        #allocation-table-main .gt_table table, #allocation-table-main .gt_table table * { border: none !important; border-width: 0 !important; }
+        /* Column widths now handled via Great Tables cols_width() API */
+        /* Text alignment handled via Great Tables cols_align() API */
+        /* Note: Indentation and spacing handled via Great Tables style.css() API */
+    """
+
+
+def get_allocation_table_summary_css(
+    summary_metric_col_width: str, equity_col_width: str
+) -> str:
+    """Generate CSS for the summary allocation table."""
+    return f"""
+        #allocation-table-summary .gt_table {{ width: 100% !important; table-layout: fixed !important; }}
+        #allocation-table-summary .gt_table table {{ width: 100% !important; table-layout: fixed !important; border-collapse: collapse !important; }}
+        #allocation-table-summary .gt_table thead th {{ padding-top: 12px !important; padding-bottom: 12px !important; border: none !important; border-bottom: none !important; border-top: none !important; }}
+        #allocation-table-summary .gt_table tbody tr td {{ padding-top: 7px !important; padding-bottom: 7px !important; border: none !important; border-bottom: none !important; border-top: none !important; }}
+        #allocation-table-summary .gt_table tbody tr {{ border: none !important; }}
+        #allocation-table-summary .gt_table table td, #allocation-table-summary .gt_table table th {{ border: none !important; }}
+        #allocation-table-summary .gt_table thead th:first-child {{ width: {summary_metric_col_width} !important; }}
+        #allocation-table-summary .gt_table tbody td:first-child {{ width: {summary_metric_col_width} !important; }}
+        #allocation-table-summary .gt_table thead th:not(:first-child) {{ width: {equity_col_width} !important; text-align: center !important; }}
+        #allocation-table-summary .gt_table tbody td:not(:first-child) {{ width: {equity_col_width} !important; text-align: center !important; }}
+    """
 
 
 class RowType(str, Enum):
@@ -544,11 +609,11 @@ def _get_equity_matrix_data(
     strategy_data: StrategyDetail | None = get_strategy_by_name(
         cleaned_data, strategy_name, cache_version=3
     )
-    strategy_model: str = strategy_data.model
-    type_val: str = strategy_data.type
-    strategy_color: str = get_subtype_color(type_val)
+    strategy_suite: str = strategy_data.suite
+    subtype_val: str = strategy_data.subtype
+    strategy_color: str = get_subtype_color(subtype_val)
 
-    all_model_data: pl.DataFrame = _get_model_data(cleaned_data, strategy_model)
+    all_model_data: pl.DataFrame = _get_model_data(cleaned_data, strategy_suite)
 
     # ============================================================================
     # STEP 2: Pre-process data with vectorized operations
@@ -1037,7 +1102,7 @@ def _apply_summary_formatting(
             raise ValueError(
                 "Account minimum value is empty string. ETL pipeline must ensure all account minimum values are numeric."
             )
-        return format_currency_compact(float(x))
+        return _format_currency_compact(float(x))
 
     for col in equity_cols:
         table = table.fmt(columns=[col], rows=[account_min_idx], fns=format_account_min)
@@ -1250,16 +1315,15 @@ def _is_asset_class_strategy(strategy_data: StrategyDetail | None) -> bool:
     if not strategy_data:
         return False
 
-    # Check if ss_type (category) is "Asset Class"
+    # Check if ss_type (type) is "Asset Class"
     is_asset_class_type = (
-        strategy_data.category
-        and str(strategy_data.category).strip().lower() == "asset class"
+        strategy_data.type and str(strategy_data.type).strip().lower() == "asset class"
     )
 
     if not is_asset_class_type:
         return False
 
-    # Check if ss_subtype (type) contains expected Asset Class subtype values
+    # Check if ss_subtype (subtype) contains expected Asset Class subtype values
     asset_class_subtypes = [
         "equity strategies",
         "fixed income strategies",
@@ -1268,7 +1332,7 @@ def _is_asset_class_strategy(strategy_data: StrategyDetail | None) -> bool:
         "special situation strategies",
     ]
 
-    subtype_str = str(strategy_data.type or "").strip().lower()
+    subtype_str = str(strategy_data.subtype or "").strip().lower()
     return any(subtype in subtype_str for subtype in asset_class_subtypes)
 
 
@@ -1293,21 +1357,18 @@ def _load_strategy_allocation_data(
 
     if strategy_data:
         strategy_equity_pct = (
-            int(strategy_data.portfolio)
-            if strategy_data.portfolio is not None
-            else None
+            int(strategy_data.portfolio) if strategy_data.portfolio > 0 else None
         )
-        model_name = strategy_data.model
 
     # Get model data for summary table (cached)
-    # Asset Class strategies don't have ss_suite (model), so filter by strategy name directly
+    # Asset Class strategies don't have ss_suite (suite), so filter by strategy name directly
     if (
         strategy_data
-        and strategy_data.model
+        and strategy_data.suite
         and not _is_asset_class_strategy(strategy_data)
     ):
         all_model_data: pl.DataFrame = _get_model_data(
-            cleaned_data, strategy_data.model
+            cleaned_data, strategy_data.suite
         )
     elif strategy_data:
         # Asset Class strategies: filter by strategy name directly
@@ -1629,7 +1690,7 @@ def _render_collapse_toggle(
     """
     if _has_collapsible_smas(all_model_data, strategy_name):
         # Value is already initialized via get_or_init() in render_allocation_tab()
-        # Using only key parameter lets Streamlit manage the widget state automatically
+        # Using only key parameter lets Streamlit use the session state value automatically
         st.toggle("Collapse SMAs", key=ALLOCATION_COLLAPSE_SMA_KEY)
 
 
@@ -1667,7 +1728,7 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
         minimum = strategy_data.minimum or 0
         st.metric(
             "ACCOUNT MINIMUM",
-            format_currency_compact(float(minimum)) if minimum else "$0.0",
+            _format_currency_compact(float(minimum)) if minimum else "$0.0",
         )
     with row1_col2:
         # Get expense ratio from strategy data (cleaned_data has lowercase column names)
@@ -1688,9 +1749,9 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
         st.metric("WEIGHTED AVG EXP RATIO", f"{expense_ratio * 100:.2f}%")
     with row1_col3:
         # Get yield from strategy data
-        y: Optional[float] = strategy_data.yield_val
+        y: float = strategy_data.yield_val
         # If not found, calculate weighted yield from model data
-        if y is None and all_model_data.height > 0:
+        if y == 0.0 and all_model_data.height > 0:
             strategy_model_data = all_model_data.filter(
                 pl.col("strategy").str.strip_chars().str.to_lowercase()
                 == normalized_strategy
@@ -1722,12 +1783,12 @@ def render_allocation_tab(strategy_name: str, cleaned_data: pl.LazyFrame) -> Non
 
     # Check if this is a Special Situation strategy
     is_special_situation = False
-    subtype_label = strategy_data.type if strategy_data else None
+    subtype_label = strategy_data.subtype if strategy_data else None
     if strategy_data:
-        # Check both category (ss_type) and type (ss_subtype) for Special Situation
+        # Check both type (ss_type) and subtype (ss_subtype) for Special Situation
         check_fields = []
-        if strategy_data.category:
-            check_fields.append(str(strategy_data.category).strip().lower())
+        if strategy_data.type:
+            check_fields.append(str(strategy_data.type).strip().lower())
         if subtype_label:
             check_fields.append(str(subtype_label).strip().lower())
 

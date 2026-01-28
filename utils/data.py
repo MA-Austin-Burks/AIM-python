@@ -290,11 +290,11 @@ def load_cais_data() -> pl.DataFrame:
 
     Returns:
         pl.DataFrame: CAIS data with all original fields plus filter compatibility fields.
-    
+
     Raises:
         ValueError: If S3 credentials are not configured
         FileNotFoundError: If CSV file doesn't exist in S3
-    
+
     Note:
         This function is cached with @st.cache_data(ttl=3600) for 1 hour.
         The S3 filesystem connection is also cached via _get_s3_filesystem().
@@ -308,11 +308,11 @@ def load_cais_data() -> pl.DataFrame:
             bucket = s3_config.BUCKET_NAME
     except (AttributeError, KeyError):
         pass  # Use default bucket
-    
+
     # Read CSV from S3
     path = f"s3://{bucket}/cais_all.csv"
     logger.info(f"[CACHE MISS] Loading cais_all.csv from S3: {path}")
-    
+
     start_time = time.time()
     try:
         # _get_s3_filesystem() is cached, so this won't recreate the connection
@@ -320,7 +320,7 @@ def load_cais_data() -> pl.DataFrame:
         with fs.open(path, "rb") as f:
             # Read CSV from bytes stream
             cais_df = pl.read_csv(f).rename({"Core/Niche": "core_niche"})
-        
+
         download_time = time.time() - start_time
         logger.info(
             f"Loaded cais_all.csv from S3: shape={cais_df.shape} | "
@@ -441,4 +441,14 @@ def get_strategy_by_name(
     if strategy_row.height == 0:
         return None
 
-    return StrategyDetail.from_row(strategy_row.row(0, named=True))
+    row = strategy_row.row(0, named=True)
+    return StrategyDetail(
+        strategy=row.get("strategy", ""),
+        suite=row.get("ss_suite", ""),
+        subtype=row.get("ss_subtype", ""),
+        type=row.get("ss_type", ""),
+        portfolio=row.get("portfolio", 0.0),
+        expense_ratio=row.get("fee", 0.0),
+        yield_val=row.get("yield", 0.0),
+        minimum=row.get("minimum", 0.0),
+    )

@@ -2,11 +2,9 @@ import polars as pl
 import streamlit as st
 
 from components.model_card import CARD_FIXED_WIDTH, model_card
-from utils.branding import (
-    SUBTYPE_COLORS,
-    get_subtype_color_from_row,
-)
+from utils.branding import PRIMARY, SUBTYPE_COLORS
 from utils.models import CAISSummary, StrategySummary
+from utils.models.base import _normalize_bool, _normalize_subtype
 from utils.session_state import get_or_init
 
 # Session state keys
@@ -20,15 +18,25 @@ DEFAULT_CARD_ORDER = "Recommended (Default)"
 CARDS_PER_LOAD = 20
 
 
+def _get_subtype_color_from_row(strategy_row: StrategySummary) -> str:
+    """Get the color for a strategy based on its subtype."""
+    if strategy_row.subtype_primary:
+        return SUBTYPE_COLORS.get(strategy_row.subtype_primary, PRIMARY["light_gray"])
+    if strategy_row.subtype and len(strategy_row.subtype) > 0:
+        return SUBTYPE_COLORS.get(strategy_row.subtype[0], PRIMARY["light_gray"])
+    return PRIMARY["light_gray"]
+
+
 def _render_strategy_card(
     strategy_row: StrategySummary, index: int
 ) -> tuple[bool, str, str]:
     """Render a single strategy card using the custom investment card component, return (clicked, strategy_name, modal_type)."""
     strategy_name: str = strategy_row.strategy
-    subtype_color: str = get_subtype_color_from_row(strategy_row)
+    subtype_color: str = _get_subtype_color_from_row(strategy_row)
     recommended: bool = strategy_row.recommended
-    yield_pct_display: float = strategy_row.yield_pct_display
-    expense_ratio_display: float = strategy_row.expense_ratio_pct_display
+    # Convert decimals to percentages for display (component expects 0-100 range)
+    yield_pct_display: float = strategy_row.yield_decimal * 100
+    expense_ratio_display: float = strategy_row.expense_ratio_decimal * 100
     minimum: float = strategy_row.minimum
     modal_type: str = "strategy"
 
@@ -183,7 +191,29 @@ def render_card_view(
         if "cais_type" in row and row["cais_type"] is not None:
             card_rows.append(("cais", CAISSummary.from_row(row)))
         else:
-            card_rows.append(("strategy", StrategySummary.from_row(row)))
+            # Create StrategySummary directly from row dict
+            card_rows.append(
+                (
+                    "strategy",
+                    StrategySummary(
+                        strategy=str(row.get("strategy", "")),
+                        recommended=_normalize_bool(row.get("ic_recommend", False)),
+                        equity_pct=float(row.get("equity_allo", 0) or 0),
+                        yield_decimal=float(row.get("yield", 0) or 0),
+                        expense_ratio_decimal=float(row.get("fee", 0) or 0),
+                        minimum=float(row.get("minimum", 0) or 0),
+                        subtype=_normalize_subtype(row.get("series", [])),
+                        subtype_primary=str(row.get("ss_subtype", "")),
+                        type=str(row.get("ss_type", "")),
+                        tax_managed=_normalize_bool(row.get("has_tm", False)),
+                        private_markets=_normalize_bool(
+                            row.get("has_private_market", False)
+                        ),
+                        sma=_normalize_bool(row.get("has_sma", False)),
+                        vbi=_normalize_bool(row.get("has_VBI", False)),
+                    ),
+                )
+            )
 
     # Add CSS to use CSS Grid for automatic responsive card layout
     # Grid handles last-row alignment naturally without placeholder cards

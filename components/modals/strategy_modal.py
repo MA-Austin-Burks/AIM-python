@@ -6,8 +6,35 @@ import polars as pl
 import streamlit as st
 
 from components.tab_overview import render_allocation_tab
-from utils.branding import generate_badges
 from utils.models import StrategySummary
+
+
+def _generate_badges(strategy_data: StrategySummary) -> list[str]:
+    """Generate badge strings for a strategy based on its data."""
+    badges: list[str] = []
+
+    if strategy_data.recommended:
+        badges.append(":primary-badge[Recommend]")
+
+    if strategy_data.type:
+        badges.append(f":orange-badge[{strategy_data.type}]")
+
+    if strategy_data.subtype_primary:
+        badges.append(f":blue-badge[{strategy_data.subtype_primary}]")
+
+    if strategy_data.tax_managed:
+        badges.append(":green-badge[Tax-Managed]")
+
+    if strategy_data.private_markets:
+        badges.append(":gray-badge[Private Markets]")
+
+    if strategy_data.sma:
+        badges.append(":violet-badge[SMA Manager]")
+
+    if strategy_data.vbi:
+        badges.append(":teal-badge[VBI]")
+
+    return badges
 
 
 @st.dialog("Strategy Details", width="large", icon=":material/process_chart:")
@@ -55,7 +82,7 @@ def render_strategy_modal(
         exposure_display_text: str = " - ".join(parts)
         st.markdown(f"### {exposure_display_text}")
 
-    badges: list[str] = generate_badges(strategy_data)
+    badges: list[str] = _generate_badges(strategy_data)
     if badges:
         st.markdown(" &nbsp; ".join(badges) + " &nbsp;")
 
